@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
+import com.unscroll.app.data.DemoMode
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.db.PauseLog
 import com.unscroll.app.data.db.TrackedApp
@@ -98,7 +99,7 @@ fun PauseRoute(onDone: () -> Unit, onGoToLimits: () -> Unit) {
         openCount = opens,
         limitMinutes = app.limitMinutes,
         locked = strictness == Strictness.BEAST, // preview matches the user's strictness
-        isPreview = true,
+        isPreview = !DemoMode.active,
         onDecline = { reason ->
             container.appScope.launch { container.database.pauseLogDao().insert(PauseLog(packageName = app.packageName, reason = reason, openedAnyway = false)) }
             onDone()

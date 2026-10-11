@@ -1,5 +1,7 @@
 # ScrollNah
 
+**[⬇ Download the latest APK](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/latest)** · Android 8.0+ · free, no account
+
 A playful Android app that helps you scroll less, with a mascot called **Blobby** who reacts to how much you scroll.
 
 - **Daily limits** for any app, plus separate limits for **Instagram Reels** and **YouTube Shorts**.
@@ -8,6 +10,16 @@ A playful Android app that helps you scroll less, with a mascot called **Blobby*
 - **Focus mode** (lock your apps for 30 min to 2 hours) and a **bedtime** schedule.
 - **Streaks**, a weekly report, a home-screen widget, and light and dark themes.
 - **Private by design**: no account, and everything stays on your phone.
+
+## Install
+
+1. Open the [latest release](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/latest) on your phone and download the `.apk` file.
+2. Open it and allow **Install unknown apps** for your browser or file manager when Android asks.
+3. Follow the short setup in the app.
+
+Good to know:
+- Play Protect may warn about an app from outside the Play Store. That's expected for direct downloads.
+- On Android 13+, the optional Reels/Shorts tracker can be greyed out at first: go to **Settings > Apps > ScrollNah > ⋮ > Allow restricted settings**, then turn it on.
 
 ## Feedback
 

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.unscroll.app.data.DemoMode
 import com.unscroll.app.data.SettingsRepository
 import com.unscroll.app.data.StreakRepository
 import com.unscroll.app.data.UsageRepository
@@ -13,6 +14,7 @@ import com.unscroll.app.service.FocusRules
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Holds the one-per-app objects (database, repositories) so every screen
@@ -33,6 +35,8 @@ class UnscrollApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        DemoMode.init(this) // debug builds only; see DemoMode
+        if (DemoMode.active) container.appScope.launch { DemoMode.seed(container.database, container.settings) }
         Allowances.init(this)
         FocusRules.init(this)
     }

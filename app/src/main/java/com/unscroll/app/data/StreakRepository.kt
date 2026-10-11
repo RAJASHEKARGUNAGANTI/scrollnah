@@ -50,6 +50,7 @@ class StreakRepository(
      * Safe to call often (app open, blocker service): it only adds missing days.
      */
     suspend fun recordFinishedDays() {
+        if (DemoMode.active) return // demo streak days are seeded directly
         if (!usage.hasUsageAccess()) return
         val enabled = db.trackedAppDao().getAll().filter { it.enabled }
         if (enabled.isEmpty()) return

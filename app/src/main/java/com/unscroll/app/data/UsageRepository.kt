@@ -29,6 +29,7 @@ class UsageRepository(context: Context) {
 
     /** True once the user has switched Unscroll on in Settings > Usage access. */
     fun hasUsageAccess(): Boolean {
+        if (DemoMode.active) return true
         val appOps = appContext.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             appOps.unsafeCheckOpNoThrow(
@@ -45,6 +46,7 @@ class UsageRepository(context: Context) {
 
     /** Minutes each app in [packages] has been on screen since midnight. Pass null for every app. */
     fun todayUsageMinutes(packages: Set<String>?): Map<String, Int> {
+        if (DemoMode.active) return DemoMode.todayUsage(packages)
         val now = System.currentTimeMillis()
         val totals = mutableMapOf<String, Long>()
         readSessions(startOfDay(0), now, packages).sessions.forEach { s ->
@@ -58,6 +60,7 @@ class UsageRepository(context: Context) {
      * Gaps under 5 seconds (e.g. switching screens inside the app) count as the same visit.
      */
     fun todayOpenCounts(packages: Set<String>): Map<String, Int> {
+        if (DemoMode.active) return DemoMode.openCounts(packages)
         val counts = mutableMapOf<String, Int>()
         readSessions(startOfDay(0), System.currentTimeMillis(), packages).sessions
             .groupBy { it.packageName }
@@ -78,6 +81,7 @@ class UsageRepository(context: Context) {
      * Days older than Android's kept history are marked with hasData = false.
      */
     fun dailyTotals(packages: Set<String>, days: Int): List<DayTotal> {
+        if (DemoMode.active) return DemoMode.dailyTotals(days)
         val dayStarts = (days - 1 downTo 0).map { startOfDay(it) }
         val result = readSessions(dayStarts.first(), System.currentTimeMillis(), packages)
         val firstKnown = result.firstEventTime
