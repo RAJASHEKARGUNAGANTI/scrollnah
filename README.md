@@ -48,3 +48,7 @@ keyPassword=...
 Kotlin + Jetpack Compose (Material 3, heavily restyled), Room, DataStore, a foreground service using `UsageStatsManager`, and an optional Accessibility service that only detects Reels/Shorts and browser address bars.
 
 Project notes for contributors: [`CLAUDE.md`](CLAUDE.md) (design and rules) and [`CLAUDE_UPDATES.md`](CLAUDE_UPDATES.md) (progress log).
+
+## License
+
+[MIT](LICENSE)

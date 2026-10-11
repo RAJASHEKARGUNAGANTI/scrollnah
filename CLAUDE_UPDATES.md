@@ -260,7 +260,7 @@ Actions only fire when OVER the limit, not on every open.
   publishing is impossible). scrollnah.com and scrollnah.in were free on 2026-10-11 (not registered yet).
 - **Repo:** https://github.com/RAJASHEKARGUNAGANTI/scrollnah (public, Discussions on). Commits use the
   repo-local author `RAJASHEKARGUNAGANTI <85203365+RAJASHEKARGUNAGANTI@users.noreply.github.com>`.
-  No license yet (all rights reserved), which is the developer's choice to make later.
+  License: MIT (added 2026-10-11).
 - **Feedback:** Settings > Feedback has a form (Idea / Bug / Question + message). "Continue on GitHub"
   opens `/discussions/new?category=..&title=..&body=..` pre-filled (`feedbackUrl()` in `data/Models.kt`):
   Idea goes to `ideas`, Question to `q-a`, Bug to `general` with a "Bug: " title. App version + Android
