@@ -65,6 +65,8 @@
 
 ## Working notes
 
+- **ScrollNah vs Blobby:** ScrollNah is the app (name, settings, permissions, About). Blobby is the companion character who watches the user's scrolling and alerts them. Wherever Blobby talks (Home mood card, Pause screen, notifications, widget, celebrations), write in Blobby's first person ("I'm watching", "breathe with me") and sign it ("Blobby · vibing" pill, "Blobby" name tag, notification titles starting "Blobby:"). Elsewhere, refer to Blobby in the third person.
+
 - **Permission/setup copy must be calm and plain** (developer feedback): short, factual, no hype like "superpowers", "peek", "Blobby needs switches". Say what it is for in a few words ("For reminders", "To show the pause screen") and that data stays on the phone. Blobby can be playful elsewhere, not when asking for access.
 
 - Progress, decisions and test notes live in `CLAUDE_UPDATES.md`. Read it first when resuming.

@@ -349,7 +349,7 @@ private fun UnsavedChangesDialog(onLockIn: () -> Unit, onDiscard: () -> Unit, on
         onDismissRequest = onKeepEditing,
         containerColor = Neo.colors.surface,
         title = { Text("Lock it in first?", style = MaterialTheme.typography.headlineSmall) },
-        text = { Text("You changed some limits but didn't lock them in. Blobby can save them now.") },
+        text = { Text("You changed some limits but didn't lock them in yet.") },
         confirmButton = {
             TextButton(onClick = onLockIn) { Text("Lock it in", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
         },

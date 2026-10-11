@@ -125,13 +125,13 @@ class BlockerService : Service() {
         if (info.current > 0) {
             LimitActions.showStreakNudge(
                 this,
-                "Keep your ${info.current}-day streak alive",
-                "You're at ${info.todayUsed} of ${info.todayLimit} min today ($left min left). Put the phone down soon and it's ${info.current + 1} days tomorrow!"
+                "Blobby: keep your ${info.current}-day streak alive",
+                "You're at ${info.todayUsed} of ${info.todayLimit} min today ($left min left). Put the phone down soon and we hit ${info.current + 1} days tomorrow!"
             )
         } else {
             LimitActions.showStreakNudge(
                 this,
-                "Start a streak tonight",
+                "Blobby: let's start a streak tonight",
                 "You're at ${info.todayUsed} of ${info.todayLimit} min. Stay under and tomorrow is day 1 of your streak."
             )
         }

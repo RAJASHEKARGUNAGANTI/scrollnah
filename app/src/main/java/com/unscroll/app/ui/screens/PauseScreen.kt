@@ -98,10 +98,10 @@ fun PauseScreen(
     val subtitle = when (reason) {
         PauseReason.FOCUS -> {
             val left = ((FocusRules.focusRemainingMs() + 59_999L) / 60_000L).toInt()
-            "$appName is paused for $left more ${if (left == 1) "minute" else "minutes"}. You've got this."
+            "$appName is paused for $left more ${if (left == 1) "minute" else "minutes"}. I'm guarding the door."
         }
         PauseReason.BEDTIME ->
-            "Blobby is sleepy. $appName is paused until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}."
+            "I'm sleepy. $appName is paused until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}."
         PauseReason.LIMIT ->
             if (locked) BlobbyLines.lockedSubtitle(appName) else BlobbyLines.pauseSubtitle(limitMinutes)
     }
@@ -128,6 +128,8 @@ fun PauseScreen(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Blobby(mood = BlobbyMood.WORRIED, size = 140.dp)
+            // Name tag: this screen is Blobby talking to you.
+            Text("Blobby", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Text(
                 title,
                 style = MaterialTheme.typography.headlineMedium.copy(fontSize = 32.sp),

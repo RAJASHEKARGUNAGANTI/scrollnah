@@ -57,7 +57,7 @@ class BlobbyWidget : AppWidgetProvider() {
 
             when {
                 !container.usage.hasUsageAccess() -> {
-                    show(views, R.drawable.widget_blobby_happy, "SETUP", "Hi, I'm Blobby", "Tap to finish setting up")
+                    show(views, R.drawable.widget_blobby_happy, "BLOBBY", "Hi, I'm Blobby", "Tap to finish setting up ScrollNah")
                     return
                 }
                 apps.isEmpty() -> {
@@ -74,10 +74,10 @@ class BlobbyWidget : AppWidgetProvider() {
             val face: Int
             val mood: String
             when {
-                FocusRules.focusActive() -> { face = R.drawable.widget_blobby_happy; mood = "FOCUS MODE" }
-                ratio >= 1f -> { face = R.drawable.widget_blobby_worried; mood = "MOOD: WORRIED" }
-                ratio >= 0.5f -> { face = R.drawable.widget_blobby_watchful; mood = "MOOD: WATCHFUL" }
-                else -> { face = R.drawable.widget_blobby_happy; mood = "MOOD: VIBING" }
+                FocusRules.focusActive() -> { face = R.drawable.widget_blobby_happy; mood = "BLOBBY · ON GUARD" }
+                ratio >= 1f -> { face = R.drawable.widget_blobby_worried; mood = "BLOBBY · WORRIED" }
+                ratio >= 0.5f -> { face = R.drawable.widget_blobby_watchful; mood = "BLOBBY · WATCHFUL" }
+                else -> { face = R.drawable.widget_blobby_happy; mood = "BLOBBY · VIBING" }
             }
             val streakText = when (info.current) {
                 0 -> ""

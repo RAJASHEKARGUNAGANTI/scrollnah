@@ -134,8 +134,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         when (step) {
             0 -> Step(
                 pill = "Hi there",
-                title = "I'm Blobby.",
-                body = "I'll help you scroll less, without the guilt trip. Let's set things up in under a minute.",
+                title = "Hi, I'm Blobby.",
+                body = "I'm your ScrollNah buddy. I keep an eye on your scrolling and give you a nudge when it's time to put the phone down. No guilt trips. Let's set things up in under a minute.",
                 mood = BlobbyMood.HAPPY,
                 button = "Let's go",
                 onNext = { step++ }

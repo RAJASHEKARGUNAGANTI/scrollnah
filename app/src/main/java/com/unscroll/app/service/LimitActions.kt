@@ -52,7 +52,7 @@ object LimitActions {
                 .apply { description = "Gentle nudges when you go over a limit (Chill mode)" }
         )
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_WATCHING, "Blobby on watch", NotificationManager.IMPORTANCE_MIN)
+            NotificationChannel(CHANNEL_WATCHING, "Blobby keeping watch", NotificationManager.IMPORTANCE_MIN)
                 .apply { description = "Shown while ScrollNah keeps an eye on your limits" }
         )
     }
@@ -61,8 +61,8 @@ object LimitActions {
     fun watchingNotification(context: Context): Notification =
         NotificationCompat.Builder(context, CHANNEL_WATCHING)
             .setSmallIcon(R.drawable.ic_stat_blobby)
-            .setContentTitle("Blobby is on watch")
-            .setContentText("Keeping an eye on your time-sinks")
+            .setContentTitle("Blobby is keeping watch")
+            .setContentText("I'll nudge you when you reach a limit.")
             .setContentIntent(openAppIntent(context))
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
@@ -88,13 +88,13 @@ object LimitActions {
         val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle(
-                if (target.reason == PauseReason.BEDTIME) "${target.name}: it's bedtime" else "${target.name}: limit reached"
+                if (target.reason == PauseReason.BEDTIME) "Blobby: it's bedtime" else "Blobby: ${target.name} time's up"
             )
             .setContentText(
                 if (target.reason == PauseReason.BEDTIME) {
-                    "Blobby is sleepy. Maybe put the phone down until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}?"
+                    "I'm sleepy. Maybe put ${target.name} down until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}?"
                 } else {
-                    "That's your ${target.limitMinutes} min for today. Blobby thinks it's a good moment to stop."
+                    "That's your ${target.limitMinutes} min of ${target.name} for today. I think it's a good moment to stop."
                 }
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)

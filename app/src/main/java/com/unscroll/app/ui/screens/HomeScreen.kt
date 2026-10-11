@@ -537,7 +537,7 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
             val minutes = ((focusLeftMs + 59_999L) / 60_000L).toInt()
             Text("Focus mode: $minutes min left", style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Your time-sinks are locked. Blobby is guarding the door.",
+                "Your time-sinks are locked. I'm guarding the door. – Blobby",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -631,7 +631,7 @@ private fun CelebrationDialog(days: Int, onDone: () -> Unit) {
         },
         text = {
             Text(
-                "$days days in a row under your limits. Blobby is doing a very wobbly happy dance.",
+                "$days days in a row under your limits. I'm doing a very wobbly happy dance! – Blobby",
                 color = Ink
             )
         },
