@@ -1,4 +1,4 @@
-# Unscroll — Progress Log
+# ScrollNah (formerly Unscroll) — Progress Log
 
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
@@ -252,6 +252,19 @@ Actions only fire when OVER the limit, not on every open.
   Copies in `~/Downloads/unscroll-1.0.0-release.apk|.aab`.
 - A release APK can't be installed over a debug install (different signature): uninstall first, which
   wipes the app's data.
+
+## Name, GitHub and feedback ✅ (2026-10-11)
+- **App name: ScrollNah.** "Unscroll" had 5+ Android and 3+ iOS apps with the same name, and the
+  other options checked were taken too. The mascot stays **Blobby**. The internal package / class names
+  stay `com.unscroll.app`, `UnscrollApplication` etc. (users never see them; changing the package after
+  publishing is impossible). scrollnah.com and scrollnah.in were free on 2026-10-11 (not registered yet).
+- **Repo:** https://github.com/RAJASHEKARGUNAGANTI/scrollnah (public, Discussions on). Commits use the
+  repo-local author `RAJASHEKARGUNAGANTI <85203365+RAJASHEKARGUNAGANTI@users.noreply.github.com>`.
+  No license yet (all rights reserved), which is the developer's choice to make later.
+- **Feedback:** Settings > "Send feedback" opens `FEEDBACK_URL` (Discussions) in the browser
+  (`data/Models.kt`). Nothing is sent from the app itself.
+- Never committed: `keystore/`, `keystore.properties`, `local.properties`, build outputs (gitignored).
+- Builds in ~/Downloads: `scrollnah-debug.apk`, `scrollnah-1.0.0-release.apk|.aab`.
 
 ## Step 6 — Later features (streaks done; server features deferred until after v1)
 
