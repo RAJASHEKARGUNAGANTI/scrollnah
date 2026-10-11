@@ -269,6 +269,18 @@ Actions only fire when OVER the limit, not on every open.
 - Never committed: `keystore/`, `keystore.properties`, `local.properties`, build outputs (gitignored).
 - Builds in ~/Downloads: `scrollnah-debug.apk`, `scrollnah-1.0.0-release.apk|.aab`.
 
+## Public download: GitHub Release v1.0.0 ✅ (2026-10-11)
+- https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/tag/v1.0.0 with asset `ScrollNah-1.0.0.apk`
+  (signed release build, SHA-256 fd6cdf78...206e). README has a "Download the latest APK" link
+  (`/releases/latest`) and install steps.
+- **Next release:** bump `versionCode` + `versionName` in `app/build.gradle.kts`, then run
+  `./gradlew clean assembleRelease`, then
+  `gh release create vX.Y.Z app/build/outputs/apk/release/app-release.apk#ScrollNah-X.Y.Z.apk --notes-file ...`.
+  Always sign with the same keystore so updates install over the old version.
+- **Demo mode (debug builds only):** `adb shell run-as com.unscroll.app touch files/demo_mode`, then restart
+  the app. It fills a sample week (Alex; Instagram/YouTube/Snapchat; 5-day streak; Pause reasons) for
+  screenshots. `DemoMode.kt`; stripped from release builds (verified).
+
 ## Step 6 — Later features (streaks done; server features deferred until after v1)
 
 ### 6a. AI weekly insights — DEFERRED (needs a server; not in the first build)
