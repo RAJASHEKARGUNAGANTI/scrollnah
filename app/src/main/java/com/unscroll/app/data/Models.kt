@@ -12,8 +12,34 @@ enum class Strictness(val title: String, val subtitle: String) {
 
 val pauseReasons = listOf("Bored", "Replying to someone", "Pure habit", "Work thing")
 
-/** Where "Send feedback" goes: the app's public GitHub Discussions page. */
-const val FEEDBACK_URL = "https://github.com/RAJASHEKARGUNAGANTI/scrollnah/discussions"
+/** The app's public GitHub repo (source code + Discussions for feedback). */
+const val REPO_URL = "https://github.com/RAJASHEKARGUNAGANTI/scrollnah"
+const val FEEDBACK_URL = "$REPO_URL/discussions"
+
+/** Feedback types and the GitHub Discussions category each one is posted in. */
+enum class FeedbackType(val label: String, val category: String, val titlePrefix: String) {
+    IDEA("Idea", "ideas", ""),
+    BUG("Bug", "general", "Bug: "),
+    QUESTION("Question", "q-a", "")
+}
+
+/**
+ * Link that opens a new GitHub Discussion with the user's message already filled in.
+ * The user still reviews it and presses "Start discussion" on GitHub themselves.
+ */
+fun feedbackUrl(type: FeedbackType, message: String, appVersion: String): String {
+    val text = message.trim()
+    val firstLine = text.lineSequence().first().take(60)
+    val title = type.titlePrefix + firstLine + if (text.length > firstLine.length) "..." else ""
+    val body = buildString {
+        appendLine(text)
+        appendLine()
+        appendLine("---")
+        append("ScrollNah $appVersion · Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+    }
+    fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
+    return "$FEEDBACK_URL/new?category=${type.category}&title=${enc(title)}&body=${enc(body)}"
+}
 
 const val MIN_LIMIT_MINUTES = 5
 const val MAX_LIMIT_MINUTES = 180

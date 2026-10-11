@@ -261,8 +261,11 @@ Actions only fire when OVER the limit, not on every open.
 - **Repo:** https://github.com/RAJASHEKARGUNAGANTI/scrollnah (public, Discussions on). Commits use the
   repo-local author `RAJASHEKARGUNAGANTI <85203365+RAJASHEKARGUNAGANTI@users.noreply.github.com>`.
   No license yet (all rights reserved), which is the developer's choice to make later.
-- **Feedback:** Settings > "Send feedback" opens `FEEDBACK_URL` (Discussions) in the browser
-  (`data/Models.kt`). Nothing is sent from the app itself.
+- **Feedback:** Settings > Feedback has a form (Idea / Bug / Question + message). "Continue on GitHub"
+  opens `/discussions/new?category=..&title=..&body=..` pre-filled (`feedbackUrl()` in `data/Models.kt`):
+  Idea goes to `ideas`, Question to `q-a`, Bug to `general` with a "Bug: " title. App version + Android
+  version + phone model are appended. The user posts it on GitHub themselves (needs a GitHub account);
+  nothing is sent from the app. About also has "Source code" (`REPO_URL`) and "All discussions" links.
 - Never committed: `keystore/`, `keystore.properties`, `local.properties`, build outputs (gitignored).
 - Builds in ~/Downloads: `scrollnah-debug.apk`, `scrollnah-1.0.0-release.apk|.aab`.
 

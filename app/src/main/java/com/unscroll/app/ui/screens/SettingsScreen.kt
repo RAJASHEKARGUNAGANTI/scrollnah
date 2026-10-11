@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,11 +39,15 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.FEEDBACK_URL
+import com.unscroll.app.data.FeedbackType
+import com.unscroll.app.data.REPO_URL
+import com.unscroll.app.data.feedbackUrl
 import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.service.Allowances
 import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
+import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.Ink
@@ -157,16 +163,10 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
 
         item {
             Section("Feedback") {
-                SettingRow(
-                    "Send feedback",
-                    "Ideas, bugs or questions. Opens our GitHub Discussions page.",
-                    "Open",
-                    onClick = {
-                        try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(FEEDBACK_URL)))
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "No browser found to open the page", Toast.LENGTH_SHORT).show()
-                        }
+                FeedbackForm(
+                    onSend = { type, message ->
+                        val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
+                        openLink(context, feedbackUrl(type, message, version))
                     }
                 )
             }
@@ -181,6 +181,18 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
                 Text(
                     "Everything stays on your phone. ScrollNah has no account and sends nothing anywhere.",
                     style = MaterialTheme.typography.bodyMedium
+                )
+                SettingRow(
+                    "Source code",
+                    "ScrollNah is open on GitHub",
+                    "View",
+                    onClick = { openLink(context, REPO_URL) }
+                )
+                SettingRow(
+                    "All discussions",
+                    "See what others suggested",
+                    "View",
+                    onClick = { openLink(context, FEEDBACK_URL) }
                 )
             }
         }
@@ -224,6 +236,61 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel", color = Neo.colors.content) } }
         )
     }
+}
+
+/** Opens a web link in the browser. */
+private fun openLink(context: Context, url: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (e: Exception) {
+        Toast.makeText(context, "No browser found to open the page", Toast.LENGTH_SHORT).show()
+    }
+}
+
+/** Pick a type, write a message, then continue on GitHub with it filled in. */
+@Composable
+private fun FeedbackForm(onSend: (FeedbackType, String) -> Unit) {
+    var type by remember { mutableStateOf(FeedbackType.IDEA) }
+    var message by remember { mutableStateOf("") }
+
+    Text("Ideas, bugs or questions? Tell us here.", style = MaterialTheme.typography.bodyMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FeedbackType.entries.forEach { option ->
+            ChoicePill(option.label, selected = type == option) { type = option }
+        }
+    }
+    OutlinedTextField(
+        value = message,
+        onValueChange = { message = it.take(2000) },
+        placeholder = {
+            Text(
+                when (type) {
+                    FeedbackType.IDEA -> "It would be great if..."
+                    FeedbackType.BUG -> "What happened, and what did you expect?"
+                    FeedbackType.QUESTION -> "What would you like to know?"
+                }
+            )
+        },
+        minLines = 3,
+        maxLines = 6,
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Neo.colors.background,
+            unfocusedContainerColor = Neo.colors.background,
+            focusedBorderColor = Neo.colors.outline,
+            unfocusedBorderColor = Neo.colors.outline
+        )
+    )
+    NeoButtonPrimary(
+        "Continue on GitHub",
+        onClick = { onSend(type, message) },
+        enabled = message.isNotBlank()
+    )
+    Text(
+        "Opens GitHub with your message filled in. You'll need a free GitHub account to post. " +
+            "Your app version and phone model are added to help with bugs.",
+        style = MaterialTheme.typography.bodyMedium
+    )
 }
 
 /** Snapshot of permission switches, re-read each time the screen resumes. */
