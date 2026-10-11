@@ -13,6 +13,8 @@ import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.Websites
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.widget.BlobbyWidget
+import com.unscroll.app.ui.components.duration
+import com.unscroll.app.ui.components.durationPair
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -126,13 +128,13 @@ class BlockerService : Service() {
             LimitActions.showStreakNudge(
                 this,
                 "Blobby: keep your ${info.current}-day streak alive",
-                "You're at ${info.todayUsed} of ${info.todayLimit} min today ($left min left). Put the phone down soon and we hit ${info.current + 1} days tomorrow!"
+                "You're at ${durationPair(info.todayUsed, info.todayLimit)} today (${duration(left)} left). Put the phone down soon and we hit ${info.current + 1} days tomorrow!"
             )
         } else {
             LimitActions.showStreakNudge(
                 this,
                 "Blobby: let's start a streak tonight",
-                "You're at ${info.todayUsed} of ${info.todayLimit} min. Stay under and tomorrow is day 1 of your streak."
+                "You're at ${durationPair(info.todayUsed, info.todayLimit)}. Stay under and tomorrow is day 1 of your streak."
             )
         }
         debug("streak nudge sent (streak=${info.current}, ${info.todayUsed}/${info.todayLimit})")

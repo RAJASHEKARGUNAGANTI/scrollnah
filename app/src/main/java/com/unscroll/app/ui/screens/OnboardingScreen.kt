@@ -62,6 +62,7 @@ import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.letterFor
+import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.Ink
@@ -287,7 +288,7 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
                         ) {
                             Text(app.label, fontWeight = FontWeight.Bold)
                             val m = minutes[app.packageName] ?: 0
-                            if (m > 0) Text("$m min today", style = MaterialTheme.typography.bodyMedium)
+                            if (m > 0) Text("${duration(m)} today", style = MaterialTheme.typography.bodyMedium)
                         }
                         Text(if (selected) "Added" else "Add", fontWeight = FontWeight.Bold)
                     }

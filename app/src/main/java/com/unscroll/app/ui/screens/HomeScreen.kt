@@ -69,6 +69,8 @@ import com.unscroll.app.ui.components.PencilIcon
 import com.unscroll.app.ui.components.SunIcon
 import com.unscroll.app.ui.components.UpArrowIcon
 import com.unscroll.app.ui.components.letterFor
+import com.unscroll.app.ui.components.duration
+import com.unscroll.app.ui.components.durationPair
 import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.ButtonShape
@@ -535,7 +537,7 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
     NeoCard(backgroundColor = if (focusOn) Lime else Neo.colors.surface, contentPadding = PaddingValues(14.dp)) {
         if (focusOn) {
             val minutes = ((focusLeftMs + 59_999L) / 60_000L).toInt()
-            Text("Focus mode: $minutes min left", style = MaterialTheme.typography.headlineSmall)
+            Text("Focus mode: ${duration(minutes)} left", style = MaterialTheme.typography.headlineSmall)
             Text(
                 "Your time-sinks are locked. I'm guarding the door. – Blobby",
                 style = MaterialTheme.typography.bodyMedium,
@@ -609,7 +611,7 @@ private fun StreakCard(info: StreakInfo) {
                 )
                 val today = when {
                     info.todayLimit == 0 -> ""
-                    info.todayOnTrack -> "Today: on track (${info.todayLimit - info.todayUsed} min left)"
+                    info.todayOnTrack -> "Today: on track (${duration(info.todayLimit - info.todayUsed)} left)"
                     else -> "Today: over the limit"
                 }
                 val best = if (info.best > 0) "Best: ${info.best} ${if (info.best == 1) "day" else "days"}" else "Stay under today to start one"
@@ -690,7 +692,7 @@ private fun LimitRow(limit: LimitProgress) {
             ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(limit.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Text("${limit.usedMinutes} / ${limit.limitMinutes} min", style = MaterialTheme.typography.bodyMedium)
+                    Text(durationPair(limit.usedMinutes, limit.limitMinutes, " / "), style = MaterialTheme.typography.bodyMedium)
                 }
                 NeoProgressBar(progress = progress, color = barColor)
             }

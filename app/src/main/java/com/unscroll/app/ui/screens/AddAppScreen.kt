@@ -36,6 +36,7 @@ import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.PlusIcon
 import com.unscroll.app.ui.components.letterFor
+import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.theme.Neo
 import kotlinx.coroutines.Dispatchers
@@ -126,7 +127,7 @@ private fun AppChoiceRow(app: InstalledApp, minutesToday: Int, onClick: () -> Un
             ) {
                 Text(app.label, fontWeight = FontWeight.Bold)
                 Text(
-                    if (minutesToday > 0) "$minutesToday min today" else "Not used today",
+                    if (minutesToday > 0) "${duration(minutesToday)} today" else "Not used today",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }

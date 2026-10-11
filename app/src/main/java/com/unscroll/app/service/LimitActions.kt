@@ -12,6 +12,7 @@ import com.unscroll.app.MainActivity
 import com.unscroll.app.PauseActivity
 import com.unscroll.app.R
 import com.unscroll.app.data.Strictness
+import com.unscroll.app.ui.components.duration
 
 /** What hit its limit: a whole app, or a feature like YouTube Shorts. */
 data class PauseTarget(
@@ -94,7 +95,7 @@ object LimitActions {
                 if (target.reason == PauseReason.BEDTIME) {
                     "I'm sleepy. Maybe put ${target.name} down until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}?"
                 } else {
-                    "That's your ${target.limitMinutes} min of ${target.name} for today. I think it's a good moment to stop."
+                    "That's your ${duration(target.limitMinutes)} of ${target.name} for today. I think it's a good moment to stop."
                 }
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)

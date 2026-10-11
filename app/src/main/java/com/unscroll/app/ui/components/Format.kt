@@ -15,7 +15,20 @@ fun tileColorFor(packageName: String): Color = tileColors[abs(packageName.hashCo
 
 fun letterFor(appName: String): String = appName.firstOrNull()?.uppercase() ?: "?"
 
-/** 75 -> "1h 15m", 40 -> "40m", 120 -> "2h". */
+/**
+ * How we show time to people: under an hour "45 min", otherwise hours and
+ * minutes, e.g. 78 -> "1h 18m", 120 -> "2h".
+ */
+fun duration(minutes: Int): String = if (minutes < 60) "$minutes min" else formatMinutes(minutes)
+
+/**
+ * "used of limit" without repeating "min": (3, 5) -> "3 of 5 min",
+ * (45, 90) -> "45 min of 1h 30m". [separator] is " of " or " / ".
+ */
+fun durationPair(used: Int, limit: Int, separator: String = " of "): String =
+    if (used < 60 && limit < 60) "$used$separator$limit min" else "${duration(used)}$separator${duration(limit)}"
+
+/** 75 -> "1h 15m", 40 -> "40m", 120 -> "2h" (compact, for chart labels). */
 fun formatMinutes(minutes: Int): String {
     val h = minutes / 60
     val m = minutes % 60

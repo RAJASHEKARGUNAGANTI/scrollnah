@@ -11,6 +11,7 @@ import com.unscroll.app.MainActivity
 import com.unscroll.app.R
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.service.FocusRules
+import com.unscroll.app.ui.components.duration
 import kotlinx.coroutines.launch
 
 /**
@@ -84,7 +85,7 @@ class BlobbyWidget : AppWidgetProvider() {
                 1 -> " · 1-day streak"
                 else -> " · ${info.current}-day streak"
             }
-            show(views, face, mood, "$used min today", "of $limit min$streakText")
+            show(views, face, mood, "${duration(used)} today", "of ${duration(limit)}$streakText")
         }
 
         private fun show(views: RemoteViews, face: Int, mood: String, title: String, detail: String) {

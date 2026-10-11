@@ -32,9 +32,9 @@ object BlobbyLines {
     fun vibing(minutes: Int) = MoodText(
         pill = "Blobby · vibing",
         headline = listOf(
-            "Only $minutes min of scrolling today!",
-            "Just $minutes min so far. Smooth.",
-            "$minutes min. Barely a dent!"
+            "Only ${duration(minutes)} of scrolling today!",
+            "Just ${duration(minutes)} so far. Smooth.",
+            "${duration(minutes)}. Barely a dent!"
         ).forToday(3),
         line = listOf(
             "I'm proud of you. Loads of time left today.",
@@ -46,9 +46,9 @@ object BlobbyLines {
     fun watchful(minutes: Int, limit: Int) = MoodText(
         pill = "Blobby · watchful",
         headline = listOf(
-            "$minutes of $limit min used today",
-            "Careful: $minutes of $limit min gone",
-            "$minutes min in. I'm watching..."
+            "${durationPair(minutes, limit)} used today",
+            "Careful: ${durationPair(minutes, limit)} gone",
+            "${duration(minutes)} in. I'm watching..."
         ).forToday(5),
         line = listOf(
             "Getting close. I'll tell you when it's time.",
@@ -60,9 +60,9 @@ object BlobbyLines {
     fun worried(minutes: Int) = MoodText(
         pill = "Blobby · worried",
         headline = listOf(
-            "$minutes min today. That's over the line!",
-            "Over budget: $minutes min today",
-            "$minutes min. I need a lie-down."
+            "${duration(minutes)} today. That's over the line!",
+            "Over budget: ${duration(minutes)} today",
+            "${duration(minutes)}. I need a lie-down."
         ).forToday(7),
         line = listOf(
             "I think we both need a break. Phone down for a bit?",
@@ -77,9 +77,9 @@ object BlobbyLines {
             "Take one slow breath with me before you decide."
         } else {
             listOf(
-                "You've used your $limitMinutes min. Take one slow breath with me before you decide.",
-                "That's your $limitMinutes min done. Breathe with me, then choose.",
-                "Limit reached ($limitMinutes min). One breath, then you decide."
+                "You've used your ${duration(limitMinutes)}. Take one slow breath with me before you decide.",
+                "That's your ${duration(limitMinutes)} done. Breathe with me, then choose.",
+                "Limit reached (${duration(limitMinutes)}). One breath, then you decide."
             ).forToday(9)
         }
 

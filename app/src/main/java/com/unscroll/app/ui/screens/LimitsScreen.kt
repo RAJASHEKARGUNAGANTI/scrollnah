@@ -65,6 +65,7 @@ import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.PlusIcon
 import com.unscroll.app.ui.components.letterFor
+import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.theme.Background
 import com.unscroll.app.ui.theme.BorderWidth
@@ -474,7 +475,7 @@ private fun Stepper(minutes: Int, onDecrease: () -> Unit, onIncrease: () -> Unit
     Row(verticalAlignment = Alignment.CenterVertically) {
         StepperButton("−", onDecrease)
         Text(
-            "$minutes min",
+            duration(minutes),
             modifier = Modifier.width(66.dp),
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,

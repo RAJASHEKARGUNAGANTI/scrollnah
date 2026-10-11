@@ -50,6 +50,7 @@ import com.unscroll.app.ui.components.MovieIcon
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.NeoProgressBar
+import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.formatMinutes
 import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.Lilac
@@ -135,7 +136,7 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}) {
                                 wonBack == null -> "Soon"
                                 wonBack <= 0 -> "0m"
                                 wonBack >= 120 -> "${wonBack / 120} ${if (wonBack / 120 == 1) "movie" else "movies"}"
-                                else -> formatMinutes(wonBack)
+                                else -> duration(wonBack)
                             },
                             label = if (wonBack == null) "needs 2 weeks of history" else "of time won back vs last week",
                             backgroundColor = Neo.colors.surface,
@@ -226,10 +227,10 @@ private fun WeekSummaryCard(report: WeekReport) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {
                 Text("Social time, last 7 days", style = MaterialTheme.typography.labelSmall)
-                Text(formatMinutes(report.totalMinutes), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 40.sp))
+                Text(duration(report.totalMinutes), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 40.sp))
             }
             report.vsLastWeekMinutes?.let { diff ->
-                NeoPill(if (diff <= 0) "${formatMinutes(-diff)} less" else "${formatMinutes(diff)} more")
+                NeoPill(if (diff <= 0) "${duration(-diff)} less" else "${duration(diff)} more")
             }
         }
         Spacer(Modifier.height(14.dp))
