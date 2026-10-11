@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Neo-brutalist card: lilac with a 2dp ink border. Dark version in drawable-night. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#F2EEFF" />
+    <stroke android:width="2dp" android:color="#16131F" />
+    <corners android:radius="24dp" />
+</shape>

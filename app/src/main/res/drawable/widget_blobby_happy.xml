@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Blobby (happy) for the home-screen widget. Same 140x140 design grid as ui/components/Blobby.kt. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="140dp" android:height="140dp"
+    android:viewportWidth="140" android:viewportHeight="140">
+    <path android:fillColor="#FF6B35" android:strokeColor="#16131F" android:strokeWidth="3" android:pathData="M70,14 C106,10 130,36 128,72 C128,108 102,130 68,128 C32,128 10,104 12,70 C12,34 36,16 70,14 Z" />
+    <path android:fillColor="#16131F" android:pathData="M45,62 a7,10 0 1,0 14,0 a7,10 0 1,0 -14,0 Z" />
+    <path android:fillColor="#16131F" android:pathData="M81,62 a7,10 0 1,0 14,0 a7,10 0 1,0 -14,0 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M51.5,58 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M87.5,58 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 Z" />
+    <path android:fillColor="#FF9EB5" android:pathData="M31,82 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+    <path android:fillColor="#FF9EB5" android:pathData="M95,82 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+    <path android:strokeColor="#16131F" android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M54,86 Q70,104 86,86" />
+</vector>

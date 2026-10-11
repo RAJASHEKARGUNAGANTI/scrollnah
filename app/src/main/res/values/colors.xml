@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home-screen widget text (dark version in values-night). -->
+    <color name="widget_text">#16131F</color>
+</resources>

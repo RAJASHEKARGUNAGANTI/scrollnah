@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Blobby (watchful: getting close to the limit) for the home-screen widget. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="140dp" android:height="140dp"
+    android:viewportWidth="140" android:viewportHeight="140">
+    <path android:fillColor="#FF6B35" android:strokeColor="#16131F" android:strokeWidth="3" android:pathData="M70,14 C106,10 130,36 128,72 C128,108 102,130 68,128 C32,128 10,104 12,70 C12,34 36,16 70,14 Z" />
+    <path android:fillColor="#16131F" android:pathData="M48.5,64 a6.5,8.5 0 1,0 13,0 a6.5,8.5 0 1,0 -13,0 Z" />
+    <path android:fillColor="#16131F" android:pathData="M84.5,64 a6.5,8.5 0 1,0 13,0 a6.5,8.5 0 1,0 -13,0 Z" />
+    <path android:strokeColor="#16131F" android:strokeWidth="3.5" android:strokeLineCap="round" android:pathData="M42,46 L58,44 M82,42 L98,46" />
+    <path android:fillColor="#FF9EB5" android:pathData="M31,84 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+    <path android:fillColor="#FF9EB5" android:pathData="M95,84 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z" />
+    <path android:strokeColor="#16131F" android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M58,94 L82,92" />
+</vector>
