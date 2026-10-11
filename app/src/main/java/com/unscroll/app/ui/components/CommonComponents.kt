@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -101,18 +102,24 @@ fun NeoCard(
     }
 }
 
+/**
+ * Small label pill. It takes the surrounding text colour as its fill, so it's an
+ * ink pill on light/bright cards and a light pill on dark backgrounds (dark mode).
+ */
 @Composable
 fun NeoPill(text: String, modifier: Modifier = Modifier) {
+    val fill = LocalContentColor.current
+    val textColor = if (fill.luminance() > 0.5f) Ink else com.unscroll.app.ui.theme.White
     Text(
         text = text.uppercase(),
-        color = com.unscroll.app.ui.theme.White,
+        color = textColor,
         fontFamily = BodyFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = MaterialTheme.typography.labelSmall.fontSize,
         letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
         modifier = modifier
             .clip(PillShape)
-            .background(Ink)
+            .background(fill)
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
 }
