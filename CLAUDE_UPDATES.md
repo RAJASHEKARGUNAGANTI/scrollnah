@@ -380,6 +380,10 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 2.0.0 (2026-10-26)
+- `versionCode` 3, `versionName` "2.0.0" (developer's choice): 1.2.0 + the battery pass below.
+- Released as GitHub release v2.0.0 right after 1.2.0; `main` fast-forwarded to it.
+
 ## Battery pass (2026-10-26, developer request)
 - `BlockerService`: the 1-second check pauses (`awaitWork()`) while the screen is off (screen on/off
   broadcast receiver) or no limited app is switched on, and restarts the moment the screen turns on
@@ -401,7 +405,9 @@ debug gallery (below).
   2026-10-26 spec update: mascot themes, five moods, Bloomy's garden, break reminders, Glance widgets
   (incl. the animated mascot), search, payment-app help, small-screen fixes, new Home comparisons.
 - Release APK builds and is signed with the same keystore as 1.0.0 (updates install over it).
-  Not published yet: when ready, `gh release create v1.2.0 app/build/outputs/apk/release/app-release.apk#ScrollNah-1.2.0.apk`.
+- **Published 2026-10-26:** https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/tag/v1.2.0
+  (tag on commit 073ed2f, asset `ScrollNah-1.2.0.apk`, SHA-256 20fdd0ca...1e35). `main` fast-forwarded to it.
+  Built in a separate worktree at 073ed2f so the then-uncommitted battery work wasn't included.
 
 ## Animated mascot widget (2026-10-26, developer request)
 - New 2x2 widget "Mascot (animated)" (`MascotOnlyWidget`, receiver `MascotOnlyWidgetReceiver`): no background
