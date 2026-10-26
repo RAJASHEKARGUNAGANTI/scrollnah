@@ -380,6 +380,13 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 1.2.0 (2026-10-26)
+- `versionCode` 2, `versionName` "1.2.0" (developer's choice; there was no 1.1). Includes everything from the
+  2026-10-26 spec update: mascot themes, five moods, Bloomy's garden, break reminders, Glance widgets
+  (incl. the animated mascot), search, payment-app help, small-screen fixes, new Home comparisons.
+- Release APK builds and is signed with the same keystore as 1.0.0 (updates install over it).
+  Not published yet: when ready, `gh release create v1.2.0 app/build/outputs/apk/release/app-release.apk#ScrollNah-1.2.0.apk`.
+
 ## Animated mascot widget (2026-10-26, developer request)
 - New 2x2 widget "Mascot (animated)" (`MascotOnlyWidget`, receiver `MascotOnlyWidgetReceiver`): no background
   and no text (developer: "just plant or Blobby with moods"), the mascot in today's mood sized to the space
