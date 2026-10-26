@@ -11,7 +11,8 @@ A playful Android app that helps you scroll less, with a mascot that reacts to h
 - **Break reminders** after a long stretch on one app, as a notification, a mascot bubble, or both.
 - **Bloomy's garden**: four flowers fill a pot, and finished pots are kept in your garden.
 - **Focus mode** (lock your apps for 30 min to 2 hours) and a **bedtime** schedule.
-- **Streaks**, a weekly report, two home-screen widgets, and light and dark themes.
+- **Home-screen widgets**: a card with today's numbers, a small one, and an animated mascot that bobs, sways and blinks right on your wallpaper.
+- **Streaks**, a weekly report, and light and dark themes.
 - **Private by design**: no account, and everything stays on your phone.
 
 ## Screenshots
@@ -23,8 +24,8 @@ A playful Android app that helps you scroll less, with a mascot that reacts to h
 | <img src="screenshots/limits.png" width="250" alt="Limits"> | <img src="screenshots/break-reminders.png" width="250" alt="Break reminder settings"> | <img src="screenshots/break-reminder.png" width="250" alt="Break reminder notification and bubble over Chrome"> |
 | **Bloomy on Home** | **Pick your mascot** | **Bloomy's garden** |
 | <img src="screenshots/home-bloomy.png" width="250" alt="Home with Bloomy"> | <img src="screenshots/mascot-picker.png" width="250" alt="Mascot picker"> | <img src="screenshots/garden.png" width="250" alt="Garden"> |
-| **Home-screen widget** | | |
-| <img src="screenshots/widget.png" width="250" alt="Home-screen widget"> | | |
+| **Home-screen widgets** | | |
+| <img src="screenshots/widget.png" width="250" alt="Home-screen widgets"> | | |
 
 <sub>Screenshots use the app's sample data (debug demo mode).</sub>
 

@@ -380,11 +380,28 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Animated mascot widget (2026-10-26, developer request)
+- New 2x2 widget "Mascot (animated)" (`MascotOnlyWidget`, receiver `MascotOnlyWidgetReceiver`): no background
+  and no text (developer: "just plant or Blobby with moods"), the mascot in today's mood sized to the space
+  (`SizeMode.Exact`). A minutes-left speech bubble was tried first and removed.
+- Animation: `widget/MascotFrames.kt` draws 4 frames with `MascotBitmap.frame()` (bob up / middle / bob down /
+  blink; Blobby bobs+squishes, Bloomy's stems sway) and puts them into 12 slots of a `ViewFlipper`
+  (`layout/widget_mascot_frames.xml`, autoStart, 260 ms), embedded with Glance `AndroidRemoteViews`.
+  The launcher does the flipping (no battery cost for ScrollNah). The same Bitmap objects are reused so only
+  4 pictures are sent (~1 MB). "Remove animations" on = a still frame.
+- The medium and small card widgets are unchanged (developer: keep them as they were). A "No background"
+  style for them was tried and removed.
+- Verified on the emulator's Pixel launcher: burst screenshots show the frames changing (Bloomy sways
+  left/right, both blink), with Blobby and Bloomy. NOT verified: other launchers. Some (vivo/iQOO,
+  Samsung, Xiaomi versions) may pause ViewFlippers or only show the first frame: check on the iQOO.
+
 ## Home "fun stat" wording (2026-10-26, developer feedback)
-- The sitcom-episode / songs lines felt too specific. `ui/components/FunStat.kt` now gives plain,
-  real-world comparisons by amount: a cup of tea, a walk around the block, a power nap, cooking dinner,
-  a chapter of a book, an X km walk (5 km/h), a long lunch, longer than most movies, half a working day.
-  Two or three options per range, picked once a day. `FunStatTest` checks every range has a line.
+- The sitcom-episode / songs lines felt too specific, and then the plain version ("about a 3.8 km walk")
+  felt flat. `ui/components/FunStat.kt` now has funny everyday comparisons, 4 per time range (3 for zero),
+  picked once a day: "That's a cup of chai, brewed and sipped.", "You could've watered every plant you
+  own.", "That's a whole pizza, from order to door.", "That's dinner cooked from scratch. Chef's kiss.",
+  "That's a whole board game night. Someone would've flipped the table.", "That's enough time to bake
+  bread. From flour." No exact distances or TV-show maths. `FunStatTest` checks every range.
 - The streak and fun-stat cards on Home are now always full width (they shrank to fit short text).
 
 ## README screenshots (2026-10-26)

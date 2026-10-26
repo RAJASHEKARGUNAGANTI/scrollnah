@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Density
@@ -193,6 +194,33 @@ object MascotBitmap {
                 }
             } else {
                 drawMascot(theme, mood, flowers, onOrange)
+            }
+        }
+        return image.asAndroidBitmap()
+    }
+
+    /**
+     * One drawing of the mascot moving, for the animated widget.
+     * [bob] -1..1: Blobby bobs up and down and squishes, Bloomy's stems sway.
+     * A small margin keeps the mascot inside the picture while it moves.
+     */
+    fun frame(theme: MascotTheme, mood: MoodLevel, flowers: Int, sizePx: Int, bob: Float, blink: Boolean): Bitmap {
+        val image = ImageBitmap(sizePx, sizePx)
+        val area = Size(sizePx.toFloat(), sizePx.toFloat())
+        val pose = MascotPose(eyeOpen = if (blink) 0.1f else 1f, sway = bob, twinkle = 0.85f + 0.15f * bob)
+        CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(image), area) {
+            inset(size.minDimension * 0.05f) {
+                if (theme == MascotTheme.BLOBBY) {
+                    // Same bob and squish as on screen (see Mascot), squishing from the bottom.
+                    withTransform({
+                        translate(top = bob * size.height * 0.03f)
+                        scale(1f - bob * 0.025f, 1f + bob * 0.025f, pivot = Offset(size.width / 2f, size.height))
+                    }) {
+                        drawMascot(theme, mood, flowers, pose = pose)
+                    }
+                } else {
+                    drawMascot(theme, mood, flowers, pose = pose)
+                }
             }
         }
         return image.asAndroidBitmap()

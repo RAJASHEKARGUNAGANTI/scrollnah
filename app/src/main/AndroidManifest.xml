@@ -73,7 +73,7 @@
                 android:value="Digital wellbeing: checks which app is open so it can pause apps the user chose to limit and remind them to take breaks." />
         </service>
 
-        <!-- Home-screen widgets (Glance): medium 4x2 and small 2x2. The medium one keeps
+        <!-- Home-screen widgets (Glance): medium 4x2, animated mascot 2x2 and small 2x2. The medium one keeps
              the old receiver name so widgets placed before still work. -->
         <receiver
             android:name=".widget.BlobbyWidget"
@@ -85,6 +85,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/blobby_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.MascotOnlyWidgetReceiver"
+            android:exported="true"
+            android:label="Mascot (animated)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mascot_only_widget_info" />
         </receiver>
         <receiver
             android:name=".widget.SmallMascotWidgetReceiver"

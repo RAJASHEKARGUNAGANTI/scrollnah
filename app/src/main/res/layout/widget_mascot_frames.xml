@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The animated mascot in the "Mascot" widget: the home screen flips through these
+     12 pictures by itself (one every 260 ms), so the mascot bobs, sways and blinks.
+     MascotFrames.kt fills them in. -->
+<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mascot_frames"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:autoStart="true"
+    android:flipInterval="260">
+
+    <ImageView
+        android:id="@+id/frame_0"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_3"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_4"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_5"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_6"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_7"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_8"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_9"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_10"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+    <ImageView
+        android:id="@+id/frame_11"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+</ViewFlipper>

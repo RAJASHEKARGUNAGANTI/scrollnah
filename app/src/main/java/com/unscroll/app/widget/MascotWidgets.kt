@@ -1,23 +1,28 @@
 package com.unscroll.app.widget
 
 import android.content.Context
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.LinearProgressIndicator
-import androidx.glance.action.actionStartActivity
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
@@ -74,6 +79,28 @@ class SmallMascotWidget : GlanceAppWidget() {
 }
 
 /**
+ * Animated mascot widget (2x2): no background and no text, just the mascot in today's
+ * mood standing on the wallpaper. It bobs (Blobby) or sways (Bloomy) and blinks.
+ */
+class MascotOnlyWidget : GlanceAppWidget() {
+    // Exact = we get the real size, so the mascot can be as big as the space allows.
+    override val sizeMode = SizeMode.Exact
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        MascotWidgets.reload(context)
+        val motion = MascotFrames.animationsOn(context)
+        provideContent {
+            val state by MascotWidgets.latest.collectAsState()
+            val current = state ?: return@provideContent
+            val frames = remember(current.theme, current.mood, current.flowers, motion) {
+                MascotFrames.remoteViews(context, current, motion)
+            }
+            MascotOnlyContent(frames)
+        }
+    }
+}
+
+/**
  * Glance keeps a widget's content running for a while after it's drawn, and an update
  * during that time only redraws it. So the content watches [MascotWidgets.latest]
  * instead of keeping its own copy: new numbers or a new theme show up right away.
@@ -100,6 +127,10 @@ class SmallMascotWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = SmallMascotWidget()
 }
 
+class MascotOnlyWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = MascotOnlyWidget()
+}
+
 object MascotWidgets {
     /** The newest widget data. Running widgets redraw by themselves when it changes. */
     val latest = MutableStateFlow<WidgetState?>(null)
@@ -113,8 +144,7 @@ object MascotWidgets {
     suspend fun refresh(context: Context) {
         if (!anyPlaced(context)) return
         reload(context)
-        MediumMascotWidget().updateAll(context)
-        SmallMascotWidget().updateAll(context)
+        updateAll(context)
     }
 
     /** Redraws only if the mood, numbers, theme or day changed since last time. */
@@ -123,14 +153,20 @@ object MascotWidgets {
         val state = WidgetData.load(context)
         if (state == latest.value) return
         latest.value = state
+        updateAll(context)
+    }
+
+    private suspend fun updateAll(context: Context) {
         MediumMascotWidget().updateAll(context)
         SmallMascotWidget().updateAll(context)
+        MascotOnlyWidget().updateAll(context)
     }
 
     private suspend fun anyPlaced(context: Context): Boolean {
         val manager = GlanceAppWidgetManager(context)
         return manager.getGlanceIds(MediumMascotWidget::class.java).isNotEmpty() ||
-            manager.getGlanceIds(SmallMascotWidget::class.java).isNotEmpty()
+            manager.getGlanceIds(SmallMascotWidget::class.java).isNotEmpty() ||
+            manager.getGlanceIds(MascotOnlyWidget::class.java).isNotEmpty()
     }
 }
 
@@ -213,6 +249,19 @@ private fun SmallContent(state: WidgetState, mascot: ImageProvider) {
             maxLines = 1
         )
         SmallText("on ${state.topApp} today", center = true)
+    }
+}
+
+/** The animated widget: just the moving mascot in today's mood, as big as the space allows. */
+@Composable
+private fun MascotOnlyContent(frames: RemoteViews) {
+    val space = LocalSize.current
+    val mascotSize = minOf(space.width, space.height).coerceIn(56.dp, 220.dp)
+    Box(
+        modifier = GlanceModifier.fillMaxSize().clickable(openApp),
+        contentAlignment = Alignment.Center
+    ) {
+        AndroidRemoteViews(frames, GlanceModifier.size(mascotSize))
     }
 }
 

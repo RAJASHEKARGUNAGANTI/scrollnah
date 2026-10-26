@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Preview of the animated "Mascot" widget in the widget picker (the real one is Glance code). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <ImageView
+        android:layout_width="110dp"
+        android:layout_height="110dp"
+        android:contentDescription="Mascot"
+        android:src="@drawable/widget_blobby_happy" />
+</LinearLayout>

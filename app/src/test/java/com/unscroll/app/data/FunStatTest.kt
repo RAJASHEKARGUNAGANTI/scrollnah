@@ -7,18 +7,18 @@ import org.junit.Test
 class FunStatTest {
 
     @Test
-    fun everyAmountGetsAPlainComparison() {
+    fun everyAmountGetsAPlayfulComparison() {
         for (minutes in listOf(0, 5, 15, 25, 46, 90, 240)) {
             val line = FunStat.line(minutes, "Blobby")
             assertTrue("$minutes min: $line", line.isNotBlank())
-            assertTrue("$minutes min: $line", !line.contains("sitcom") && !line.contains("song"))
+            // No exact distances or TV-show maths: keep it light and everyday.
+            assertTrue("$minutes min: $line", "km" !in line && "sitcom" !in line)
         }
     }
 
     @Test
-    fun walkingDistanceIsReadable() {
-        // 46 min at 5 km/h is about 3.8 km; check whichever line mentions a walk is formatted well.
-        val line = FunStat.line(46, "Blobby")
-        if ("km" in line) assertTrue(line, line.contains("3.8 km"))
+    fun zeroMinutesMayMentionTheMascot() {
+        val line = FunStat.line(0, "Bloomy")
+        assertTrue(line, line.isNotBlank() && "Blobby" !in line)
     }
 }

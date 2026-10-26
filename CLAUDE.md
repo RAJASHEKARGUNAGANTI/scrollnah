@@ -101,6 +101,7 @@ Based on the share of today's total limit used (summed across enabled limited ap
 - Follows the chosen theme and shows the current mood art.
 - **Medium (4×2):** mascot, mood pill (e.g. "Thirsty"), title ("Bloomy needs a break"), the most-used limited app with a "26 / 30 min" bar, and streak text ("10-day streak, 1 flower" for Bloomy, "10-day streak" for Blobby).
 - **Small (2×2):** mascot + "4 min left" + "on Instagram today".
+- **Mascot (animated, 2×2):** no background and no text: just the mascot in today's mood, standing on the wallpaper, bobbing (Blobby) or swaying (Bloomy) and blinking. Widgets can't run real animations: 4 pre-drawn frames in a `ViewFlipper` (`widget_mascot_frames.xml`) that the launcher flips every 260 ms. With "Remove animations" on, it shows a still frame. (Added 2026-10-26 at the developer's request.)
 - Tapping opens ScrollNah.
 - Widgets don't refresh constantly on their own: the foreground service triggers a widget update whenever the mood level or numbers change (and at midnight).
 
