@@ -380,6 +380,29 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Play Store preparation (2026-10-26, developer: "start your part, without the tracker for play")
+- **Android 16:** compileSdk/targetSdk 36, AGP 8.7.3 -> 8.13.2, Gradle 8.9 -> 8.13 (SDK platform 36 installed).
+  Builds with no new warnings. Tested the Play debug build on the Nothing phone (Android 16): Limits has no
+  Reels & Shorts section, Beast locked YouTube right away; YouTube limit restored to 60 min afterwards.
+- **Flavors:** `github` (default, tracker included) and `play` (tracker removed via `tools:node="remove"` in
+  `app/src/play/AndroidManifest.xml`, UI hidden by `FeatureWatchService.available`). Verified with aapt2: the
+  play APK/AAB has no BIND_ACCESSIBILITY_SERVICE. Build outputs moved to `apk/github/...` and `apk/play/...`.
+  Tests pass for both (`testGithubDebugUnitTest`, `testPlayDebugUnitTest`).
+- **Pause screen:** a "compact" layout below 820dp tall (mascot and breathing circle side by side) so the
+  reason chips fit on 1080x1920 phones without scrolling.
+- **Store kit (`store/`):** `listing.md` (title "ScrollNah: Scroll Less", short + full description, release
+  notes, all within Play limits), `play-console-answers.md` (data safety: no data collected; content rating;
+  target audience 13+; foreground service description + video; signing via PEPK with the existing key;
+  closed testing), `icon-512.png` and `feature-graphic.png` (rendered from `store/graphics/*.html` with headless
+  Chrome), 8 screenshots 1080x1920 JPEG (demo mode, Play debug build), `fgs-demo.mp4` (Limits -> lock in ->
+  YouTube -> Pause screen -> "Nah, I'm good"). `store/art/` = mascot PNGs from the debug gallery's new
+  `--ez export true` mode.
+- **Privacy policy:** `docs/privacy-policy.md` + `docs/index.md` for GitHub Pages (Settings > Pages > main /docs).
+  Checked claims against the manifest: no INTERNET permission (ACCESS_NETWORK_STATE and WAKE_LOCK come from
+  WorkManager via Glance).
+- **Not done (needs the developer):** Play developer account ($25, ID check), 12 testers x 14 days (personal
+  account), enabling GitHub Pages, a public support email, choosing PEPK/upload key in Play Console.
+
 ## Version 2.0.1 (2026-10-26)
 - `versionCode` 4, `versionName` "2.0.1": 2.0.0 + the new app icon and opening screen below.
 - Released as GitHub release v2.0.1 (marked Latest); `main` fast-forwarded to it.
@@ -551,7 +574,7 @@ leaderboard and invite links. Stats currently shows a "coming soon" card.
 ## Quick resume checklist for next session
 1. Open the project root (`/Users/rajashekargunnaganti/unscroll`) in Android Studio; `local.properties`
    already has the SDK path.
-2. Run `./gradlew assembleDebug` to confirm it still builds. A copy of the last debug APK is at
+2. Run `./gradlew assembleGithubDebug` to confirm it still builds. A copy of the last debug APK is at
    `~/Downloads/unscroll-debug.apk`.
 3. Test phone: iQOO I2221 (Android 16), USB debugging, serial `10BF5319GU002R3`. The developer is happy
    for Claude to drive it over adb but often uses it at the same time, so ask before long test runs.

@@ -48,8 +48,15 @@ Ideas, bugs or questions? Start a thread in [Discussions](https://github.com/RAJ
 Requirements: Android Studio (or JDK 17 + the Android SDK). Min Android 8.0 (API 26).
 
 ```bash
-./gradlew assembleDebug        # debug APK  -> app/build/outputs/apk/debug/
-./gradlew bundleRelease        # Play Store bundle (needs keystore.properties, see below)
+./gradlew assembleGithubDebug     # debug APK, GitHub version -> app/build/outputs/apk/github/debug/
+./gradlew assembleGithubRelease   # release APK for GitHub releases (needs keystore.properties, see below)
+./gradlew bundlePlayRelease       # Play Store bundle, without the Reels/Shorts tracker
+```
+
+There are two versions of the app from the same code: **github** (everything, including the optional Reels/Shorts & website tracker) and **play** (for Google Play, without the tracker, which uses an Accessibility service).
+
+```bash
+./gradlew testGithubDebugUnitTest # unit tests
 ```
 
 Release signing reads a private `keystore.properties` file in the project root (not in this repo):
@@ -63,7 +70,9 @@ keyPassword=...
 
 ## Tech
 
-Kotlin + Jetpack Compose (Material 3, heavily restyled), Room, DataStore, a foreground service using `UsageStatsManager`, and an optional Accessibility service that only detects Reels/Shorts and browser address bars.
+Kotlin + Jetpack Compose (Material 3, heavily restyled), Room, DataStore, Jetpack Glance widgets, a foreground service using `UsageStatsManager`, and (GitHub version only) an optional Accessibility service that only detects Reels/Shorts and browser address bars. Targets Android 16 (API 36).
+
+Privacy policy: [docs/privacy-policy.md](docs/privacy-policy.md) (published with GitHub Pages).
 
 Project notes for contributors: [`CLAUDE.md`](CLAUDE.md) (design and rules) and [`CLAUDE_UPDATES.md`](CLAUDE_UPDATES.md) (progress log).
 

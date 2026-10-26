@@ -14,3 +14,6 @@ local.properties
 # Release signing (keep private, back up separately)
 keystore/
 keystore.properties
+
+# Play Store demo video (large; kept locally, upload to YouTube as Unlisted)
+store/fgs-demo.mp4

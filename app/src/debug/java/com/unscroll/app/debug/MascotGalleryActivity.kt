@@ -40,7 +40,27 @@ import com.unscroll.app.ui.theme.Orange
 class MascotGalleryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Store artwork: saves big mascot PNGs to files/store/ for the Play listing graphics.
+        //   adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --ez export true
+        if (intent.getBooleanExtra("export", false)) exportStoreArt()
         setContent { AppTheme { Gallery() } }
+    }
+
+    private fun exportStoreArt() {
+        val dir = java.io.File(filesDir, "store").apply { mkdirs() }
+        val art = listOf(
+            Triple("blobby_thriving", MascotTheme.BLOBBY to MoodLevel.THRIVING, 0),
+            Triple("blobby_happy", MascotTheme.BLOBBY to MoodLevel.HAPPY, 0),
+            Triple("blobby_worried", MascotTheme.BLOBBY to MoodLevel.WORRIED, 0),
+            Triple("blobby_melting", MascotTheme.BLOBBY to MoodLevel.OVER, 0),
+            Triple("bloomy_thriving4", MascotTheme.BLOOMY to MoodLevel.THRIVING, 4),
+            Triple("bloomy_happy2", MascotTheme.BLOOMY to MoodLevel.HAPPY, 2),
+            Triple("bloomy_thirsty2", MascotTheme.BLOOMY to MoodLevel.WORRIED, 2)
+        )
+        art.forEach { (name, look, flowers) ->
+            val bitmap = MascotBitmap.render(look.first, look.second, flowers, 800)
+            java.io.File(dir, "$name.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        }
     }
 }
 

@@ -123,8 +123,10 @@ fun LimitsScreen(
     var bedtimeDraft by remember { mutableStateOf<FocusRules.Bedtime?>(null) }
     val bedtime = bedtimeDraft ?: savedBedtime
 
-    // Only offer Reels/Shorts for apps that are actually installed.
-    val features = remember { Feature.entries.filter { isAppInstalled(context, it.packageName) } }
+    // Only offer Reels/Shorts for apps that are actually installed (and never in the Play version).
+    val features = remember {
+        if (FeatureWatchService.available) Feature.entries.filter { isAppInstalled(context, it.packageName) } else emptyList()
+    }
     var watcherEnabled by remember { mutableStateOf(FeatureWatchService.isEnabled(context)) }
     LifecycleResumeEffect(Unit) {
         watcherEnabled = FeatureWatchService.isEnabled(context)

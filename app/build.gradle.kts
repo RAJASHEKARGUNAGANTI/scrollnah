@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.unscroll.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.unscroll.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 4
         versionName = "2.0.1"
     }
@@ -31,6 +31,23 @@ android {
                 keyAlias = props.getProperty("keyAlias")
                 keyPassword = props.getProperty("keyPassword")
             }
+        }
+    }
+
+    // Two versions of the app, from the same code:
+    //  - github: everything, including the optional Reels/Shorts & website tracker (an Accessibility service).
+    //  - play:   for the Play Store, without the tracker (Google reviews Accessibility use very strictly).
+    // Same applicationId and signing key, so people can switch between them.
+    flavorDimensions += "store"
+    productFlavors {
+        create("github") {
+            dimension = "store"
+            isDefault = true
+            buildConfigField("boolean", "TRACKER_AVAILABLE", "true")
+        }
+        create("play") {
+            dimension = "store"
+            buildConfigField("boolean", "TRACKER_AVAILABLE", "false")
         }
     }
 

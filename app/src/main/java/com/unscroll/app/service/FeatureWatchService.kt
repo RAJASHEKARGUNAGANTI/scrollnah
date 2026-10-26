@@ -215,12 +215,16 @@ class FeatureWatchService : AccessibilityService() {
     }
 
     companion object {
+        /** False in the Play Store version, which doesn't include this service at all. */
+        val available: Boolean = com.unscroll.app.BuildConfig.TRACKER_AVAILABLE
+
         private const val HEARTBEAT_MS = 2_000L
         private const val MAX_CREDIT_MS = 5_000L
         private const val WATCHDOG_MS = 60_000L
 
         /** True if the user has switched this service on in Accessibility settings. */
         fun isEnabled(context: Context): Boolean {
+            if (!available) return false
             val me = ComponentName(context, FeatureWatchService::class.java)
             val enabled = Settings.Secure.getString(
                 context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES

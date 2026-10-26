@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Play Store version: the optional Reels/Shorts & website tracker (an Accessibility service)
+     is removed from the app completely. The screens hide it via BuildConfig.TRACKER_AVAILABLE. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <service
+            android:name="com.unscroll.app.service.FeatureWatchService"
+            tools:node="remove" />
+    </application>
+</manifest>

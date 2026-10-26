@@ -71,8 +71,10 @@ object DemoMode {
                 TrackedApp(SNAPCHAT, "Snapchat", 20, addedAt = now + 2)
             )
         )
-        db.featureDao().upsertLimits(listOf(FeatureLimit(Feature.YOUTUBE_SHORTS.id, 15, true)))
-        db.featureDao().addAndGet(today.toString(), Feature.YOUTUBE_SHORTS.id, 9 * 60_000L)
+        if (BuildConfig.TRACKER_AVAILABLE) { // Reels/Shorts only exist in the GitHub version
+            db.featureDao().upsertLimits(listOf(FeatureLimit(Feature.YOUTUBE_SHORTS.id, 15, true)))
+            db.featureDao().addAndGet(today.toString(), Feature.YOUTUBE_SHORTS.id, 9 * 60_000L)
+        }
 
         // Pause screen answers this week: mostly boredom, 7 of 10 times "Nah, I'm good".
         val reasons = listOf("Bored", "Bored", "Pure habit", "Bored", "Replying to someone", "Pure habit",

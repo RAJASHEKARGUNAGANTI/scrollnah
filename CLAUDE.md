@@ -155,4 +155,7 @@ Onboarding, Settings (name, light/dark, permissions, feedback via GitHub Discuss
 - **Battery:** no work while the screen is off or there's nothing to watch. Background loops wait for screen on (see `BlockerService.awaitWork`), and polling only runs while it's needed. Measure CPU time before/after (`/proc/<pid>/stat`) when adding background work.
 
 - Explain changes briefly; the developer is learning, so prefer clear, simple code with short comments.
-- Build with `./gradlew assembleDebug` and fix errors before moving on. Unit tests: `./gradlew testDebugUnitTest`.
+- Build with `./gradlew assembleGithubDebug` (or `assemblePlayDebug`) and fix errors before moving on. Unit tests: `./gradlew testGithubDebugUnitTest`.
+- **Two app versions (product flavors, decided 2026-10-26):** `github` = everything, including the opt-in Accessibility tracker (GitHub releases: `assembleGithubRelease`); `play` = Google Play, the tracker is removed from the manifest (`src/play/AndroidManifest.xml`) and hidden in the UI via `BuildConfig.TRACKER_AVAILABLE` / `FeatureWatchService.available` (`bundlePlayRelease`). Same applicationId and signing key. Any new tracker/Reels/Shorts UI must check `FeatureWatchService.available`.
+- Targets Android 16 (API 36), AGP 8.13.2, Gradle 8.13 (Play requires API 36 since 31 Aug 2026).
+- Play Store kit (listing text, form answers, icon, feature graphic, screenshots, FGS demo video): `store/` (see `store/README.md`). Privacy policy: `docs/privacy-policy.md`.

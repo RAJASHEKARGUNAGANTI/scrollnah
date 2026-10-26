@@ -53,6 +53,7 @@ import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.StreakInfo
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.service.BlockerService
+import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.data.StreakRepository
 import com.unscroll.app.data.UsageRepository
@@ -183,7 +184,7 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
             limitMinutes = app.limitMinutes
         )
     }
-    val featureRows = featureLimits.filter { it.enabled }.mapNotNull { limit ->
+    val featureRows = featureLimits.filter { it.enabled && FeatureWatchService.available }.mapNotNull { limit ->
         val feature = Feature.byId(limit.featureId) ?: return@mapNotNull null
         val ms = featureUsage.find { it.featureId == limit.featureId }?.millis ?: 0L
         LimitProgress(

@@ -5,6 +5,7 @@ package com.unscroll.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -110,8 +111,27 @@ fun PauseScreen(
             if (locked) MascotLines.lockedSubtitle(appName) else MascotLines.pauseSubtitle(limitMinutes)
     }
 
-    // Short screens (small phones, big text) get a smaller mascot, title and breathing circle.
-    val compact = LocalConfiguration.current.screenHeightDp < 700
+    // Shorter screens (e.g. 1080x1920 phones, big text): the mascot and the breathing circle sit
+    // side by side and get smaller, so the reason chips still fit without scrolling.
+    val compact = LocalConfiguration.current.screenHeightDp < 820
+
+    // The 3-2-1 circle, drawn the same way in both layouts.
+    val breathingCircle: @Composable (Modifier) -> Unit = { modifier ->
+        NeoShadowSurface(
+            modifier = modifier.size(if (compact) 104.dp else 116.dp),
+            shape = CircleShape,
+            backgroundColor = White // the breathing circle stays white on the orange page
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(secondsLeft.toString(), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 40.sp))
+                Text(if (breathingDone) "nice one" else "breathe in", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+        }
+    }
 
     // Full orange page: always drawn with the light design (ink text, borders, shadows), even in dark mode.
     CompositionLocalProvider(LocalNeoColors provides LightNeoColors, LocalContentColor provides Ink) {
@@ -121,10 +141,9 @@ fun PauseScreen(
                 .background(Orange)
                 .systemBarsPadding()
                 .padding(horizontal = 22.dp)
-                .padding(top = 24.dp, bottom = 20.dp)
+                .padding(top = if (compact) 16.dp else 24.dp, bottom = 20.dp)
         ) {
-            // Everything above the buttons scrolls, so the buttons stay visible on small
-            // phones and with large text.
+            // Everything above the buttons scrolls, so the buttons stay visible even with huge text.
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -142,33 +161,29 @@ fun PauseScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Mascot(mood = MoodLevel.WORRIED, size = if (compact) 100.dp else 140.dp, onOrange = true)
-                    // Name tag: this screen is the mascot talking to you.
-                    Text(LocalMascot.current.theme.mascotName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    if (compact) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Mascot(mood = MoodLevel.WORRIED, size = 104.dp, onOrange = true)
+                                // Name tag: this screen is the mascot talking to you.
+                                Text(LocalMascot.current.theme.mascotName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                            breathingCircle(Modifier)
+                        }
+                    } else {
+                        Mascot(mood = MoodLevel.WORRIED, size = 140.dp, onOrange = true)
+                        // Name tag: this screen is the mascot talking to you.
+                        Text(LocalMascot.current.theme.mascotName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
                     Text(
                         title,
-                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = if (compact) 26.sp else 32.sp),
+                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = if (compact) 28.sp else 32.sp),
                         textAlign = TextAlign.Center
                     )
                     Text(subtitle, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                 }
 
-                NeoShadowSurface(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .size(if (compact) 96.dp else 116.dp),
-                    shape = CircleShape,
-                    backgroundColor = White // the breathing circle stays white on the orange page
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(secondsLeft.toString(), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 40.sp))
-                        Text(if (breathingDone) "nice one" else "breathe in", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                }
+                if (!compact) breathingCircle(Modifier.align(Alignment.CenterHorizontally))
 
                 if (!locked) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- Play Store feature graphic (1024x500). Uses the app's fonts and real mascot art (store/art/).
+     Render: see store/README.md -->
+<html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: "Bricolage"; src: url("../../app/src/main/res/font/bricolage_grotesque.ttf"); font-weight: 200 800; }
+@font-face { font-family: "DM Sans"; src: url("../../app/src/main/res/font/dm_sans.ttf"); font-weight: 100 1000; }
+html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; background: #F2EEFF; }
+.wrap { position: relative; width: 1024px; height: 500px; }
+.text { position: absolute; left: 64px; top: 100px; width: 480px; color: #16131F; }
+.pill { display: inline-block; background: #16131F; color: #fff; font: 700 18px "DM Sans"; letter-spacing: .08em;
+        padding: 8px 16px; border-radius: 999px; text-transform: uppercase; }
+h1 { font: 800 112px/1 "Bricolage"; letter-spacing: -0.04em; margin: 22px 0 14px; }
+p { font: 500 30px/1.3 "DM Sans"; margin: 0; }
+.card { position: absolute; right: 64px; top: 70px; width: 400px; height: 340px; background: #C6F432;
+        border: 4px solid #16131F; border-radius: 40px; box-shadow: 12px 12px 0 #16131F; }
+.card img { position: absolute; bottom: 34px; }
+.blobby { left: 20px; width: 200px; }
+.bloomy { right: 16px; width: 200px; }
+.dot { position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #16131F; }
+</style></head>
+<body><div class="wrap">
+  <div class="text">
+    <span class="pill">Scroll less, smile more</span>
+    <h1>ScrollNah</h1>
+    <p>Daily limits, break reminders and a mascot that cheers you on.</p>
+  </div>
+  <div class="card">
+    <img class="blobby" src="../art/blobby_thriving.png" alt="">
+    <img class="bloomy" src="../art/bloomy_thriving4.png" alt="">
+  </div>
+  <div class="dot" style="left:560px;top:430px;background:#FF6B35"></div>
+  <div class="dot" style="left:600px;top:40px;background:#FF9EB5"></div>
+  <div class="dot" style="left:40px;top:440px;background:#B9A8FF"></div>
+</div></body></html>

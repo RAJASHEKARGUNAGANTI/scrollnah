@@ -183,8 +183,10 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                 PermissionRow("Run in background", "Keeps reminders on time", perms.battery) {
                     SetupChecks.openBatterySettings(context)
                 }
-                PermissionRow("Reels, Shorts & website tracker", "Optional, for Reels, Shorts & websites", perms.tracker) {
-                    FeatureWatchService.openAccessibilitySettings(context)
+                if (FeatureWatchService.available) {
+                    PermissionRow("Reels, Shorts & website tracker", "Optional, for Reels, Shorts & websites", perms.tracker) {
+                        FeatureWatchService.openAccessibilitySettings(context)
+                    }
                 }
                 if (perms.tracker) {
                     // UPI/bank apps (e.g. BHIM) often block apps that use Accessibility.
@@ -284,7 +286,15 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             onDismissRequest = { confirmClear = false },
             containerColor = Neo.colors.surface,
             title = { Text("Clear your history?", style = MaterialTheme.typography.headlineSmall) },
-            text = { Text("This deletes saved streak days, Reels/Shorts and website minutes, Pause screen answers and break reminder history. Your apps, limits and garden stay.") },
+            text = {
+                Text(
+                    if (FeatureWatchService.available) {
+                        "This deletes saved streak days, Reels/Shorts and website minutes, Pause screen answers and break reminder history. Your apps, limits and garden stay."
+                    } else {
+                        "This deletes saved streak days, Pause screen answers and break reminder history. Your apps, limits and garden stay."
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     confirmClear = false
