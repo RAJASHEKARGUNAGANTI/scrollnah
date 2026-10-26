@@ -380,6 +380,10 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 2.0.1 (2026-10-26)
+- `versionCode` 4, `versionName` "2.0.1": 2.0.0 + the new app icon and opening screen below.
+- Released as GitHub release v2.0.1 (marked Latest); `main` fast-forwarded to it.
+
 ## App icon + opening screen (2026-10-26, developer feedback: "face incomplete, no outline")
 - New adaptive icon foreground (`drawable/ic_launcher_foreground.xml`): Blobby (happy) in the same shape as
   `BlobbyArt.kt`, with an ink outline, hard ink shadow, eyes with shine, cheeks and a smile, inside the 66dp
