@@ -58,11 +58,12 @@ class FeatureWatchService : AccessibilityService() {
     private val featureDao by lazy { container.database.featureDao() }
 
     // Re-checks every 2 s, so time keeps counting while the user just watches (no screen events).
-    private val heartbeat = object : Runnable {
-        override fun run() {
-            checkScreen()
-            handler.postDelayed(this, HEARTBEAT_MS)
-        }
+    // Battery: it only runs while Reels/Shorts or a limited app's website is on screen; the rest of
+    // the time screen events wake the service up (see checkScreen).
+    private var heartbeatScheduled = false
+    private val heartbeat = Runnable {
+        heartbeatScheduled = false
+        checkScreen() // schedules the next beat if something is still showing
     }
 
     // Watchdog: Android keeps Accessibility services alive much more reliably than normal
@@ -82,7 +83,7 @@ class FeatureWatchService : AccessibilityService() {
         scope.launch { container.database.trackedAppDao().observeAll().collect { list -> trackedApps = list.associateBy { it.packageName } } }
         scope.launch { container.settings.strictness.collect { strictness = it } }
         lastCheckAt = SystemClock.elapsedRealtime()
-        handler.post(heartbeat)
+        handler.post { checkScreen() }
         handler.post(watchdog)
     }
 
@@ -115,6 +116,12 @@ class FeatureWatchService : AccessibilityService() {
         lastCheckAt = now
         if (detected != seen) debug("now showing: $detected")
         seen = detected
+
+        // Keep checking every 2 s only while something we count is on screen (screen off = nothing).
+        if (seen != null && !heartbeatScheduled) {
+            heartbeatScheduled = true
+            handler.postDelayed(heartbeat, HEARTBEAT_MS)
+        }
     }
 
     private fun detect(root: AccessibilityNodeInfo): Seen? {

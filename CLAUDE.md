@@ -152,5 +152,7 @@ Onboarding, Settings (name, light/dark, permissions, feedback via GitHub Discuss
 
 - **Every screen must work on small phones** (developer feedback: buttons and text were hidden, tabs sat under the navigation buttons). Check at 360x640dp with 3-button navigation and font scale 1.3 (`adb shell wm size 720x1280; wm density 320; settings put system font_scale 1.3`, then reset). Rules: the bottom nav pads for the navigation bar; content that can be long scrolls above fixed buttons; no fixed heights/widths on things with text (use `heightIn`/`widthIn`); chip rows use `FlowRow`; text fields need `imePadding`.
 
+- **Battery:** no work while the screen is off or there's nothing to watch. Background loops wait for screen on (see `BlockerService.awaitWork`), and polling only runs while it's needed. Measure CPU time before/after (`/proc/<pid>/stat`) when adding background work.
+
 - Explain changes briefly; the developer is learning, so prefer clear, simple code with short comments.
 - Build with `./gradlew assembleDebug` and fix errors before moving on. Unit tests: `./gradlew testDebugUnitTest`.

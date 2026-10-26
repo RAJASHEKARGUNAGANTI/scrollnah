@@ -380,6 +380,22 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Battery pass (2026-10-26, developer request)
+- `BlockerService`: the 1-second check pauses (`awaitWork()`) while the screen is off (screen on/off
+  broadcast receiver) or no limited app is switched on, and restarts the moment the screen turns on
+  (with a 30-min look-back to learn what's open). The streak work and the widget check also wait for
+  screen on. The widget check runs once a minute but only re-reads today's usage when a limited app or a
+  browser was used, limits/theme changed, or the day changed (`widgetDirty`). Website minutes are read
+  with the 10-second usage refresh instead of a DB query every second.
+- `FeatureWatchService` (Reels/Shorts tracker): the 2-second heartbeat only runs while Reels/Shorts or a
+  limited app's website is on screen; otherwise screen events wake it.
+- Measured on the emulator (process CPU time, home screen, demo mode):
+  before: ~0.36 s CPU per minute screen on, ~0.34 s screen off;
+  after: ~0.16 s screen on (0.18 with the tracker on), 0 s screen off.
+- Checked after the change: YouTube over its limit was blocked within a second after the screen slept for
+  a minute and woke; Shorts in Chrome still detected. Log lines "pausing checks" / "checks back on".
+- Still to do on the iQOO: Settings > Battery usage for ScrollNah over a normal day.
+
 ## Version 1.2.0 (2026-10-26)
 - `versionCode` 2, `versionName` "1.2.0" (developer's choice; there was no 1.1). Includes everything from the
   2026-10-26 spec update: mascot themes, five moods, Bloomy's garden, break reminders, Glance widgets

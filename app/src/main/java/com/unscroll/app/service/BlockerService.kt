@@ -1,11 +1,14 @@
 package com.unscroll.app.service
 
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -23,6 +26,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -32,6 +38,9 @@ import java.time.LocalDate
  * When a limited app is open and over its limit (and no "+5 min" pass is
  * active), it hands over to [LimitActions] (nudge / Pause screen / lock).
  * It also times long sessions on one app for break reminders ([BreakReminders]).
+ *
+ * Battery: all checks pause while the screen is off or no app is limited, and start
+ * again the moment the screen turns on (see [awaitWork]).
  */
 class BlockerService : Service() {
 
@@ -46,8 +55,23 @@ class BlockerService : Service() {
     private var currentApp: String? = null
     private var firstTick = true
     private var usedMinutes: Map<String, Int> = emptyMap()
+    private var webMinutes: Map<String, Int> = emptyMap() // package -> minutes on its website today
     private var lastUsageRefresh = 0L
     private val lastActionAt = mutableMapOf<String, Long>()
+
+    /** Is the screen on? Nobody can use an app with the screen off, so there's nothing to check then. */
+    private val screenOn = MutableStateFlow(true)
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            screenOn.value = intent.action == Intent.ACTION_SCREEN_ON
+        }
+    }
+
+    /** Is at least one limited app switched on? Without one there's nothing to watch. */
+    private val hasLimitedApps = MutableStateFlow(false)
+
+    /** Set when the widgets' numbers may have changed (a limited app or a browser was used). */
+    @Volatile private var widgetDirty = true
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -64,12 +88,30 @@ class BlockerService : Service() {
             } else 0
         )
 
-        scope.launch { container.database.trackedAppDao().observeAll().collect { trackedApps = it } }
+        screenOn.value = getSystemService(PowerManager::class.java).isInteractive
+        ContextCompat.registerReceiver(
+            this,
+            screenReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED // screen on/off come from the system, which still gets through
+        )
+
+        scope.launch {
+            container.database.trackedAppDao().observeAll().collect { apps ->
+                trackedApps = apps
+                hasLimitedApps.value = apps.any { it.enabled }
+                widgetDirty = true // limits changed
+            }
+        }
         scope.launch { container.settings.strictness.collect { strictness = it } }
         scope.launch { container.settings.breakSettings.collect { breakSettings = it } }
         // Keep the "... is keeping watch" notification in step with the chosen mascot.
         scope.launch {
             container.settings.mascotTheme.collect { theme ->
+                widgetDirty = true
                 try {
                     NotificationManagerCompat.from(this@BlockerService)
                         .notify(NOTIFICATION_ID, LimitActions.watchingNotification(this@BlockerService, theme.mascotName))
@@ -79,21 +121,31 @@ class BlockerService : Service() {
             }
         }
         debug("service created")
-        // Home-screen widgets: check every minute and redraw only when the mood, numbers,
-        // theme or day changed (widgets don't refresh by themselves).
+        // Home-screen widgets don't refresh by themselves. While the screen is on, check once a
+        // minute, but only re-read today's numbers when they may have changed or a new day began.
+        // With the screen off this waits, then refreshes as soon as the screen comes back on.
         scope.launch {
+            var lastDate = ""
             while (isActive) {
-                try {
-                    MascotWidgets.refreshIfChanged(this@BlockerService)
-                } catch (e: Exception) {
-                    debug("widget refresh failed: $e")
+                screenOn.first { it }
+                val today = LocalDate.now().toString()
+                if (widgetDirty || today != lastDate) {
+                    widgetDirty = false
+                    lastDate = today
+                    try {
+                        MascotWidgets.refreshIfChanged(this@BlockerService)
+                    } catch (e: Exception) {
+                        debug("widget refresh failed: $e")
+                    }
                 }
                 delay(60_000L)
             }
         }
-        // Streaks: save finished days and send the evening reminder. Every 30 minutes is plenty.
+        // Streaks: save finished days and send the evening reminder. Every 30 minutes is plenty,
+        // and only while the screen is on (a reminder nobody sees is no use).
         scope.launch {
             while (isActive) {
+                screenOn.first { it }
                 try {
                     streakWork()
                 } catch (e: Exception) {
@@ -102,8 +154,10 @@ class BlockerService : Service() {
                 delay(30 * 60_000L)
             }
         }
+        // The main check, once a second.
         scope.launch {
             while (isActive) {
+                awaitWork()
                 try {
                     tick()
                 } catch (e: Exception) {
@@ -120,8 +174,21 @@ class BlockerService : Service() {
     override fun onDestroy() {
         isRunning = false
         debug("service destroyed")
+        unregisterReceiver(screenReceiver)
         scope.cancel()
         super.onDestroy()
+    }
+
+    /**
+     * Returns straight away when there's work to do. Otherwise (screen off, or no app is
+     * limited) it waits without using the processor until there is.
+     */
+    private suspend fun awaitWork() {
+        if (screenOn.value && hasLimitedApps.value) return
+        debug("pausing checks (screen ${if (screenOn.value) "on" else "off"}, limited apps: ${hasLimitedApps.value})")
+        combine(screenOn, hasLimitedApps) { on, apps -> on && apps }.first { it }
+        debug("checks back on")
+        firstTick = true // look further back to learn what's open right now
     }
 
     private fun debug(message: String) = DebugLog.write(this, TAG, message)
@@ -187,6 +254,8 @@ class BlockerService : Service() {
 
         // 2. Is it a limited app? (null for other apps, the home screen and ScrollNah itself)
         val limited = trackedApps.find { it.packageName == app && it.enabled }
+        // Time on a limited app (or its website in a browser) changes the widgets' numbers.
+        if (limited != null || (app != null && app in Websites.browserUrlBars)) widgetDirty = true
         // Break reminders look at every tick, so they also notice when the user leaves the app.
         checkBreak(now, limited)
         if (app == null || limited == null) return
@@ -210,12 +279,18 @@ class BlockerService : Service() {
 
         // 3b. Is it over its limit? (Usage is re-read every 10 s, or right away when the app opens.)
         if (justOpened || now - lastUsageRefresh > 10_000L) {
-            usedMinutes = container.usage.todayUsageMinutes(trackedApps.map { it.packageName }.toSet())
+            val packages = trackedApps.map { it.packageName }.toSet()
+            usedMinutes = container.usage.todayUsageMinutes(packages)
+            // Time on each app's website in a browser (counted by the Accessibility service).
+            val today = LocalDate.now().toString()
+            val webRows = container.database.featureDao().usageBetween(today, today)
+            webMinutes = packages.associateWith { pkg ->
+                ((webRows.find { it.featureId == Websites.usageKey(pkg) }?.millis ?: 0L) / 60_000L).toInt()
+            }
             lastUsageRefresh = now
         }
-        // App time + time on its website in a browser (counted by the Accessibility service).
-        val webMs = container.database.featureDao().findMillis(LocalDate.now().toString(), Websites.usageKey(app)) ?: 0L
-        val used = (usedMinutes[app] ?: 0) + (webMs / 60_000L).toInt()
+        // App time + website time.
+        val used = (usedMinutes[app] ?: 0) + (webMinutes[app] ?: 0)
         if (justOpened) debug("$app used $used of ${limited.limitMinutes} min, allowance=${Allowances.isActive(app)}")
         if (used < limited.limitMinutes) return
         // Beast mode never honours "+5 min" passes, even ones taken before switching to it.
