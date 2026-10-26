@@ -77,6 +77,9 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
 
+    // Splash screen (the opening screen) that looks the same on every Android version
+    implementation(libs.androidx.core.splashscreen)
+
     // Home-screen widget built with Compose-style code
     implementation(libs.androidx.glance.appwidget)
 

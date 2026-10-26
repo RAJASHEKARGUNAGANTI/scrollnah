@@ -1,6 +1,14 @@
 <resources>
     <style name="Theme.Unscroll" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
+        <!-- Shown for a split second before the first screen draws: lilac by day, ink at night. -->
+        <item name="android:windowBackground">@color/splash_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- The opening screen: Blobby on lilac (ink at night), then the app's normal theme. -->
+    <style name="Theme.Unscroll.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Unscroll</item>
     </style>
 </resources>

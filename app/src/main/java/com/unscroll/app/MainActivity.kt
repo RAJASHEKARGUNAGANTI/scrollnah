@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.unscroll.app.service.BlockerService
 import com.unscroll.app.ui.navigation.UnscrollApp
 import com.unscroll.app.ui.screens.OnboardingScreen
@@ -23,11 +24,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    /** True once we know whether to show onboarding or the app; the opening screen stays until then. */
+    @Volatile private var ready = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The opening screen (Blobby on lilac). Must come before super.onCreate.
+        installSplashScreen().setKeepOnScreenCondition { !ready }
         super.onCreate(savedInstanceState)
         setContent {
             AppTheme {
-                AppRoot()
+                AppRoot(onReady = { ready = true })
             }
         }
     }
@@ -44,7 +51,7 @@ class MainActivity : ComponentActivity() {
 
 /** Shows the first-run walkthrough once, then the normal app. */
 @Composable
-private fun AppRoot() {
+private fun AppRoot(onReady: () -> Unit) {
     val container = appContainer()
     // null = still checking, true = show onboarding, false = show the app
     val needsOnboarding by produceState<Boolean?>(initialValue = null) {
@@ -61,9 +68,10 @@ private fun AppRoot() {
         }
     }
     var showApp by remember { mutableStateOf(false) }
+    if (needsOnboarding != null) onReady() // the opening screen can go now
 
     when {
-        needsOnboarding == null -> Box(Modifier.fillMaxSize().background(Neo.colors.background)) // brief blank while checking
+        needsOnboarding == null -> Box(Modifier.fillMaxSize().background(Neo.colors.background)) // hidden by the opening screen
         needsOnboarding == true && !showApp -> OnboardingScreen(onFinished = { showApp = true })
         else -> UnscrollApp()
     }

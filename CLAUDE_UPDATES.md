@@ -380,6 +380,35 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## App icon + opening screen (2026-10-26, developer feedback: "face incomplete, no outline")
+- New adaptive icon foreground (`drawable/ic_launcher_foreground.xml`): Blobby (happy) in the same shape as
+  `BlobbyArt.kt`, with an ink outline, hard ink shadow, eyes with shine, cheeks and a smile, inside the 66dp
+  safe zone. Lilac background unchanged. New `ic_launcher_monochrome.xml` (outline + eyes + smile) for
+  Android 13+ themed icons: the Nothing launcher now shows that line version like its other icons (before,
+  it fell back to the coloured icon in a ring).
+- Opening (splash) screen: `androidx.core:core-splashscreen` 1.0.1. MainActivity uses
+  `Theme.Unscroll.Starting` (Blobby on #F2EEFF, #16131F at night) and `installSplashScreen()`; it stays up
+  until onboarding-vs-app is decided (`setKeepOnScreenCondition`), so the blank "checking" frame is gone.
+  `Theme.Unscroll` windowBackground is now the same colour instead of white (no white flash in dark mode).
+- Checked on the emulator (light + dark, app drawer) and the Nothing phone (dark splash, themed icon).
+
+## Nothing Phone (A142, Android 16) test of 2.0.0 (2026-10-26)
+- The developer's phone had 1.0.0 (YouTube 60 min, Shorts 15 min, Beast, name "Raj"). App data was backed
+  up first (scratchpad tar). Installed the 2.0.0 debug build over it: DB 2 -> 3, no crash, name, limits,
+  5-day streak and strictness all kept.
+- Break reminder (YouTube override 5 min): #1 at exactly 5:00 with notification + bubble over YouTube
+  ("I'm getting worried"), #2 at 10:00 sadder ("I'm melting here", melting badge). "Take a break" went to
+  the Nothing launcher; `break_log` = shown, shown, break. Note: Nothing's notification shade can't be
+  opened over adb (its swipe opens quick settings), so buttons were tested on the heads-up banner.
+- Battery: "pausing checks (screen off)" logged within ~1 s of the system's SCREEN_OFF broadcast, "checks back
+  on" on wake. After waking, Beast locked YouTube (49/45 min) within a second.
+- Widgets on the Nothing launcher: the old 1.0.0 widget turned into the new medium widget by itself; the
+  developer added the small and the animated Mascot widgets. All showed live data; the medium one updated
+  "49 / 45" -> "49 min / 1h" within a minute of the limit change. The animated widget changes frames on this
+  launcher (burst screenshots differ: Blobby bobs).
+- Restored afterwards: YouTube 60 min, no per-app break time, Beast, screen timeout 30 s.
+- Not tested here: BHIM (not installed; PhonePe, GPay and Paytm are), the iQOO.
+
 ## Version 2.0.0 (2026-10-26)
 - `versionCode` 3, `versionName` "2.0.0" (developer's choice): 1.2.0 + the battery pass below.
 - Released as GitHub release v2.0.0 right after 1.2.0; `main` fast-forwarded to it.
