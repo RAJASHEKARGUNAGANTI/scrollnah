@@ -13,7 +13,7 @@ A playful Android app that helps you scroll less, with a mascot that reacts to h
 - **Focus mode** (lock your apps for 30 min to 2 hours) and a **bedtime** schedule.
 - **Home-screen widgets**: a card with today's numbers, a small one, and an animated mascot that bobs, sways and blinks right on your wallpaper.
 - **Streaks**, a weekly report, and light and dark themes.
-- **Private by design**: no account, and everything stays on your phone.
+- **Private by design**: no account, and everything stays on your phone. Read the [privacy policy](https://rajashekargunaganti.github.io/scrollnah/privacy-policy).
 
 ## Screenshots
 
@@ -72,7 +72,7 @@ keyPassword=...
 
 Kotlin + Jetpack Compose (Material 3, heavily restyled), Room, DataStore, Jetpack Glance widgets, a foreground service using `UsageStatsManager`, and (GitHub version only) an optional Accessibility service that only detects Reels/Shorts and browser address bars. Targets Android 16 (API 36).
 
-Privacy policy: [docs/privacy-policy.md](docs/privacy-policy.md) (published with GitHub Pages).
+Privacy policy: <https://rajashekargunaganti.github.io/scrollnah/privacy-policy> (source: [docs/privacy-policy.md](docs/privacy-policy.md), published with GitHub Pages from `main` > `/docs`).
 
 Project notes for contributors: [`CLAUDE.md`](CLAUDE.md) (design and rules) and [`CLAUDE_UPDATES.md`](CLAUDE_UPDATES.md) (progress log).
 
