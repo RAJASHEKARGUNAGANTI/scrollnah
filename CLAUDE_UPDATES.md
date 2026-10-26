@@ -380,6 +380,15 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Rotation / landscape (2026-10-27, developer: "it always tilts, should follow the phone's tilt setting")
+- Checked: no activity sets `screenOrientation` and nothing calls `requestedOrientation`, so the app already
+  follows Auto-rotate. Emulator: auto-rotate off + tilted = stays portrait (mRotation=0); auto-rotate on =
+  rotates (mRotation=1). So the developer's phone most likely has Auto-rotate on.
+- The real problem was the sideways layouts: cards stretched edge to edge, and the Pause screen cut the title
+  and hid the reason chips. Fixed: `ReadableWidth` (max 640dp, centred) around every tab screen except Pause;
+  onboarding limited to 640dp; Pause screen has a landscape layout (pill + mascot + breathing circle on the
+  left, title/subtitle/chips scrolling + buttons on the right). Portrait layouts unchanged (checked).
+
 ## Play Store preparation (2026-10-26, developer: "start your part, without the tracker for play")
 - **Android 16:** compileSdk/targetSdk 36, AGP 8.7.3 -> 8.13.2, Gradle 8.9 -> 8.13 (SDK platform 36 installed).
   Builds with no new warnings. Tested the Play debug build on the Nothing phone (Android 16): Limits has no

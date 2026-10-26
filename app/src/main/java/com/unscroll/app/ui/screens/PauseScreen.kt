@@ -5,6 +5,8 @@ package com.unscroll.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
@@ -111,11 +113,19 @@ fun PauseScreen(
             if (locked) MascotLines.lockedSubtitle(appName) else MascotLines.pauseSubtitle(limitMinutes)
     }
 
-    // Shorter screens (e.g. 1080x1920 phones, big text): the mascot and the breathing circle sit
-    // side by side and get smaller, so the reason chips still fit without scrolling.
-    val compact = LocalConfiguration.current.screenHeightDp < 820
+    // Layout depends on the screen: sideways phones get two columns; shorter phones
+    // (e.g. 1080x1920, big text) put the mascot and the breathing circle side by side.
+    val config = LocalConfiguration.current
+    val landscape = config.screenWidthDp > config.screenHeightDp
+    val compact = landscape || config.screenHeightDp < 820
 
-    // The 3-2-1 circle, drawn the same way in both layouts.
+    // ---- The pieces of the page (arranged below for portrait or landscape) ----
+
+    val pill: @Composable (Modifier) -> Unit = { modifier ->
+        NeoPill(text = if (isPreview) "Preview · $pillText" else pillText, modifier = modifier)
+    }
+
+    // The 3-2-1 circle.
     val breathingCircle: @Composable (Modifier) -> Unit = { modifier ->
         NeoShadowSurface(
             modifier = modifier.size(if (compact) 104.dp else 116.dp),
@@ -133,96 +143,147 @@ fun PauseScreen(
         }
     }
 
-    // Full orange page: always drawn with the light design (ink text, borders, shadows), even in dark mode.
-    CompositionLocalProvider(LocalNeoColors provides LightNeoColors, LocalContentColor provides Ink) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Orange)
-                .systemBarsPadding()
-                .padding(horizontal = 22.dp)
-                .padding(top = if (compact) 16.dp else 24.dp, bottom = 20.dp)
-        ) {
-            // Everything above the buttons scrolls, so the buttons stay visible even with huge text.
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 18.dp)
-            ) {
-                NeoPill(
-                    text = if (isPreview) "Preview · $pillText" else pillText,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
+    // The mascot with its name tag (this screen is the mascot talking to you).
+    val mascotWithName: @Composable (Dp) -> Unit = { size ->
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Mascot(mood = MoodLevel.WORRIED, size = size, onOrange = true)
+            Text(LocalMascot.current.theme.mascotName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+    }
 
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+    val titleAndSubtitle: @Composable () -> Unit = {
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = if (compact) 28.sp else 32.sp),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(subtitle, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    }
+
+    val reasonChips: @Composable () -> Unit = {
+        if (!locked) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Why are you opening it?", fontWeight = FontWeight.Bold)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (compact) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Mascot(mood = MoodLevel.WORRIED, size = 104.dp, onOrange = true)
-                                // Name tag: this screen is the mascot talking to you.
-                                Text(LocalMascot.current.theme.mascotName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            }
-                            breathingCircle(Modifier)
-                        }
-                    } else {
-                        Mascot(mood = MoodLevel.WORRIED, size = 140.dp, onOrange = true)
-                        // Name tag: this screen is the mascot talking to you.
-                        Text(LocalMascot.current.theme.mascotName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = if (compact) 28.sp else 32.sp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(subtitle, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
-                }
-
-                if (!compact) breathingCircle(Modifier.align(Alignment.CenterHorizontally))
-
-                if (!locked) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Why are you opening it?", fontWeight = FontWeight.Bold)
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            pauseReasons.forEach { reason ->
-                                NeoChip(
-                                    text = reason,
-                                    selected = selectedReason == reason,
-                                    onClick = { selectedReason = reason }
-                                )
-                            }
-                        }
+                    pauseReasons.forEach { reason ->
+                        NeoChip(
+                            text = reason,
+                            selected = selectedReason == reason,
+                            onClick = { selectedReason = reason }
+                        )
                     }
                 }
             }
+        }
+    }
 
-            // Buttons: always at the bottom, never scrolled away.
+    // Buttons: always visible, never scrolled away.
+    val buttons: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            NeoButtonPrimary(
+                if (locked) "Take me home" else "Nah, I'm good",
+                onClick = { onDecline(selectedReason) },
+                backgroundColor = Lime
+            )
+            if (!locked && onAllowFiveMinutes != null) {
+                NeoButtonOutline(
+                    if (breathingDone) "Open for 5 minutes" else "Breathe first...",
+                    onClick = { if (breathingDone) onAllowFiveMinutes(selectedReason) },
+                    modifier = Modifier.alpha(if (breathingDone) 1f else 0.5f)
+                )
+            }
+        }
+    }
+
+    // Full orange page: always drawn with the light design (ink text, borders, shadows), even in dark mode.
+    CompositionLocalProvider(LocalNeoColors provides LightNeoColors, LocalContentColor provides Ink) {
+        if (landscape) {
+            // Sideways: who's talking and the breath on the left, the question and buttons on the right.
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Orange)
+                    .systemBarsPadding()
+                    .padding(horizontal = 28.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(28.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(0.8f)
+                        .fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)
+                ) {
+                    pill(Modifier)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                        mascotWithName(104.dp)
+                        breathingCircle(Modifier)
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1.2f)
+                        .fillMaxHeight()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        titleAndSubtitle()
+                        reasonChips()
+                    }
+                    buttons()
+                }
+            }
+        } else {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxSize()
+                    .background(Orange)
+                    .systemBarsPadding()
+                    .padding(horizontal = 22.dp)
+                    .padding(top = if (compact) 16.dp else 24.dp, bottom = 20.dp)
             ) {
-                NeoButtonPrimary(
-                    if (locked) "Take me home" else "Nah, I'm good",
-                    onClick = { onDecline(selectedReason) },
-                    backgroundColor = Lime
-                )
-                if (!locked && onAllowFiveMinutes != null) {
-                    NeoButtonOutline(
-                        if (breathingDone) "Open for 5 minutes" else "Breathe first...",
-                        onClick = { if (breathingDone) onAllowFiveMinutes(selectedReason) },
-                        modifier = Modifier.alpha(if (breathingDone) 1f else 0.5f)
-                    )
+                // Everything above the buttons scrolls, so the buttons stay visible even with huge text.
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 18.dp)
+                ) {
+                    pill(Modifier.align(Alignment.CenterHorizontally))
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (compact) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                                mascotWithName(104.dp)
+                                breathingCircle(Modifier)
+                            }
+                        } else {
+                            mascotWithName(140.dp)
+                        }
+                        titleAndSubtitle()
+                    }
+                    if (!compact) breathingCircle(Modifier.align(Alignment.CenterHorizontally))
+                    reasonChips()
                 }
+                buttons()
             }
         }
     }

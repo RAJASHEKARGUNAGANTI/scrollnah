@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -125,6 +127,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
             .background(Neo.colors.background)
             .systemBarsPadding()
             .imePadding() // the Next button stays above the keyboard
+            .wrapContentWidth() // sideways phones: keep the steps a readable width in the middle
+            .widthIn(max = 640.dp)
             .padding(horizontal = 22.dp, vertical = 16.dp)
     ) {
         // Progress dots

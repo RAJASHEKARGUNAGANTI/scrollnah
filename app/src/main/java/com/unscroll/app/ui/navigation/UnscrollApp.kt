@@ -1,14 +1,20 @@
 package com.unscroll.app.ui.navigation
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -68,39 +74,53 @@ fun UnscrollApp() {
                 .consumeWindowInsets(innerPadding)
         ) {
             composable(Destination.HOME.route) {
-                HomeScreen(
-                    onEditLimits = { navController.navigate(Destination.LIMITS.route) },
-                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) }
-                )
+                ReadableWidth {
+                    HomeScreen(
+                        onEditLimits = { navController.navigate(Destination.LIMITS.route) },
+                        onOpenSettings = { navController.navigate(SETTINGS_ROUTE) }
+                    )
+                }
             }
             composable(Destination.LIMITS.route) {
-                LimitsScreen(
-                    onBack = { navController.popBackStack() },
-                    onAddApp = { navController.navigate(ADD_APP_ROUTE) },
-                    onOpenBreaks = { navController.navigate(BREAKS_ROUTE) },
-                    onSaved = { navController.popBackStack() },
-                    onUnsavedChanges = { limitsUnsaved = it },
-                    pendingLeave = pendingLeave,
-                    onLeaveCancelled = { pendingLeave = null }
-                )
+                ReadableWidth {
+                    LimitsScreen(
+                        onBack = { navController.popBackStack() },
+                        onAddApp = { navController.navigate(ADD_APP_ROUTE) },
+                        onOpenBreaks = { navController.navigate(BREAKS_ROUTE) },
+                        onSaved = { navController.popBackStack() },
+                        onUnsavedChanges = { limitsUnsaved = it },
+                        pendingLeave = pendingLeave,
+                        onLeaveCancelled = { pendingLeave = null }
+                    )
+                }
             }
             composable(SETTINGS_ROUTE) {
-                SettingsScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
-                )
+                ReadableWidth {
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
+                    )
+                }
             }
             composable(GARDEN_ROUTE) {
-                GardenScreen(onBack = { navController.popBackStack() })
+                ReadableWidth {
+                    GardenScreen(onBack = { navController.popBackStack() })
+                }
             }
             composable(BREAKS_ROUTE) {
-                BreakRemindersScreen(onBack = { navController.popBackStack() })
+                ReadableWidth {
+                    BreakRemindersScreen(onBack = { navController.popBackStack() })
+                }
             }
             composable(ADD_APP_ROUTE) {
-                AddAppScreen(onBack = { navController.popBackStack() })
+                ReadableWidth {
+                    AddAppScreen(onBack = { navController.popBackStack() })
+                }
             }
             composable(Destination.STATS.route) {
-                WeeklyReportScreen(onBack = { navController.popBackStack() })
+                ReadableWidth {
+                    WeeklyReportScreen(onBack = { navController.popBackStack() })
+                }
             }
             composable(Destination.PAUSE.route) {
                 PauseRoute(
@@ -109,5 +129,20 @@ fun UnscrollApp() {
                 )
             }
         }
+    }
+}
+
+/**
+ * On wide screens (a sideways phone, a tablet) content stays a comfortable reading
+ * width in the middle instead of stretching edge to edge. On a normal phone it fills the width.
+ */
+@Composable
+private fun ReadableWidth(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Box(
+            Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+        ) { content() }
     }
 }
