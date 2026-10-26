@@ -380,6 +380,14 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 2.0.2 (2026-10-27)
+- `versionCode` 5, `versionName` "2.0.2": the landscape layouts below. GitHub release v2.0.2 (Latest), built
+  with `./gradlew assembleGithubRelease` (the github flavor = what GitHub releases ship, tracker included).
+- Release steps now: bump version -> commit -> `./gradlew clean assembleGithubRelease` ->
+  `gh release create vX.Y.Z app/build/outputs/apk/github/release/app-github-release.apk#ScrollNah-X.Y.Z.apk
+  --target <FULL commit SHA> --latest` (a short SHA is rejected). Push without piping the output (piped pushes
+  failed twice for no clear reason).
+
 ## Rotation / landscape (2026-10-27, developer: "it always tilts, should follow the phone's tilt setting")
 - Checked: no activity sets `screenOrientation` and nothing calls `requestedOrientation`, so the app already
   follows Auto-rotate. Emulator: auto-rotate off + tilted = stays portrait (mRotation=0); auto-rotate on =
