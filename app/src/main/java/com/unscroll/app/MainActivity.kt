@@ -18,7 +18,7 @@ import com.unscroll.app.ui.navigation.UnscrollApp
 import com.unscroll.app.ui.screens.OnboardingScreen
 import com.unscroll.app.ui.theme.AppTheme
 import com.unscroll.app.ui.theme.Neo
-import com.unscroll.app.widget.BlobbyWidget
+import com.unscroll.app.widget.MascotWidgets
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
         BlockerService.startIfNeeded(this)
         // Keep the home-screen widget in sync with what the app shows.
         val container = (application as UnscrollApplication).container
-        container.appScope.launch { BlobbyWidget.refresh(this@MainActivity) }
+        container.appScope.launch { MascotWidgets.refresh(this@MainActivity) }
     }
 }
 

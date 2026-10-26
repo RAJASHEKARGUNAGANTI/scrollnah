@@ -12,8 +12,16 @@ val Ink = Color(0xFF16131F)
 val Lime = Color(0xFFC6F432)
 val Orange = Color(0xFFFF6B35)
 val Lilac = Color(0xFFB9A8FF)
-val CheekPink = Color(0xFFFF9EB5)
+val CheekPink = Color(0xFFFF9EB5) // cheeks and Bloomy's flower petals
 val White = Color(0xFFFFFFFF)
+val Sky = Color(0xFF7DE2FF)       // sweat drops and tears
+
+// Bloomy (plant theme) extras.
+val PaleLeaf = Color(0xFFE4F7A8)  // thirsty leaves
+val PalePetal = Color(0xFFF7D3DC) // thirsty petals
+val DryPetal = Color(0xFFD8B4A0)  // wilting petals
+val Brown = Color(0xFFA7783C)     // dry stems and leaves
+val Soil = Color(0xFF8A5A2B)
 
 /**
  * Colours that change between light and dark mode. Screens use these

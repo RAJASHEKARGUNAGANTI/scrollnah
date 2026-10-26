@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.navigation
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -13,6 +14,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.unscroll.app.ui.screens.AddAppScreen
+import com.unscroll.app.ui.screens.BreakRemindersScreen
+import com.unscroll.app.ui.screens.GardenScreen
 import com.unscroll.app.ui.screens.HomeScreen
 import com.unscroll.app.ui.screens.LimitsScreen
 import com.unscroll.app.ui.screens.PauseRoute
@@ -24,9 +27,9 @@ fun UnscrollApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    // The "Add an app" screen isn't a tab, so highlight Limits while it's open.
+    // "Add an app" and "Break reminders" aren't tabs, so highlight Limits while they're open.
     val currentDestination = when (currentRoute) {
-        ADD_APP_ROUTE -> Destination.LIMITS
+        ADD_APP_ROUTE, BREAKS_ROUTE -> Destination.LIMITS
         else -> Destination.entries.find { it.route == currentRoute } ?: Destination.HOME
     }
 
@@ -58,7 +61,11 @@ fun UnscrollApp() {
         NavHost(
             navController = navController,
             startDestination = Destination.HOME.route,
-            modifier = Modifier.padding(innerPadding)
+            // consumeWindowInsets: screens that pad for the system bars themselves (Pause)
+            // don't add the same space twice.
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) {
             composable(Destination.HOME.route) {
                 HomeScreen(
@@ -70,6 +77,7 @@ fun UnscrollApp() {
                 LimitsScreen(
                     onBack = { navController.popBackStack() },
                     onAddApp = { navController.navigate(ADD_APP_ROUTE) },
+                    onOpenBreaks = { navController.navigate(BREAKS_ROUTE) },
                     onSaved = { navController.popBackStack() },
                     onUnsavedChanges = { limitsUnsaved = it },
                     pendingLeave = pendingLeave,
@@ -77,7 +85,16 @@ fun UnscrollApp() {
                 )
             }
             composable(SETTINGS_ROUTE) {
-                SettingsScreen(onBack = { navController.popBackStack() })
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
+                )
+            }
+            composable(GARDEN_ROUTE) {
+                GardenScreen(onBack = { navController.popBackStack() })
+            }
+            composable(BREAKS_ROUTE) {
+                BreakRemindersScreen(onBack = { navController.popBackStack() })
             }
             composable(ADD_APP_ROUTE) {
                 AddAppScreen(onBack = { navController.popBackStack() })

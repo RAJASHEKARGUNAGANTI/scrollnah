@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.unscroll.app.MainActivity
 import com.unscroll.app.PauseActivity
 import com.unscroll.app.R
+import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.ui.components.duration
 
@@ -53,16 +54,21 @@ object LimitActions {
                 .apply { description = "Gentle nudges when you go over a limit (Chill mode)" }
         )
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_WATCHING, "Blobby keeping watch", NotificationManager.IMPORTANCE_MIN)
+            NotificationChannel(CHANNEL_WATCHING, "Keeping watch", NotificationManager.IMPORTANCE_MIN)
                 .apply { description = "Shown while ScrollNah keeps an eye on your limits" }
         )
+        BreakReminders.createChannel(context)
     }
 
+    /** "Blobby" or "Bloomy", whichever mascot the user picked. */
+    private fun mascotName(context: Context): String =
+        (context.applicationContext as UnscrollApplication).container.mascot.mascotName
+
     /** The always-on notification a foreground service must show. */
-    fun watchingNotification(context: Context): Notification =
+    fun watchingNotification(context: Context, mascotName: String = mascotName(context)): Notification =
         NotificationCompat.Builder(context, CHANNEL_WATCHING)
             .setSmallIcon(R.drawable.ic_stat_blobby)
-            .setContentTitle("Blobby is keeping watch")
+            .setContentTitle("$mascotName is keeping watch")
             .setContentText("I'll nudge you when you reach a limit.")
             .setContentIntent(openAppIntent(context))
             .setOngoing(true)
@@ -89,7 +95,8 @@ object LimitActions {
         val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle(
-                if (target.reason == PauseReason.BEDTIME) "Blobby: it's bedtime" else "Blobby: ${target.name} time's up"
+                if (target.reason == PauseReason.BEDTIME) "${mascotName(context)}: it's bedtime"
+                else "${mascotName(context)}: ${target.name} time's up"
             )
             .setContentText(
                 if (target.reason == PauseReason.BEDTIME) {
@@ -131,6 +138,44 @@ object LimitActions {
     }
 
     private const val STREAK_NOTIFICATION_ID = 2
+    private const val PAYMENT_HELP_NOTIFICATION_ID = 3
+
+    /**
+     * A UPI/bank app was opened while the Reels & Shorts tracker (Accessibility) is on.
+     * Many of those apps won't open then, so explain why and link to the switch.
+     * At most once a day. Plain, calm wording (this is about a setting, not a nudge).
+     */
+    fun showPaymentAppHelp(context: Context, appName: String) {
+        val notifications = NotificationManagerCompat.from(context)
+        if (!notifications.areNotificationsEnabled()) return
+        val prefs = context.getSharedPreferences("payment_help", Context.MODE_PRIVATE)
+        val today = java.time.LocalDate.now().toString()
+        if (prefs.getString("last_shown", null) == today) return
+        prefs.edit().putString("last_shown", today).apply()
+
+        val openSettings = PendingIntent.getActivity(
+            context,
+            PAYMENT_HELP_NOTIFICATION_ID,
+            Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val text = "$appName and other UPI or bank apps may not open while an app uses Accessibility. " +
+            "Turn off ScrollNah's Reels & Shorts tracker while you pay. Your limits and reminders keep working."
+        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+            .setSmallIcon(R.drawable.ic_stat_blobby)
+            .setContentTitle("$appName not opening?")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setAutoCancel(true)
+            .setContentIntent(openSettings)
+            .addAction(0, "Open Accessibility settings", openSettings)
+            .build()
+        try {
+            notifications.notify(PAYMENT_HELP_NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            // Permission revoked; skip.
+        }
+    }
 
     fun cancelNudge(context: Context, key: String) {
         NotificationManagerCompat.from(context).cancel(key.hashCode())

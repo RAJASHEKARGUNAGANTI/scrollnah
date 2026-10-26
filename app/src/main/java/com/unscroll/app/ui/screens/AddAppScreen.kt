@@ -7,12 +7,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,13 +31,13 @@ import com.unscroll.app.data.DEFAULT_APP_LIMIT_MINUTES
 import com.unscroll.app.data.InstalledApp
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.launchableApps
+import com.unscroll.app.ui.components.AppSearchField
 import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.PlusIcon
 import com.unscroll.app.ui.components.letterFor
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.tileColorFor
-import com.unscroll.app.ui.theme.Neo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -71,42 +70,39 @@ fun AddAppScreen(onBack: () -> Unit = {}) {
         .filter { query.isBlank() || it.label.contains(query.trim(), ignoreCase = true) }
         .sortedWith(compareByDescending<InstalledApp> { minutesToday[it.packageName] ?: 0 }.thenBy { it.label.lowercase() })
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item { ScreenTitle("Add an app", onBack) }
-        item {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                placeholder = { Text("Search your apps") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Neo.colors.surface,
-                    unfocusedContainerColor = Neo.colors.surface,
-                    focusedBorderColor = Neo.colors.outline,
-                    unfocusedBorderColor = Neo.colors.outline
-                )
-            )
+    Column(Modifier.fillMaxSize()) {
+        // Title and search stay at the top while the list scrolls under them.
+        Column(
+            Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ScreenTitle("Add an app", onBack)
+            AppSearchField(query = query, onQueryChange = { query = it })
         }
-        when {
-            installed == null -> item { Text("Finding your apps...", style = MaterialTheme.typography.bodyLarge) }
-            choices.isEmpty() -> item { Text("No apps match that.", style = MaterialTheme.typography.bodyLarge) }
-        }
-        items(choices, key = { it.packageName }) { app ->
-            AppChoiceRow(
-                app = app,
-                minutesToday = minutesToday[app.packageName] ?: 0,
-                onClick = {
-                    scope.launch {
-                        dao.insert(TrackedApp(app.packageName, app.label, DEFAULT_APP_LIMIT_MINUTES))
-                        onBack()
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .imePadding(), // the last apps stay reachable above the keyboard
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            when {
+                installed == null -> item { Text("Finding your apps...", style = MaterialTheme.typography.bodyLarge) }
+                choices.isEmpty() -> item { Text("No apps match that.", style = MaterialTheme.typography.bodyLarge) }
+            }
+            items(choices, key = { it.packageName }) { app ->
+                AppChoiceRow(
+                    app = app,
+                    minutesToday = minutesToday[app.packageName] ?: 0,
+                    onClick = {
+                        scope.launch {
+                            dao.insert(TrackedApp(app.packageName, app.label, DEFAULT_APP_LIMIT_MINUTES))
+                            onBack()
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     }
 }

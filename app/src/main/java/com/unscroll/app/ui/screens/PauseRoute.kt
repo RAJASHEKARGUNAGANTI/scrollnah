@@ -26,8 +26,9 @@ import com.unscroll.app.data.DemoMode
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.db.PauseLog
 import com.unscroll.app.data.db.TrackedApp
-import com.unscroll.app.ui.components.Blobby
-import com.unscroll.app.ui.components.BlobbyMood
+import com.unscroll.app.data.MoodLevel
+import com.unscroll.app.ui.mascot.LocalMascot
+import com.unscroll.app.ui.mascot.Mascot
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.LightNeoColors
@@ -39,7 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * The Pause tab: a preview of what Blobby shows at a limit, using the user's
+ * The Pause tab: a preview of what the mascot shows at a limit, using the user's
  * most-used limited app, its real open count today and their strictness.
  * (The real one is PauseActivity, opened by BlockerService.)
  */
@@ -76,9 +77,9 @@ fun PauseRoute(onDone: () -> Unit, onGoToLimits: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
         ) {
-            Blobby(mood = BlobbyMood.WORRIED, size = 130.dp)
+            Mascot(mood = MoodLevel.WORRIED, size = 130.dp, onOrange = true)
             Text(
-                "This is where Blobby steps in when you open a limited app.",
+                "This is where ${LocalMascot.current.theme.mascotName} steps in when you open a limited app.",
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center
             )

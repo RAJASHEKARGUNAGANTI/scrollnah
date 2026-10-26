@@ -5,6 +5,8 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.unscroll.app.data.DemoMode
+import com.unscroll.app.data.GrowthRepository
+import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.SettingsRepository
 import com.unscroll.app.data.StreakRepository
 import com.unscroll.app.data.UsageRepository
@@ -24,10 +26,25 @@ class AppContainer(context: Context) {
     val database = UnscrollDatabase.create(context)
     val settings = SettingsRepository(context)
     val usage = UsageRepository(context)
-    val streaks = StreakRepository(context, usage, database)
+    val growth = GrowthRepository(database, settings)
+    val streaks = StreakRepository(context, usage, database, growth)
 
     /** For small background saves that must finish even if the screen that started them closes. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * The chosen mascot and Bloomy's flowers, kept in memory so the service,
+     * notifications and the bubble can read them instantly (DataStore is async).
+     */
+    @Volatile var mascot: MascotTheme = MascotTheme.BLOBBY
+        private set
+    @Volatile var flowers: Int = 0
+        private set
+
+    init {
+        appScope.launch { settings.mascotTheme.collect { mascot = it } }
+        appScope.launch { settings.potProgress.collect { flowers = it.flowers } }
+    }
 }
 
 class UnscrollApplication : Application() {

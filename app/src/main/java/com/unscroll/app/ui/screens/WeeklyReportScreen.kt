@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.DayTotal
 import com.unscroll.app.data.StreakInfo
+import com.unscroll.app.ui.mascot.LocalMascot
 import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.data.Websites
 import com.unscroll.app.data.db.ReasonCount
@@ -186,7 +186,7 @@ private fun ReasonsCard(report: WeekReport) {
             return@NeoCard
         }
         Text(
-            "Blobby stepped in ${report.pauses} ${if (report.pauses == 1) "time" else "times"}. " +
+            "${LocalMascot.current.theme.mascotName} stepped in ${report.pauses} ${if (report.pauses == 1) "time" else "times"}. " +
                 "You said \"Nah, I'm good\" ${report.walkedAway} of them.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)
@@ -199,7 +199,8 @@ private fun ReasonsCard(report: WeekReport) {
                     .padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(r.reason, fontWeight = FontWeight.Bold, modifier = Modifier.width(150.dp))
+                // Shares the row with the bar instead of a fixed width, so it fits narrow phones.
+                Text(r.reason, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(end = 8.dp))
                 NeoProgressBar(
                     progress = if (topCount > 0) r.count.toFloat() / topCount else 0f,
                     color = Orange,
@@ -225,7 +226,7 @@ private fun InfoCard(text: String) {
 private fun WeekSummaryCard(report: WeekReport) {
     NeoCard(shadowOffset = ShadowOffsetLarge, contentPadding = PaddingValues(18.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-            Column {
+            Column(Modifier.weight(1f)) { // the pill keeps its room on narrow phones
                 Text("Social time, last 7 days", style = MaterialTheme.typography.labelSmall)
                 Text(duration(report.totalMinutes), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 40.sp))
             }

@@ -77,6 +77,12 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
 
+    // Home-screen widget built with Compose-style code
+    implementation(libs.androidx.glance.appwidget)
+
+    // Unit tests for the pure logic (moods, break sessions, Bloomy's growth)
+    testImplementation(libs.junit)
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }

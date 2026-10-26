@@ -8,8 +8,11 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [TrackedApp::class, FeatureLimit::class, FeatureUsage::class, PauseLog::class, DailySummary::class],
-    version = 2,
+    entities = [
+        TrackedApp::class, FeatureLimit::class, FeatureUsage::class, PauseLog::class, DailySummary::class,
+        BreakLog::class, GardenPot::class
+    ],
+    version = 3,
     exportSchema = false
 )
 abstract class UnscrollDatabase : RoomDatabase() {
@@ -17,6 +20,8 @@ abstract class UnscrollDatabase : RoomDatabase() {
     abstract fun featureDao(): FeatureDao
     abstract fun pauseLogDao(): PauseLogDao
     abstract fun dailySummaryDao(): DailySummaryDao
+    abstract fun breakLogDao(): BreakLogDao
+    abstract fun gardenDao(): GardenDao
 
     companion object {
         /** Version 2 added the daily_summary table (streaks). Existing data is kept. */
@@ -29,9 +34,25 @@ abstract class UnscrollDatabase : RoomDatabase() {
             }
         }
 
+        /** Version 3: per-app break reminder time, break reminder log, Bloomy's garden. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `tracked_apps` ADD COLUMN `breakMinutes` INTEGER")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `break_log` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`packageName` TEXT NOT NULL, `sessionMinutes` INTEGER NOT NULL, `action` TEXT NOT NULL, " +
+                        "`timestamp` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `garden_pots` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`completedOn` TEXT NOT NULL, `flowers` INTEGER NOT NULL)"
+                )
+            }
+        }
+
         fun create(context: Context): UnscrollDatabase =
             Room.databaseBuilder(context, UnscrollDatabase::class.java, "unscroll.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

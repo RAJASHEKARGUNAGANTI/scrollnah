@@ -3,14 +3,18 @@ package com.unscroll.app.data.db
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** An app the user picked in Limits, with its daily budget. */
+/**
+ * An app the user picked in Limits, with its daily budget.
+ * [breakMinutes] = its own break reminder time (null = use the general one).
+ */
 @Entity(tableName = "tracked_apps")
 data class TrackedApp(
     @PrimaryKey val packageName: String,
     val appName: String,
     val limitMinutes: Int,
     val enabled: Boolean = true,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val breakMinutes: Int? = null
 )
 
 /** Daily budget for an in-app feature like Instagram Reels or YouTube Shorts. */
@@ -52,3 +56,30 @@ data class DailySummary(
 ) {
     fun underLimit() = usedMinutes <= limitMinutes
 }
+
+/**
+ * Break reminder history: one row when a reminder is shown ("shown") and one when
+ * the user answers it ("break" or "snooze"). For the weekly report later.
+ */
+@Entity(tableName = "break_log")
+data class BreakLog(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val packageName: String,
+    val sessionMinutes: Int,
+    val action: String,
+    val timestamp: Long = System.currentTimeMillis()
+) {
+    companion object {
+        const val SHOWN = "shown"
+        const val BREAK = "break"
+        const val SNOOZE = "snooze"
+    }
+}
+
+/** A finished Bloomy pot (4 flowers) in the user's garden. Never deleted. */
+@Entity(tableName = "garden_pots")
+data class GardenPot(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val completedOn: String, // "yyyy-MM-dd"
+    val flowers: Int = 4
+)

@@ -1,11 +1,16 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class) // stickyHeader
+
 package com.unscroll.app.ui.screens
 
+import androidx.compose.ui.platform.LocalConfiguration
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,8 +61,10 @@ import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.launchableApps
 import com.unscroll.app.service.BlockerService
 import com.unscroll.app.service.SetupChecks
-import com.unscroll.app.ui.components.Blobby
-import com.unscroll.app.ui.components.BlobbyMood
+import com.unscroll.app.data.MoodLevel
+import com.unscroll.app.ui.mascot.LocalMascot
+import com.unscroll.app.ui.mascot.Mascot
+import com.unscroll.app.ui.components.AppSearchField
 import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
@@ -116,6 +124,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
             .fillMaxSize()
             .background(Neo.colors.background)
             .systemBarsPadding()
+            .imePadding() // the Next button stays above the keyboard
             .padding(horizontal = 22.dp, vertical = 16.dp)
     ) {
         // Progress dots
@@ -135,9 +144,9 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         when (step) {
             0 -> Step(
                 pill = "Hi there",
-                title = "Hi, I'm Blobby.",
+                title = "Hi, I'm ${LocalMascot.current.theme.mascotName}.",
                 body = "I'm your ScrollNah buddy. I keep an eye on your scrolling and give you a nudge when it's time to put the phone down. No guilt trips. Let's set things up in under a minute.",
-                mood = BlobbyMood.HAPPY,
+                mood = MoodLevel.THRIVING,
                 button = "Let's go",
                 onNext = { step++ }
             )
@@ -168,7 +177,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 pill = "Step 2",
                 title = "Count your screen time",
                 body = "ScrollNah needs Usage access to count your minutes. Your data stays on this phone.",
-                mood = BlobbyMood.HAPPY,
+                mood = MoodLevel.HAPPY,
                 button = if (hasUsage) "Next" else "Skip for now",
                 onNext = { step++ }
             ) {
@@ -196,11 +205,11 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 button = "Next",
                 onNext = { step++ }
             ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Strictness.entries.forEach { option ->
-                        StrictnessCard(option, selected = strictness == option, onClick = { strictness = option }, modifier = Modifier.weight(1f))
-                    }
-                }
+                OptionCardRow(
+                    options = Strictness.entries.map { it.title to it.subtitle },
+                    selectedIndex = strictness.ordinal,
+                    onSelect = { strictness = Strictness.entries[it] }
+                )
             }
 
             else -> PermissionsStep(resumeCount = resumeCount, onFinish = { finish() })
@@ -216,23 +225,26 @@ private fun ColumnScope.Step(
     body: String,
     button: String,
     onNext: () -> Unit,
-    mood: BlobbyMood? = null,
+    mood: MoodLevel? = null,
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
+    // Scrolls on small phones / large text, so the button below is never pushed off screen.
     Column(
         Modifier
             .weight(1f)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         if (mood != null) {
-            Blobby(mood = mood, size = 150.dp, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Mascot(mood = mood, size = if (isShortScreen()) 104.dp else 150.dp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
         NeoPill(pill)
         Text(title, style = MaterialTheme.typography.headlineLarge)
         Text(body, style = MaterialTheme.typography.bodyLarge)
         content()
     }
+    Spacer(Modifier.height(12.dp))
     NeoButtonPrimary(button, onClick = onNext)
 }
 
@@ -243,6 +255,7 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
     val container = appContainer()
     var apps by remember { mutableStateOf<List<InstalledApp>?>(null) }
     var minutes by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var query by remember { mutableStateOf("") }
     LaunchedEffect(hasUsage) {
         withContext(Dispatchers.IO) {
             if (hasUsage) minutes = container.usage.todayUsageMinutes(packages = null)
@@ -252,22 +265,43 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
         }
     }
 
-    NeoPill("Step 3")
-    Text("Which apps eat your day?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 10.dp))
-    Text(
-        "Tick a few. Each gets $DEFAULT_APP_LIMIT_MINUTES min a day to start, and you can change that later.",
-        style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.padding(top = 6.dp, bottom = 10.dp)
-    )
+    // The intro scrolls away with the list, but the search box sticks to the top,
+    // so there's room for apps on small phones and while the keyboard is open.
     LazyColumn(
         Modifier
             .weight(1f)
             .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val list = apps
+        item {
+            Column {
+                NeoPill("Step 3")
+                Text("Which apps eat your day?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 10.dp))
+                Text(
+                    "Tick a few. Each gets $DEFAULT_APP_LIMIT_MINUTES min a day to start, and you can change that later.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+        }
+        stickyHeader {
+            AppSearchField(
+                query = query,
+                onQueryChange = { query = it },
+                modifier = Modifier
+                    .background(Neo.colors.background) // covers the list scrolling underneath
+                    .padding(vertical = 6.dp)
+            )
+        }
+        // Apps the user already ticked stay visible while searching, so they can untick them.
+        val list = apps?.filter { app ->
+            query.isBlank() || app.label.contains(query.trim(), ignoreCase = true) ||
+                picked.any { it.packageName == app.packageName }
+        }
         if (list == null) {
             item { Text("Finding your apps...") }
+        } else if (list.isEmpty()) {
+            item { Text("No app called \"${query.trim()}\".") }
         } else {
             items(list, key = { it.packageName }) { app ->
                 val selected = picked.any { it.packageName == app.packageName }
@@ -323,10 +357,11 @@ private fun ColumnScope.PermissionsStep(resumeCount: Int, onFinish: () -> Unit) 
     Column(
         Modifier
             .weight(1f)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Blobby(mood = BlobbyMood.HAPPY, size = 120.dp, modifier = Modifier.align(Alignment.CenterHorizontally))
+        Mascot(mood = MoodLevel.HAPPY, size = if (isShortScreen()) 84.dp else 120.dp, modifier = Modifier.align(Alignment.CenterHorizontally))
         NeoPill("Last step")
         Text("A few quick settings", style = MaterialTheme.typography.headlineLarge)
         Text("These let ScrollNah remind you when you reach a limit. You can change them anytime in Settings.", style = MaterialTheme.typography.bodyLarge)
@@ -344,6 +379,7 @@ private fun ColumnScope.PermissionsStep(resumeCount: Int, onFinish: () -> Unit) 
             SetupChecks.openBatterySettings(context)
         }
     }
+    Spacer(Modifier.height(12.dp))
     NeoButtonPrimary("Finish", onClick = onFinish, backgroundColor = Orange)
 }
 
@@ -369,3 +405,7 @@ private fun OnboardingPermission(title: String, detail: String, done: Boolean, o
         }
     }
 }
+
+/** Small phones (or big display size): use smaller pictures so the text fits. */
+@Composable
+private fun isShortScreen() = LocalConfiguration.current.screenHeightDp < 700

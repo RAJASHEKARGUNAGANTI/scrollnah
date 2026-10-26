@@ -6,13 +6,16 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.unscroll.app.UnscrollApplication
+import com.unscroll.app.data.BreakSettings
+import com.unscroll.app.data.PaymentApps
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.Websites
 import com.unscroll.app.data.db.TrackedApp
-import com.unscroll.app.widget.BlobbyWidget
+import com.unscroll.app.widget.MascotWidgets
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.durationPair
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +31,7 @@ import java.time.LocalDate
  * Foreground service that checks once a second which app is in front.
  * When a limited app is open and over its limit (and no "+5 min" pass is
  * active), it hands over to [LimitActions] (nudge / Pause screen / lock).
+ * It also times long sessions on one app for break reminders ([BreakReminders]).
  */
 class BlockerService : Service() {
 
@@ -37,6 +41,7 @@ class BlockerService : Service() {
     // Kept up to date from Room / DataStore.
     @Volatile private var trackedApps: List<TrackedApp> = emptyList()
     @Volatile private var strictness = Strictness.FIRM
+    @Volatile private var breakSettings = BreakSettings()
 
     private var currentApp: String? = null
     private var firstTick = true
@@ -61,16 +66,29 @@ class BlockerService : Service() {
 
         scope.launch { container.database.trackedAppDao().observeAll().collect { trackedApps = it } }
         scope.launch { container.settings.strictness.collect { strictness = it } }
+        scope.launch { container.settings.breakSettings.collect { breakSettings = it } }
+        // Keep the "... is keeping watch" notification in step with the chosen mascot.
+        scope.launch {
+            container.settings.mascotTheme.collect { theme ->
+                try {
+                    NotificationManagerCompat.from(this@BlockerService)
+                        .notify(NOTIFICATION_ID, LimitActions.watchingNotification(this@BlockerService, theme.mascotName))
+                } catch (e: SecurityException) {
+                    // No notification permission: the system still shows the service, nothing to update.
+                }
+            }
+        }
         debug("service created")
-        // Home-screen widget: refresh every 5 minutes.
+        // Home-screen widgets: check every minute and redraw only when the mood, numbers,
+        // theme or day changed (widgets don't refresh by themselves).
         scope.launch {
             while (isActive) {
                 try {
-                    BlobbyWidget.refresh(this@BlockerService)
+                    MascotWidgets.refreshIfChanged(this@BlockerService)
                 } catch (e: Exception) {
                     debug("widget refresh failed: $e")
                 }
-                delay(5 * 60_000L)
+                delay(60_000L)
             }
         }
         // Streaks: save finished days and send the evening reminder. Every 30 minutes is plenty.
@@ -124,16 +142,17 @@ class BlockerService : Service() {
         if (!info.todayOnTrack) return // already over today: no point nudging
         prefs.edit().putString("last_nudge", today).apply()
         val left = info.todayLimit - info.todayUsed
+        val name = container.mascot.mascotName
         if (info.current > 0) {
             LimitActions.showStreakNudge(
                 this,
-                "Blobby: keep your ${info.current}-day streak alive",
+                "$name: keep your ${info.current}-day streak alive",
                 "You're at ${durationPair(info.todayUsed, info.todayLimit)} today (${duration(left)} left). Put the phone down soon and we hit ${info.current + 1} days tomorrow!"
             )
         } else {
             LimitActions.showStreakNudge(
                 this,
-                "Blobby: let's start a streak tonight",
+                "$name: let's start a streak tonight",
                 "You're at ${durationPair(info.todayUsed, info.todayLimit)}. Stay under and tomorrow is day 1 of your streak."
             )
         }
@@ -155,10 +174,22 @@ class BlockerService : Service() {
         val justOpened = app != currentApp
         if (justOpened) debug("foreground: $app")
         currentApp = app
-        if (app == null || app == packageName) return
 
-        // 2. Is it a limited app?
-        val limited = trackedApps.find { it.packageName == app && it.enabled } ?: return
+        // UPI/bank apps often refuse to open while an Accessibility service is on: explain how to fix it.
+        if (justOpened && PaymentApps.contains(app) && FeatureWatchService.isEnabled(this)) {
+            val name = try {
+                packageManager.getApplicationLabel(packageManager.getApplicationInfo(app!!, 0)).toString()
+            } catch (e: Exception) {
+                "This app"
+            }
+            LimitActions.showPaymentAppHelp(this, name)
+        }
+
+        // 2. Is it a limited app? (null for other apps, the home screen and ScrollNah itself)
+        val limited = trackedApps.find { it.packageName == app && it.enabled }
+        // Break reminders look at every tick, so they also notice when the user leaves the app.
+        checkBreak(now, limited)
+        if (app == null || limited == null) return
 
         // 3a. Focus mode / bedtime pause limited apps regardless of usage.
         val rule = FocusRules.activeRule()
@@ -207,6 +238,17 @@ class BlockerService : Service() {
             PauseTarget(app, limited.appName, app, limited.limitMinutes, opens),
             strictness
         )
+    }
+
+    /** Break reminders: has the user been on this limited app long enough for a reminder? */
+    private fun checkBreak(now: Long, app: TrackedApp?) {
+        val settings = breakSettings
+        if (!settings.enabled) return
+        val reminderMs = (app?.breakMinutes ?: settings.minutes) * 60_000L
+        val due = BreakReminders.sessions.onTick(now, app?.packageName, reminderMs, settings.repeat) ?: return
+        if (app == null) return
+        debug("break reminder #${due.number} for ${app.packageName} after ${due.minutes} min")
+        BreakReminders.show(this, due, app.appName, settings)
     }
 
     companion object {

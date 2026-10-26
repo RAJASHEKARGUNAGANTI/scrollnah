@@ -28,7 +28,8 @@ data class StreakInfo(
 class StreakRepository(
     private val context: Context,
     private val usage: UsageRepository,
-    private val db: UnscrollDatabase
+    private val db: UnscrollDatabase,
+    private val growth: GrowthRepository
 ) {
 
     /** Daily totals (app time + website time) for the last [days] days, oldest first, today last. */
@@ -46,10 +47,16 @@ class StreakRepository(
     }
 
     /**
-     * Saves any finished days from the last week that aren't saved yet.
-     * Safe to call often (app open, blocker service): it only adds missing days.
+     * Saves any finished days from the last week that aren't saved yet, then lets
+     * Bloomy's pot grow from them. Safe to call often (app open, blocker service).
      */
     suspend fun recordFinishedDays() {
+        saveFinishedDays()
+        growth.update()
+    }
+
+    /** Only adds days that are missing. */
+    private suspend fun saveFinishedDays() {
         if (DemoMode.active) return // demo streak days are seeded directly
         if (!usage.hasUsageAccess()) return
         val enabled = db.trackedAppDao().getAll().filter { it.enabled }
@@ -109,7 +116,7 @@ class StreakRepository(
             return current to maxOf(best, current)
         }
 
-        /** Streak lengths Blobby celebrates. */
+        /** Streak lengths the mascot celebrates. */
         val MILESTONES = listOf(3, 7, 14, 30, 60, 100)
     }
 }

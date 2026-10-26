@@ -185,6 +185,15 @@ fun CloseIcon(modifier: Modifier = Modifier, size: Dp = 18.dp) {
     }
 }
 
+/** Magnifying glass for search fields. */
+@Composable
+fun SearchIcon(modifier: Modifier = Modifier, size: Dp = 20.dp) {
+    StrokeIcon(modifier, size) { s, stroke, tint ->
+        drawCircle(tint, radius = 7f * s, center = Offset(11f * s, 11f * s), style = stroke)
+        drawLine(tint, Offset(16f * s, 16f * s), Offset(21f * s, 21f * s), strokeWidth = stroke.width, cap = StrokeCap.Round)
+    }
+}
+
 @Composable
 fun PlusIcon(modifier: Modifier = Modifier, size: Dp = 20.dp) {
     StrokeIcon(modifier, size) { s, stroke, tint ->

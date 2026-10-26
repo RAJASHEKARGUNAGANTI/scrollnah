@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">ScrollNah</string>
     <string name="feature_watch_description">Lets ScrollNah spot Instagram Reels, YouTube Shorts and sites like youtube.com, so it can count those minutes and remind you at your limit. It only checks which screen is open in those apps and your browser\'s address bar. Only minutes are saved, on this phone.</string>
-    <string name="widget_description">Blobby\'s mood and today\'s scrolling minutes.</string>
+    <string name="widget_description">Your mascot\'s mood, the app closest to its limit and your streak.</string>
+    <string name="widget_small_description">Your mascot and the minutes left today.</string>
 </resources>

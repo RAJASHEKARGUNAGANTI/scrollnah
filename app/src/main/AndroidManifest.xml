@@ -54,6 +54,15 @@
             android:taskAffinity="com.unscroll.app.pause"
             android:theme="@style/Theme.Unscroll" />
 
+        <!-- "Take a break" on a break reminder: invisible, records the choice and goes home. -->
+        <activity
+            android:name=".BreakActionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="com.unscroll.app.breaks"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- Checks every second which app is open (see BlockerService). -->
         <service
             android:name=".service.BlockerService"
@@ -61,14 +70,15 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Digital wellbeing: checks which app is open so it can pause apps the user chose to limit." />
+                android:value="Digital wellbeing: checks which app is open so it can pause apps the user chose to limit and remind them to take breaks." />
         </service>
 
-        <!-- Home-screen widget (Blobby + today's minutes). -->
+        <!-- Home-screen widgets (Glance): medium 4x2 and small 2x2. The medium one keeps
+             the old receiver name so widgets placed before still work. -->
         <receiver
             android:name=".widget.BlobbyWidget"
             android:exported="true"
-            android:label="Blobby">
+            android:label="Mascot mood">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -76,9 +86,24 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/blobby_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.SmallMascotWidgetReceiver"
+            android:exported="true"
+            android:label="Mascot mood (small)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mascot_small_widget_info" />
+        </receiver>
 
         <receiver
             android:name=".service.NudgeReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".service.BreakSnoozeReceiver"
             android:exported="false" />
 
         <receiver

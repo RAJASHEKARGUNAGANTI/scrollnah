@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Speech bubble: white with a 2dp ink border and a hard 3dp ink shadow (no blur).
+     The bottom-right corner is less round, so it "points" at the mascot. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:left="3dp"
+        android:top="3dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#16131F" />
+            <corners
+                android:bottomLeftRadius="18dp"
+                android:bottomRightRadius="4dp"
+                android:topLeftRadius="18dp"
+                android:topRightRadius="18dp" />
+        </shape>
+    </item>
+    <item
+        android:bottom="3dp"
+        android:right="3dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" />
+            <stroke
+                android:width="2dp"
+                android:color="#16131F" />
+            <corners
+                android:bottomLeftRadius="18dp"
+                android:bottomRightRadius="4dp"
+                android:topLeftRadius="18dp"
+                android:topRightRadius="18dp" />
+        </shape>
+    </item>
+</layer-list>

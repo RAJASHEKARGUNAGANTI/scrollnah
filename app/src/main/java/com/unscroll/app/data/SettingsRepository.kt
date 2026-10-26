@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
-/** Small user settings stored with DataStore (name, strictness, light/dark mode). */
+/** Small user settings stored with DataStore (name, strictness, light/dark mode, mascot, break reminders). */
 class SettingsRepository(context: Context) {
 
     private val store = context.applicationContext.dataStore
@@ -21,6 +21,14 @@ class SettingsRepository(context: Context) {
     private val darkModeKey = booleanPreferencesKey("dark_mode")
     private val celebratedKey = intPreferencesKey("celebrated_streak")
     private val onboardedKey = booleanPreferencesKey("onboarded")
+    private val mascotKey = stringPreferencesKey("mascot_theme")
+    private val potFlowersKey = intPreferencesKey("pot_flowers")
+    private val potDaysKey = intPreferencesKey("pot_days")
+    private val potLastDateKey = stringPreferencesKey("pot_last_date")
+    private val breakEnabledKey = booleanPreferencesKey("break_enabled")
+    private val breakMinutesKey = intPreferencesKey("break_minutes")
+    private val breakStyleKey = stringPreferencesKey("break_style")
+    private val breakRepeatKey = booleanPreferencesKey("break_repeat")
 
     val userName: Flow<String> = store.data.map { it[nameKey].orEmpty() }
 
@@ -40,7 +48,7 @@ class SettingsRepository(context: Context) {
         store.edit { it.remove(darkModeKey) }
     }
 
-    /** Highest streak milestone Blobby already celebrated (reset to 0 when a streak breaks). */
+    /** Highest streak milestone the mascot already celebrated (reset to 0 when a streak breaks). */
     val celebratedStreak: Flow<Int> = store.data.map { it[celebratedKey] ?: 0 }
 
     suspend fun setCelebratedStreak(days: Int) {
@@ -52,6 +60,47 @@ class SettingsRepository(context: Context) {
 
     suspend fun setOnboarded(done: Boolean) {
         store.edit { it[onboardedKey] = done }
+    }
+
+    /** Blobby (default) or Bloomy. */
+    val mascotTheme: Flow<MascotTheme> = store.data.map { prefs ->
+        MascotTheme.entries.find { it.name == prefs[mascotKey] } ?: MascotTheme.BLOBBY
+    }
+
+    suspend fun setMascotTheme(theme: MascotTheme) {
+        store.edit { it[mascotKey] = theme.name }
+    }
+
+    /** Bloomy's current pot (see Growth). Finished pots are in the garden table instead. */
+    val potProgress: Flow<PotProgress> = store.data.map { prefs ->
+        PotProgress(prefs[potFlowersKey] ?: 0, prefs[potDaysKey] ?: 0, prefs[potLastDateKey])
+    }
+
+    suspend fun setPotProgress(progress: PotProgress) {
+        store.edit { prefs ->
+            prefs[potFlowersKey] = progress.flowers
+            prefs[potDaysKey] = progress.daysTowardNext
+            if (progress.lastDate == null) prefs.remove(potLastDateKey) else prefs[potLastDateKey] = progress.lastDate
+        }
+    }
+
+    /** Break reminder choices (defaults: on, 20 min, notification + bubble, keep reminding). */
+    val breakSettings: Flow<BreakSettings> = store.data.map { prefs ->
+        BreakSettings(
+            enabled = prefs[breakEnabledKey] ?: true,
+            minutes = prefs[breakMinutesKey] ?: BreakSettings.DEFAULT_MINUTES,
+            style = ReminderStyle.entries.find { it.name == prefs[breakStyleKey] } ?: ReminderStyle.BOTH,
+            repeat = prefs[breakRepeatKey] ?: true
+        )
+    }
+
+    suspend fun setBreakSettings(settings: BreakSettings) {
+        store.edit { prefs ->
+            prefs[breakEnabledKey] = settings.enabled
+            prefs[breakMinutesKey] = settings.minutes
+            prefs[breakStyleKey] = settings.style.name
+            prefs[breakRepeatKey] = settings.repeat
+        }
     }
 
     suspend fun setUserName(name: String) {

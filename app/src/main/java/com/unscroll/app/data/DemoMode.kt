@@ -5,6 +5,7 @@ import com.unscroll.app.BuildConfig
 import com.unscroll.app.data.db.DailySummary
 import com.unscroll.app.data.db.FeatureLimit
 import com.unscroll.app.data.db.FeatureUsage
+import com.unscroll.app.data.db.GardenPot
 import com.unscroll.app.data.db.PauseLog
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.db.UnscrollDatabase
@@ -28,7 +29,7 @@ object DemoMode {
     private const val YOUTUBE = "com.google.android.youtube"
     private const val SNAPCHAT = "com.snapchat.android"
 
-    /** Today's minutes per app (46 of 95 min: Blobby is "vibing", Instagram's bar is nearly full). */
+    /** Today's minutes per app (46 of 95 min: the mascot is "happy", Instagram's bar is nearly full). */
     private val todayMinutes = mapOf(INSTAGRAM to 22, YOUTUBE to 18, SNAPCHAT to 6)
 
     /** Last 14 days of totals, oldest first, today last. One day over the 95 min limit, then a 5-day streak. */
@@ -56,6 +57,13 @@ object DemoMode {
     suspend fun seed(db: UnscrollDatabase, settings: SettingsRepository) {
         if (!active || db.trackedAppDao().getAll().isNotEmpty()) return
         val now = System.currentTimeMillis()
+        val today = LocalDate.now()
+
+        // Bloomy: 2 flowers (5 of 7 days toward the 3rd) and one finished pot in the garden.
+        // Saved first, so the growth check (which starts once apps exist) doesn't recount the demo days.
+        settings.setPotProgress(PotProgress(flowers = 2, daysTowardNext = 5, lastDate = today.minusDays(1).toString()))
+        db.gardenDao().insert(GardenPot(completedOn = today.minusDays(40).toString()))
+
         db.trackedAppDao().upsertAll(
             listOf(
                 TrackedApp(INSTAGRAM, "Instagram", 30, addedAt = now),
@@ -64,7 +72,6 @@ object DemoMode {
             )
         )
         db.featureDao().upsertLimits(listOf(FeatureLimit(Feature.YOUTUBE_SHORTS.id, 15, true)))
-        val today = LocalDate.now()
         db.featureDao().addAndGet(today.toString(), Feature.YOUTUBE_SHORTS.id, 9 * 60_000L)
 
         // Pause screen answers this week: mostly boredom, 7 of 10 times "Nah, I'm good".
@@ -84,6 +91,7 @@ object DemoMode {
         for (d in 12..20) days += DailySummary(today.minusDays(d.toLong()).toString(), 60, limit)
         days += DailySummary(today.minusDays(21).toString(), 130, limit)
         db.dailySummaryDao().upsertAll(days)
+
 
         settings.setUserName("Alex")
         settings.setStrictness(Strictness.FIRM)

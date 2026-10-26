@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status: Steps 1–5 DONE ✅ (+ browser blocking, reliability, light/dark mode). Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-10-26): spec updated in `CLAUDE.md` (mascot themes, 5 moods, break reminders, Glance widget). All of it is BUILT ✅ (see "Spec update 2026-10-26" below). Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -281,6 +281,152 @@ Actions only fire when OVER the limit, not on every open.
   the app. It fills a sample week (Alex; Instagram/YouTube/Snapchat; 5-day streak; Pause reasons) for
   screenshots. `DemoMode.kt`; stripped from release builds (verified).
 
+## Spec update 2026-10-26: mascot themes, 5 moods, break reminders, Glance widget ✅ BUILT
+The developer pasted a new spec + `Wellbeing App Screens.pdf`. The spec was merged into `CLAUDE.md`
+(kept: the name **ScrollNah**, the opt-in Accessibility exception, the mascot-voice and calm-copy notes).
+**The PDF couldn't be read** (macOS blocks Claude from ~/Downloads and it never appeared in `design/`),
+so the art follows the spec's text. Next session: put the PDF in `design/` and compare it with the
+debug gallery (below).
+
+### Moods + themes (`data/Mood.kt`, `ui/mascot/`)
+- `MoodLevel` THRIVING/HAPPY/OKAY/WORRIED/OVER from today's total share (0–25/25–50/50–80/80–100/over).
+  Decision: any single app at its limit = at least WORRIED.
+- `MascotTheme` BLOBBY (default) / BLOOMY = name + mood names. Saved in DataStore (`mascot_theme`).
+  `AppTheme` provides `LocalMascot` (theme + Bloomy's flowers) to every screen; `AppContainer.mascot` /
+  `.flowers` are in-memory copies for the service, notifications and bubble.
+- Art is Canvas code on a 140x140 grid: `BlobbyArt.kt`, `BloomyArt.kt`, shared faces/drops/sparkles in
+  `MascotParts.kt`. `drawMascot()` is the only place that maps theme -> art (a 3rd theme = new art file +
+  one `when` branch). `Mascot()` composable animates (bob/squish for Blobby, stem sway for Bloomy, blinks,
+  sparkle twinkle); `animated = false` draws a still picture with no animation clock.
+  `onOrange = true` swaps Blobby's body to lime and Bloomy's pot to lilac on orange pages.
+- `MascotBitmap.render()` draws the same art into a Bitmap (widget, notification large icon, bubble badge).
+- `MascotLines` replaces `BlobbyLines`: Home card text for all 5 levels in both voices, Pause subtitles,
+  widget title, break reminder texts. Hard-coded "Blobby" strings now use the chosen mascot's name.
+- Home card: lime for levels 1–4, orange for OVER (mascot drawn `onOrange`). Pause screen: level 4.
+- **Debug gallery:** `adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity` shows every
+  mood x growth stage + the bitmaps (`src/debug/`, not in release builds).
+
+### Bloomy growth + garden (`data/Growth.kt`)
+- `Growth.advance()` (pure, unit-tested) replays finished `daily_summary` days after `PotProgress.lastDate`:
+  7 under-limit days in a row = +1 flower; an over-limit day = newest flower falls off + count restarts;
+  a missing day = count restarts only; 4 flowers = pot saved to `garden_pots` (Room) and a new seed starts
+  the next day. Progress lives in DataStore (`pot_flowers`, `pot_days`, `pot_last_date`).
+- `GrowthRepository.update()` (Mutex, so the service and screens can't save a pot twice) runs at the end
+  of `StreakRepository.recordFinishedDays()`. Growth is tracked for every user, whatever the theme.
+- Settings > Mascot: two picker cards (lime when picked), "Your pot" text and a Garden row -> `GardenScreen`
+  (2 pots per row, "Finished 16 Sep 2026"). "Clear history" keeps the garden.
+
+### Break reminders
+- Settings in DataStore (`BreakSettings`: enabled (default on), minutes (20), style (BOTH), repeat (on)).
+  Per-app times = new nullable column `tracked_apps.breakMinutes`.
+- Room v3 (`MIGRATION_2_3`): `breakMinutes` column, `break_log` (shown/break/snooze rows), `garden_pots`.
+  Migration verified on the emulator (an old v2 install upgraded without a crash).
+- `service/SessionTracker.kt` (pure, unit-tested): per-app sessions; < 2 min away keeps the session, 2+ min
+  starts a new one; only time in front counts; first reminder at the app's time, then every 5 min if
+  "Keep reminding me"; "5 more min" = next one in 5 min even with repeat off.
+- `BlockerService.checkBreak()` feeds it every tick; `BreakReminders.show()` posts the notification
+  (channel "breaks", mascot badge as large icon, "Take a break" / "5 more min") and/or the bubble.
+  1st reminder = WORRIED art, later ones = OVER. If the chosen way isn't allowed, it falls back to the other.
+- "Take a break" = `BreakActionActivity` (invisible; Android blocks starting activities from notification
+  receivers): logs "break" and goes home. "5 more min" = `BreakSnoozeReceiver`.
+- `service/BubbleOverlay.kt`: plain-View overlay window (`layout/overlay_bubble.xml`, `drawable/bubble_speech.xml`),
+  bottom-right, 6 s. Tap the speech bubble = dismiss, tap the mascot = open ScrollNah.
+- UI: Limits has a "Break reminders" row (asks "Lock it in first?" if limits are unsaved) ->
+  `BreakRemindersScreen` (saves instantly): main switch, 10/15/20/30/Custom, per-app overrides + "Add an app",
+  Notification/Bubble/Both cards, calm permission hints, "Keep reminding me".
+- Notification titles are signed ("Bloomy: 20 min of Instagram straight") with first-person text
+  ("I'm getting thirsty. Take a break?"), per the mascot-voice rule (the spec's example was third person).
+
+### Glance widget (`widget/`)
+- `MediumMascotWidget` (4x2) and `SmallMascotWidget` (2x2). The medium receiver keeps the old class name
+  `widget.BlobbyWidget`, so widgets placed before still work; small = `SmallMascotWidgetReceiver`.
+- `WidgetData.load()` = theme, flowers, mood, the limited app closest to its limit (highest used/limit share),
+  streak. `MascotWidgets.refreshIfChanged()` runs every minute from BlockerService and only redraws when
+  that data changed (covers mood/number changes and midnight). Theme change and app resume refresh at once.
+- Card drawables now have a hard 4dp shadow (`widget_background.xml` + night version); bar frame and pill
+  have night versions. Static preview layouts for the widget picker.
+- Release APK is now ~2.6 MB (Glance adds ~0.8 MB). Gallery verified absent from the release manifest.
+
+### Tests
+- First unit tests: `./gradlew testDebugUnitTest` (JUnit 4). `MoodLevelTest`, `GrowthTest`, `SessionTrackerTest`
+  (19 tests, all passing).
+
+### Verified on the emulator (Pixel AVD, demo mode)
+- Gallery (all moods/stages), Home with Blobby and Bloomy, Settings picker + pot text, Garden, Limits row,
+  Break reminders screen + per-app override.
+- **Live break reminder:** YouTube with a 5-min override. Reminder #1 fired at exactly 5:00 ("Bloomy: 5 min
+  of YouTube straight", thirsty badge, both buttons). "5 more min" -> #2 came 5 min later with the sadder
+  text and the bubble ("11 min straight! I'm wilting.") bottom-right. "Take a break" -> home screen.
+  `break_log` had shown/snooze/shown/break rows. DB upgraded 2 -> 3 without a crash.
+- **Widgets on the Pixel launcher:** both appear in the picker with previews, show live data (mood pill,
+  title, Instagram 22 / 30 min bar, "5-day streak, 2 flowers"; small: "8 min left on Instagram today"),
+  tap opens ScrollNah, and switching Blobby <-> Bloomy updates them at once.
+  Bug found + fixed: Glance keeps a widget's composition alive, so `updateAll()` only recomposed old data.
+  The content now collects `MascotWidgets.latest` (a StateFlow) instead of capturing data once.
+- **Device pass on the emulator (2026-10-26, iQOO couldn't be connected), real usage, no demo mode:**
+  - Upgrade path: built v1.0.0 from the last commit, installed fresh, onboarded (name, Chrome + YouTube,
+    Firm), then installed the new build over it. Name, apps and limits kept, DB 2 -> 3, no crash, Home
+    showed "Blobby · melting" on the orange card.
+  - Blocking with the new art: Firm Pause screen over Chrome (worried lime Blobby, "Bored" logged,
+    "Nah, I'm good" -> home), Beast locked screen (only "Take me home", Back -> home), Chill nudge
+    "Blobby: Chrome time's up" with Chrome left open. Bloomy on the Firm Pause screen (lilac pot).
+  - Growth wiring: pushed 7 under-limit `daily_summary` days -> Settings showed "1 flower"; added one
+    over-limit day -> back to "A little sprout". (Test rows are still in the emulator's DB.)
+  - Widget in system dark mode: dark card, light text/pill, lilac shadow, live data.
+  - Note: Chill waits 60 s after the previous action before nudging a just-opened app (older behaviour,
+    noticed when switching strictness during the test).
+- Not checked yet: the iQOO/Nothing phones (vivo background rules, late usage events), BHIM itself,
+  a full on-screen keyboard (the emulator shows a floating toolbar).
+- The emulator was left in demo mode with both widgets on its home screen (turn demo off:
+  `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
+
+## Home "fun stat" wording (2026-10-26, developer feedback)
+- The sitcom-episode / songs lines felt too specific. `ui/components/FunStat.kt` now gives plain,
+  real-world comparisons by amount: a cup of tea, a walk around the block, a power nap, cooking dinner,
+  a chapter of a book, an X km walk (5 km/h), a long lunch, longer than most movies, half a working day.
+  Two or three options per range, picked once a day. `FunStatTest` checks every range has a line.
+- The streak and fun-stat cards on Home are now always full width (they shrank to fit short text).
+
+## README screenshots (2026-10-26)
+- `screenshots/` (540x1200 PNGs) is shown in a table in `README.md`: Home (Blobby + Bloomy), Pause,
+  Your week, Limits, Break reminders, the reminder bubble, mascot picker, garden, widget.
+- How they were taken: emulator, `pm clear`, then demo mode (`touch files/demo_mode`, restart twice),
+  usage/overlay/notifications granted with `appops`/`pm grant`, and the System UI demo status bar
+  (`settings put global sysui_demo_allowed 1`, `am broadcast -a com.android.systemui.demo -e command clock
+  -e hhmm 0941`, battery 100, wifi 4, notifications hidden). Resize with `sips -Z 1200`.
+- Found while taking them: `NeoShadowSurface` only stretched its shadow, not the card, when given
+  `fillMaxWidth`/`weight` (visible on Home with Bloomy's shorter text). Fixed with
+  `Box(propagateMinConstraints = true)`.
+
+## Developer feedback 2026-10-26: search, payment apps, small screens
+- **Search when adding apps:** shared `ui/components/AppSearchField` (search icon, clear X, keyboard
+  "search" closes the keyboard). Used on the Add-an-app screen (now pinned at the top while the list
+  scrolls, list has `imePadding`) and in onboarding's "pick apps" step (which had no search before).
+  Ticked apps stay visible while searching so they can be unticked.
+- **BHIM / UPI / bank apps asking to close or uninstall ScrollNah:** these apps refuse to run while a
+  non-system app has an **Accessibility service** on (fraud protection). ScrollNah's only one is the opt-in
+  Reels/Shorts & website tracker. ScrollNah can't (and must not try to) get around BHIM's check. What was done:
+  - `data/PaymentApps.kt`: BHIM, PhonePe, Google Pay, Paytm, YONO, iMobile, HDFC, Axis, Kotak, CRED, MobiKwik.
+  - When one opens while the tracker is on, `BlockerService` posts a calm notification once a day
+    ("BHIM not opening?" + "Open Accessibility settings"), via `LimitActions.showPaymentAppHelp`.
+  - The tracker disclosure (Limits) and Settings > Permissions now say UPI/bank apps may block it and to
+    turn it off while paying. Limits, Pause screen, reminders and widget all work without the tracker.
+  - The break bubble is never drawn over these apps.
+  - NOT verified with BHIM itself (not on the emulator). If BHIM still complains with the tracker OFF, the
+    trigger is something else (e.g. "Display over other apps"); ask the developer for BHIM's exact message.
+- **Small screens / navigation buttons:** the bottom nav now has `navigationBarsPadding()` (it sat under
+  3-button navigation before), `NavHost` uses `consumeWindowInsets(innerPadding)` (no double padding on the
+  Pause tab), Pause screen and onboarding steps scroll above fixed buttons, option cards (strictness,
+  reminder style) grow with large text, and `OptionCardRow` (LimitsScreen.kt) measures the words and stacks
+  the cards when one wouldn't fit ("Notification" used to break mid-word), chip rows wrap (`FlowRow`),
+  Settings/onboarding text fields stay above the keyboard (`imePadding`), weekly report rows share width
+  instead of a fixed 150dp, the stepper's minutes text can widen, the Home mood pill moves above the
+  mascot if it would wrap, Pause screen and onboarding use smaller pictures when the screen is under 700dp
+  tall, and onboarding's app list scrolls its intro away with a sticky search box.
+  Tested on the emulator at 360x640dp, 3-button nav, font scale 1.3: Home, Limits, Stats, Pause tab,
+  Settings, Break reminders, Add an app (search), all onboarding steps. Then restored (1080x2400, 420dpi,
+  gestures, font 1.0).
+
 ## Step 6 — Later features (streaks done; server features deferred until after v1)
 
 ### 6a. AI weekly insights — DEFERRED (needs a server; not in the first build)
@@ -334,3 +480,5 @@ leaderboard and invite links. Stats currently shows a "coming soon" card.
    Second test phone: Nothing A142 (Android 16), serial `00069349C000377`. Fresh install, not set up yet.
    With 2+ devices connected, set `ANDROID_SERIAL` or use `adb -s <serial>`.
 4. First build is fully on-device: no AI insights or friend challenges (both need a server). Pick the next on-device feature from the list the developer chose.
+5. Run the unit tests with `./gradlew testDebugUnitTest`. Check mascot art with the debug gallery
+   (`adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity`).

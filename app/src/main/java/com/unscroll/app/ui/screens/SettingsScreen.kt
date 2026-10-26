@@ -1,5 +1,8 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.unscroll.app.ui.screens
 
+import androidx.compose.foundation.layout.FlowRow
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
@@ -39,6 +43,10 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.FEEDBACK_URL
+import com.unscroll.app.data.Growth
+import com.unscroll.app.data.MascotTheme
+import com.unscroll.app.data.MoodLevel
+import com.unscroll.app.data.PotProgress
 import com.unscroll.app.data.FeedbackType
 import com.unscroll.app.data.REPO_URL
 import com.unscroll.app.data.feedbackUrl
@@ -49,6 +57,12 @@ import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
+import com.unscroll.app.ui.mascot.LocalMascot
+import com.unscroll.app.ui.mascot.Mascot
+import com.unscroll.app.ui.mascot.MascotLook
+import com.unscroll.app.ui.theme.CardShape
+import com.unscroll.app.ui.theme.contentColorOn
+import com.unscroll.app.widget.MascotWidgets
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.Lime
@@ -56,15 +70,18 @@ import com.unscroll.app.ui.theme.Neo
 import com.unscroll.app.ui.theme.PillShape
 import kotlinx.coroutines.launch
 
-/** Everything adjustable in one place: name, look, permissions, focus/passes, data, about. */
+/** Everything adjustable in one place: name, mascot, look, permissions, focus/passes, data, about. */
 @Composable
-fun SettingsScreen(onBack: () -> Unit = {}) {
+fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val context = LocalContext.current
     val container = appContainer()
     val scope = rememberCoroutineScope()
 
     val userName by container.settings.userName.collectAsStateWithLifecycle("")
     val darkMode by container.settings.darkMode.collectAsStateWithLifecycle(null)
+    val mascot = LocalMascot.current
+    val pot by container.settings.potProgress.collectAsStateWithLifecycle(PotProgress())
+    val gardenPots by container.database.gardenDao().observeAll().collectAsStateWithLifecycle(emptyList())
 
     // Permission states are re-read whenever the screen comes back (e.g. from Android Settings).
     var refresh by remember { mutableIntStateOf(0) }
@@ -87,7 +104,9 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
     var confirmClear by remember { mutableStateOf(false) }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(), // the feedback box stays above the keyboard
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -105,8 +124,44 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
         }
 
         item {
+            Section("Mascot") {
+                Text("Who keeps you company? Both react to your scrolling the same way.", style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MascotTheme.entries.forEach { theme ->
+                        MascotChoice(
+                            theme = theme,
+                            flowers = pot.flowers,
+                            selected = mascot.theme == theme,
+                            onClick = {
+                                container.appScope.launch {
+                                    container.settings.setMascotTheme(theme)
+                                    MascotWidgets.refresh(context) // show the new mascot on the home screen too
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                if (mascot.theme == MascotTheme.BLOOMY) {
+                    Text("Your pot", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+                    Text(potDescription(pot), style = MaterialTheme.typography.bodyMedium)
+                    SettingRow(
+                        title = "Garden",
+                        detail = when (gardenPots.size) {
+                            0 -> "No full pots yet"
+                            1 -> "1 full pot"
+                            else -> "${gardenPots.size} full pots"
+                        },
+                        action = "Open",
+                        onClick = onOpenGarden
+                    )
+                }
+            }
+        }
+
+        item {
             Section("Look") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ChoicePill("Light", selected = darkMode == false) { scope.launch { container.settings.setDarkMode(false) } }
                     ChoicePill("Dark", selected = darkMode == true) { scope.launch { container.settings.setDarkMode(true) } }
                     ChoicePill("Follow phone", selected = darkMode == null) { scope.launch { container.settings.followSystemTheme() } }
@@ -131,6 +186,15 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
                 PermissionRow("Reels, Shorts & website tracker", "Optional, for Reels, Shorts & websites", perms.tracker) {
                     FeatureWatchService.openAccessibilitySettings(context)
                 }
+                if (perms.tracker) {
+                    // UPI/bank apps (e.g. BHIM) often block apps that use Accessibility.
+                    SettingRow(
+                        "Payment app not opening?",
+                        "UPI and bank apps like BHIM may block apps that use Accessibility. Turn the tracker off while you pay.",
+                        "Open",
+                        onClick = { FeatureWatchService.openAccessibilitySettings(context) }
+                    )
+                }
                 SettingRow("App info", "Extra settings on some phones", "Open", onClick = { SetupChecks.openAppInfo(context) })
             }
         }
@@ -143,7 +207,7 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
                         refresh++
                     })
                 }
-                SettingRow("Leftover +5 passes", "Make Blobby step in again right away", "Clear", onClick = {
+                SettingRow("Leftover +5 passes", "Make ${LocalMascot.current.theme.mascotName} step in again right away", "Clear", onClick = {
                     Allowances.clear()
                     Toast.makeText(context, "Passes cleared", Toast.LENGTH_SHORT).show()
                 })
@@ -203,7 +267,7 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
         AlertDialog(
             onDismissRequest = { editingName = false },
             containerColor = Neo.colors.surface,
-            title = { Text("What should Blobby call you?", style = MaterialTheme.typography.headlineSmall) },
+            title = { Text("What should ${LocalMascot.current.theme.mascotName} call you?", style = MaterialTheme.typography.headlineSmall) },
             text = { OutlinedTextField(value = text, onValueChange = { text = it.take(20) }, singleLine = true) },
             confirmButton = {
                 TextButton(onClick = {
@@ -220,7 +284,7 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
             onDismissRequest = { confirmClear = false },
             containerColor = Neo.colors.surface,
             title = { Text("Clear your history?", style = MaterialTheme.typography.headlineSmall) },
-            text = { Text("This deletes saved streak days, Reels/Shorts and website minutes, and Pause screen answers. Your apps and limits stay.") },
+            text = { Text("This deletes saved streak days, Reels/Shorts and website minutes, Pause screen answers and break reminder history. Your apps, limits and garden stay.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmClear = false
@@ -228,6 +292,7 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
                         container.database.dailySummaryDao().deleteAll()
                         container.database.featureDao().deleteAllUsage()
                         container.database.pauseLogDao().deleteAll()
+                        container.database.breakLogDao().deleteAll()
                         container.settings.setCelebratedStreak(0)
                     }
                     Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()
@@ -236,6 +301,42 @@ fun SettingsScreen(onBack: () -> Unit = {}) {
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel", color = Neo.colors.content) } }
         )
     }
+}
+
+/** A theme card: the mascot preview, its name, lime when picked. */
+@Composable
+private fun MascotChoice(theme: MascotTheme, flowers: Int, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val background = if (selected) Lime else Neo.colors.surface
+    Column(
+        modifier
+            .clip(CardShape)
+            .background(background, CardShape)
+            .border(BorderWidth, Neo.colors.outline, CardShape)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Mascot(mood = MoodLevel.HAPPY, look = MascotLook(theme, flowers), size = 84.dp, animated = selected)
+        Text(theme.mascotName, fontWeight = FontWeight.Bold, color = contentColorOn(background), modifier = Modifier.padding(top = 6.dp))
+        Text(
+            if (selected) "Picked" else "Tap to pick",
+            style = MaterialTheme.typography.bodyMedium,
+            color = contentColorOn(background)
+        )
+    }
+}
+
+/** "2 flowers. 3 more days under your limits for the next one." */
+private fun potDescription(pot: PotProgress): String {
+    val flowers = when (pot.flowers) {
+        0 -> "A little sprout."
+        1 -> "1 flower."
+        Growth.MAX_FLOWERS -> return "Full pot! It's in your garden now. A new seed starts tomorrow."
+        else -> "${pot.flowers} flowers."
+    }
+    val left = Growth.DAYS_PER_FLOWER - pot.daysTowardNext
+    val next = if (left == 1) "1 more day" else "$left more days"
+    return "$flowers $next under your limits in a row for the next flower."
 }
 
 /** Opens a web link in the browser. */
@@ -254,7 +355,7 @@ private fun FeedbackForm(onSend: (FeedbackType, String) -> Unit) {
     var message by remember { mutableStateOf("") }
 
     Text("Ideas, bugs or questions? Tell us here.", style = MaterialTheme.typography.bodyMedium)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FeedbackType.entries.forEach { option ->
             ChoicePill(option.label, selected = type == option) { type = option }
         }
@@ -354,7 +455,7 @@ private fun ActionPill(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ChoicePill(text: String, selected: Boolean, onClick: () -> Unit) {
+internal fun ChoicePill(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(PillShape)

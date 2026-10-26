@@ -1,30 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Home-screen widget: Blobby's face + today's minutes. Filled in by BlobbyWidget.kt. -->
+<!-- Preview of the medium widget in the launcher's widget picker (the real one is Glance code). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="14dp">
+    android:paddingStart="12dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="14dp">
 
     <ImageView
-        android:id="@+id/widget_blobby"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:contentDescription="Blobby"
+        android:layout_width="92dp"
+        android:layout_height="92dp"
+        android:contentDescription="Mascot"
         android:src="@drawable/widget_blobby_happy" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="10dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/widget_mood"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_pill"
@@ -32,27 +32,34 @@
             android:paddingTop="2dp"
             android:paddingEnd="8dp"
             android:paddingBottom="2dp"
-            android:text="MOOD: VIBING"
+            android:text="BLOBBY · HAPPY"
             android:textColor="#FFFFFF"
             android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/widget_minutes"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:fontFamily="sans-serif-black"
-            android:text="0 min today"
+            android:text="Blobby is happy"
             android:textColor="@color/widget_text"
-            android:textSize="22sp" />
+            android:textSize="17sp"
+            android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/widget_detail"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tap to open ScrollNah"
+            android:layout_marginTop="6dp"
+            android:text="Instagram · 12 / 30 min"
             android:textColor="@color/widget_text"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="5-day streak"
+            android:textColor="@color/widget_text"
+            android:textSize="11sp" />
     </LinearLayout>
 </LinearLayout>

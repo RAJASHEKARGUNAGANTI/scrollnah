@@ -54,7 +54,9 @@ fun NeoShadowSurface(
     shadowOffset: Dp = ShadowOffset,
     content: @Composable BoxScope.() -> Unit
 ) {
-    Box(modifier) {
+    // propagateMinConstraints: when the caller asks for a size (fillMaxWidth, weight...),
+    // the card itself fills it too, not just its shadow.
+    Box(modifier, propagateMinConstraints = true) {
         // The shadow box has no intrinsic size of its own — it just copies
         // whatever size the foreground box below ends up with.
         Box(
@@ -107,7 +109,11 @@ fun NeoCard(
  * ink pill on light/bright cards and a light pill on dark backgrounds (dark mode).
  */
 @Composable
-fun NeoPill(text: String, modifier: Modifier = Modifier) {
+fun NeoPill(
+    text: String,
+    modifier: Modifier = Modifier,
+    onLineCount: ((Int) -> Unit)? = null // lets a screen notice the pill wrapped (narrow phone, big text)
+) {
     val fill = LocalContentColor.current
     val textColor = if (fill.luminance() > 0.5f) Ink else com.unscroll.app.ui.theme.White
     Text(
@@ -117,6 +123,7 @@ fun NeoPill(text: String, modifier: Modifier = Modifier) {
         fontWeight = FontWeight.Bold,
         fontSize = MaterialTheme.typography.labelSmall.fontSize,
         letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
+        onTextLayout = { onLineCount?.invoke(it.lineCount) },
         modifier = modifier
             .clip(PillShape)
             .background(fill)

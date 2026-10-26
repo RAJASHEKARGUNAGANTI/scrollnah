@@ -1,5 +1,8 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.unscroll.app.ui.screens
 
+import androidx.compose.foundation.layout.FlowRow
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -46,6 +49,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.Feature
+import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.StreakInfo
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.service.BlockerService
@@ -54,10 +58,8 @@ import com.unscroll.app.data.StreakRepository
 import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.data.Websites
 import com.unscroll.app.service.SetupChecks
-import com.unscroll.app.ui.components.Blobby
-import com.unscroll.app.ui.components.BlobbyLines
-import com.unscroll.app.ui.components.BlobbyMood
 import com.unscroll.app.ui.components.FireIcon
+import com.unscroll.app.ui.components.FunStat
 import com.unscroll.app.ui.components.GearIcon
 import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoButtonPrimary
@@ -72,6 +74,9 @@ import com.unscroll.app.ui.components.letterFor
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.durationPair
 import com.unscroll.app.ui.components.tileColorFor
+import com.unscroll.app.ui.mascot.LocalMascot
+import com.unscroll.app.ui.mascot.Mascot
+import com.unscroll.app.ui.mascot.MascotLines
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.ButtonShape
 import com.unscroll.app.ui.theme.CardShapeLarge
@@ -192,10 +197,10 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
     }
     val rows = appRows + featureRows
 
-    // Blobby's mood only looks at whole apps (Reels/Shorts time is already inside the app's time).
+    // The mood only looks at whole apps (Reels/Shorts time is already inside the app's time).
     val totalUsed = appRows.sumOf { it.usedMinutes }
     val totalLimit = appRows.sumOf { it.limitMinutes }
-    val anyAppOver = appRows.any { it.usedMinutes >= it.limitMinutes }
+    val appAtLimit = appRows.firstOrNull { it.usedMinutes >= it.limitMinutes }?.name
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -215,7 +220,7 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
             when {
                 !hasAccess -> UsageAccessCard(onGrant = { UsageRepository.openUsageAccessSettings(context) })
                 appRows.isEmpty() -> NoLimitsCard(onAdd = onEditLimits)
-                else -> BlobbyMoodCard(totalUsed, totalLimit, anyAppOver)
+                else -> MascotMoodCard(totalUsed, totalLimit, appAtLimit)
             }
         }
         if (hasAccess && trackedApps.isNotEmpty() && !setup.allDone) {
@@ -359,38 +364,32 @@ private fun HeaderButton(onClick: () -> Unit, icon: @Composable () -> Unit) {
     ) { icon() }
 }
 
-/** Blobby's mood comes from today's real usage compared to the user's limits. */
+/** The mascot's mood comes from today's real usage compared to the user's limits. */
 @Composable
-private fun BlobbyMoodCard(totalUsed: Int, totalLimit: Int, anyAppOver: Boolean) {
-    val ratio = if (totalLimit > 0) totalUsed.toFloat() / totalLimit else 0f
-    val overLimit = ratio >= 1f || anyAppOver
-
-    val mood = when {
-        overLimit -> BlobbyMood.WORRIED
-        ratio >= 0.5f -> BlobbyMood.WATCHFUL
-        else -> BlobbyMood.HAPPY
-    }
+private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?) {
+    val mood = MoodLevel.from(totalUsed, totalLimit, anyAppAtLimit = appAtLimit != null)
+    val overLimit = mood == MoodLevel.OVER
     val cardColor = if (overLimit) Orange else Lime
-    val text = when {
-        overLimit -> BlobbyLines.worried(totalUsed)
-        totalUsed == 0 -> BlobbyLines.noScrolling()
-        ratio < 0.5f -> BlobbyLines.vibing(totalUsed)
-        else -> BlobbyLines.watchful(totalUsed, totalLimit)
-    }
+    val text = MascotLines.moodCard(LocalMascot.current.theme, mood, totalUsed, totalLimit, appAtLimit)
+
+    // On narrow phones with big text the pill would wrap next to the mascot; then it moves on top.
+    var pillOnTop by remember(text.pill) { mutableStateOf(false) }
 
     NeoCard(
+        modifier = Modifier.fillMaxWidth(), // same width whatever the text length
         shape = CardShapeLarge,
         backgroundColor = cardColor,
         shadowOffset = ShadowOffsetLarge,
         contentPadding = PaddingValues(18.dp)
     ) {
+        if (pillOnTop) NeoPill(text.pill, modifier = Modifier.padding(bottom = 10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Blobby(mood = mood, size = 110.dp)
+            Mascot(mood = mood, size = 110.dp, onOrange = overLimit)
             Column(
                 modifier = Modifier.padding(start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                NeoPill(text.pill)
+                if (!pillOnTop) NeoPill(text.pill, onLineCount = { if (it > 1) pillOnTop = true })
                 Text(text.headline, style = MaterialTheme.typography.headlineSmall, lineHeight = 24.sp)
                 Text(text.line, style = MaterialTheme.typography.bodyMedium)
             }
@@ -398,7 +397,7 @@ private fun BlobbyMoodCard(totalUsed: Int, totalLimit: Int, anyAppOver: Boolean)
     }
 }
 
-/** Shown instead of the Blobby card until the user grants Usage access. */
+/** Shown instead of the mascot card until the user grants Usage access. */
 @Composable
 private fun UsageAccessCard(onGrant: () -> Unit) {
     NeoCard(
@@ -408,7 +407,7 @@ private fun UsageAccessCard(onGrant: () -> Unit) {
         contentPadding = PaddingValues(18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Blobby(mood = BlobbyMood.HAPPY, size = 90.dp)
+            Mascot(mood = MoodLevel.HAPPY, size = 90.dp)
             Column(
                 modifier = Modifier.padding(start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -436,7 +435,7 @@ private fun NoLimitsCard(onAdd: () -> Unit) {
         contentPadding = PaddingValues(18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Blobby(mood = BlobbyMood.HAPPY, size = 90.dp)
+            Mascot(mood = MoodLevel.HAPPY, size = 90.dp)
             Column(
                 modifier = Modifier.padding(start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -539,7 +538,7 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
             val minutes = ((focusLeftMs + 59_999L) / 60_000L).toInt()
             Text("Focus mode: ${duration(minutes)} left", style = MaterialTheme.typography.headlineSmall)
             Text(
-                "Your time-sinks are locked. I'm guarding the door. – Blobby",
+                "Your time-sinks are locked. I'm guarding the door. – ${LocalMascot.current.theme.mascotName}",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -568,7 +567,7 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(30 to "30 min", 60 to "1 hour", 120 to "2 hours").forEach { (minutes, label) ->
                     Box(
                         Modifier
@@ -589,7 +588,7 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
 /** Current/best streak and how today is going. */
 @Composable
 private fun StreakCard(info: StreakInfo) {
-    NeoCard(contentPadding = PaddingValues(14.dp)) {
+    NeoCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -624,16 +623,17 @@ private fun StreakCard(info: StreakInfo) {
 /** Shown once when the streak hits 3, 7, 14, 30, 60 or 100 days. */
 @Composable
 private fun CelebrationDialog(days: Int, onDone: () -> Unit) {
+    val name = LocalMascot.current.theme.mascotName
     AlertDialog(
         onDismissRequest = onDone,
         containerColor = Lime,
-        icon = { Blobby(mood = BlobbyMood.HAPPY, size = 96.dp) },
+        icon = { Mascot(mood = MoodLevel.THRIVING, size = 96.dp) },
         title = {
             Text("$days-day streak!", style = MaterialTheme.typography.headlineMedium, color = Ink)
         },
         text = {
             Text(
-                "$days days in a row under your limits. I'm doing a very wobbly happy dance! – Blobby",
+                "$days days in a row under your limits. I'm doing a very wobbly happy dance! – $name",
                 color = Ink
             )
         },
@@ -643,21 +643,11 @@ private fun CelebrationDialog(days: Int, onDone: () -> Unit) {
     )
 }
 
-/** Turns today's real minutes into something silly. */
+/** Turns today's real minutes into an everyday comparison (see FunStat). */
 @Composable
 private fun FunStatCard(totalMinutes: Int) {
-    val text = when {
-        totalMinutes == 0 -> "Zero minutes on your time-sinks so far. Blobby is doing a little dance."
-        totalMinutes < 30 -> {
-            val songs = (totalMinutes / 3.5f).toInt().coerceAtLeast(1)
-            "That's about $songs ${if (songs == 1) "song" else "songs"} worth of scrolling. Blobby would've picked a playlist."
-        }
-        else -> {
-            val episodes = totalMinutes / 22
-            "That's ${if (episodes <= 1) "a whole sitcom episode" else "$episodes sitcom episodes"} of scrolling today. Plot twist: put it down."
-        }
-    }
-    NeoCard(contentPadding = PaddingValues(14.dp)) {
+    val text = FunStat.line(totalMinutes, LocalMascot.current.theme.mascotName)
+    NeoCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -707,7 +697,7 @@ private fun NameDialog(currentName: String, onDismiss: () -> Unit, onSave: (Stri
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Neo.colors.surface,
-        title = { Text("What should Blobby call you?", style = MaterialTheme.typography.headlineSmall) },
+        title = { Text("What should ${LocalMascot.current.theme.mascotName} call you?", style = MaterialTheme.typography.headlineSmall) },
         text = {
             OutlinedTextField(
                 value = text,

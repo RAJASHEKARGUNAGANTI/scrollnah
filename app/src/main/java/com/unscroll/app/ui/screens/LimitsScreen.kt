@@ -1,5 +1,11 @@
 package com.unscroll.app.ui.screens
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
@@ -20,7 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
+import com.unscroll.app.data.BreakSettings
 import com.unscroll.app.data.DEFAULT_FEATURE_LIMIT_MINUTES
 import com.unscroll.app.data.Feature
 import com.unscroll.app.data.LIMIT_STEP_MINUTES
@@ -59,6 +66,8 @@ import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.ui.components.BackArrowIcon
 import com.unscroll.app.ui.components.CloseIcon
+import com.unscroll.app.ui.components.ForwardChevronIcon
+import com.unscroll.app.ui.components.NeoShadowSurface
 import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
@@ -70,6 +79,7 @@ import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.theme.Background
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.ButtonShape
+import com.unscroll.app.ui.theme.CardShape
 import com.unscroll.app.ui.theme.CardShapeLarge
 import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.Lilac
@@ -87,6 +97,7 @@ private data class Draft(val minutes: Int, val enabled: Boolean)
 fun LimitsScreen(
     onBack: () -> Unit = {},
     onAddApp: () -> Unit = {},
+    onOpenBreaks: () -> Unit = {},
     onSaved: () -> Unit = {},
     onUnsavedChanges: (Boolean) -> Unit = {}, // tells the app whether leaving needs a prompt
     pendingLeave: (() -> Unit)? = null,       // set by the app when the user tries to leave with unsaved changes
@@ -101,6 +112,7 @@ fun LimitsScreen(
     val apps by appDao.observeAll().collectAsStateWithLifecycle(emptyList())
     val featureLimits by featureDao.observeLimits().collectAsStateWithLifecycle(emptyList())
     val savedStrictness by container.settings.strictness.collectAsStateWithLifecycle(Strictness.FIRM)
+    val breakSettings by container.settings.breakSettings.collectAsStateWithLifecycle(BreakSettings())
 
     // Edits are kept here until "Lock it in". Adding/removing an app saves right away.
     val appDrafts = remember { mutableStateMapOf<String, Draft>() }
@@ -222,16 +234,11 @@ fun LimitsScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("How strict should I be?", style = MaterialTheme.typography.headlineSmall)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Strictness.entries.forEach { option ->
-                        StrictnessCard(
-                            option = option,
-                            selected = strictness == option,
-                            onClick = { strictnessDraft = option },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
+                OptionCardRow(
+                    options = Strictness.entries.map { it.title to it.subtitle },
+                    selectedIndex = strictness.ordinal,
+                    onSelect = { strictnessDraft = Strictness.entries[it] }
+                )
                 Text(
                     when (strictness) {
                         Strictness.CHILL -> "A notification when you hit a limit. You can take 5 more minutes."
@@ -241,6 +248,13 @@ fun LimitsScreen(
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+        }
+        item {
+            // Break reminders save on their own screen; ask about unsaved limits first.
+            BreakRemindersRow(
+                settings = breakSettings,
+                onClick = { if (hasChanges) askBeforeLeaving = onOpenBreaks else onOpenBreaks() }
+            )
         }
         item {
             NeoButtonPrimary(
@@ -427,8 +441,32 @@ private fun LimitEditRow(
     }
 }
 
+/** "Break reminders" row: shows the current setting and opens the Break reminders screen. */
 @Composable
-private fun AddAppButton(onClick: () -> Unit) {
+private fun BreakRemindersRow(settings: BreakSettings, onClick: () -> Unit) {
+    NeoShadowSurface(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(CardShape)
+                .clickable(onClick = onClick)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Break reminders", fontWeight = FontWeight.Bold)
+                Text(
+                    if (settings.enabled) "After ${duration(settings.minutes)} on one app" else "Off",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            ForwardChevronIcon()
+        }
+    }
+}
+
+@Composable
+internal fun AddAppButton(onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -462,6 +500,8 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit) {
             "To spot Reels, Shorts and sites like youtube.com, ScrollNah needs Accessibility access. " +
                 "It only checks which screen is open in Instagram and YouTube, and your browser's address bar. " +
                 "Only minutes are saved, on this phone.\n\n" +
+                "Note: some UPI and bank apps (like BHIM) won't open while any app uses Accessibility. " +
+                "Turn this off while you pay; your other limits keep working.\n\n" +
                 "In Settings: Downloaded apps > ScrollNah > turn on.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 6.dp, bottom = 14.dp)
@@ -471,12 +511,15 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit) {
 }
 
 @Composable
-private fun Stepper(minutes: Int, onDecrease: () -> Unit, onIncrease: () -> Unit) {
+internal fun Stepper(minutes: Int, onDecrease: () -> Unit, onIncrease: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         StepperButton("−", onDecrease)
         Text(
             duration(minutes),
-            modifier = Modifier.width(66.dp),
+            // At least 66dp, wider if big text needs it ("1h 30m").
+            modifier = Modifier
+                .widthIn(min = 66.dp)
+                .padding(horizontal = 4.dp),
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyMedium
@@ -502,7 +545,7 @@ private fun StepperButton(symbol: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun NeoSwitch(checked: Boolean, onToggle: () -> Unit) {
+internal fun NeoSwitch(checked: Boolean, onToggle: () -> Unit) {
     val trackColor = if (checked) Lime else Neo.colors.surface
     val shape = RoundedCornerShape(999.dp)
     Box(
@@ -523,18 +566,22 @@ private fun NeoSwitch(checked: Boolean, onToggle: () -> Unit) {
     }
 }
 
+/** One of a row of choice cards (strictness, reminder style). Lime when picked. */
 @Composable
-internal fun StrictnessCard(
-    option: Strictness,
+internal fun OptionCard(
+    title: String,
+    subtitle: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    minHeight: Dp = 84.dp
 ) {
     val background = if (selected) Lime else Neo.colors.surface
     val shape = RoundedCornerShape(16.dp)
     Column(
         modifier = modifier
-            .height(84.dp)
+            .fillMaxHeight()
+            .heightIn(min = minHeight) // grows with large text instead of cutting it off
             .clip(shape)
             .background(background, shape)
             .border(BorderWidth, Neo.colors.outline, shape)
@@ -543,7 +590,45 @@ internal fun StrictnessCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(option.title, fontWeight = FontWeight.Bold, color = contentColorOn(background))
-        Text(option.subtitle, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, color = contentColorOn(background))
+        Text(title, fontWeight = FontWeight.Bold, color = contentColorOn(background))
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, color = contentColorOn(background))
+    }
+}
+
+/**
+ * Choice cards side by side (all as tall as the tallest). If a word wouldn't fit in a
+ * card (narrow phone or big text), the cards stack instead, so no word breaks in half.
+ */
+@Composable
+internal fun OptionCardRow(
+    options: List<Pair<String, String>>, // (title, subtitle)
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val measurer = rememberTextMeasurer()
+    val wordStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val gap = 8.dp
+        val cardWidth = (maxWidth - gap * (options.size - 1)) / options.size
+        val widestWordPx = options
+            .flatMap { (title, subtitle) -> "$title $subtitle".split(" ") }
+            .maxOf { measurer.measure(it, wordStyle).size.width }
+        val fits = with(density) { widestWordPx.toDp() } + 18.dp <= cardWidth // 8dp padding + border each side
+
+        if (fits) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                options.forEachIndexed { i, (title, subtitle) ->
+                    OptionCard(title, subtitle, i == selectedIndex, { onSelect(i) }, Modifier.weight(1f))
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                options.forEachIndexed { i, (title, subtitle) ->
+                    OptionCard(title, subtitle, i == selectedIndex, { onSelect(i) }, Modifier.fillMaxWidth(), minHeight = 56.dp)
+                }
+            }
+        }
     }
 }

@@ -2,14 +2,31 @@
 
 **[⬇ Download the latest APK](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/latest)** · Android 8.0+ · free, no account
 
-A playful Android app that helps you scroll less, with a mascot called **Blobby** who reacts to how much you scroll.
+A playful Android app that helps you scroll less, with a mascot that reacts to how much you scroll: **Blobby** the orange blob, or **Bloomy**, a plant that grows a flower for every week you stay under your limits.
 
 - **Daily limits** for any app, plus separate limits for **Instagram Reels** and **YouTube Shorts**.
 - **Websites count too**: youtube.com, instagram.com and others in your browser use the same limits.
 - **Three strictness levels**: Chill (a gentle nudge), Firm (a pause screen with a breath, then +5 minutes if you really want), Beast (locked until midnight).
+- **Five moods**: your mascot goes from thriving to melting (or wilting) as you use up your day.
+- **Break reminders** after a long stretch on one app, as a notification, a mascot bubble, or both.
+- **Bloomy's garden**: four flowers fill a pot, and finished pots are kept in your garden.
 - **Focus mode** (lock your apps for 30 min to 2 hours) and a **bedtime** schedule.
-- **Streaks**, a weekly report, a home-screen widget, and light and dark themes.
+- **Streaks**, a weekly report, two home-screen widgets, and light and dark themes.
 - **Private by design**: no account, and everything stays on your phone.
+
+## Screenshots
+
+| Home | Pause screen | Your week |
+|:---:|:---:|:---:|
+| <img src="screenshots/home-blobby.png" width="250" alt="Home with Blobby"> | <img src="screenshots/pause.png" width="250" alt="Pause screen"> | <img src="screenshots/stats.png" width="250" alt="Weekly report"> |
+| **Limits** | **Break reminders** | **A break reminder** |
+| <img src="screenshots/limits.png" width="250" alt="Limits"> | <img src="screenshots/break-reminders.png" width="250" alt="Break reminder settings"> | <img src="screenshots/break-reminder.png" width="250" alt="Break reminder notification and bubble over Chrome"> |
+| **Bloomy on Home** | **Pick your mascot** | **Bloomy's garden** |
+| <img src="screenshots/home-bloomy.png" width="250" alt="Home with Bloomy"> | <img src="screenshots/mascot-picker.png" width="250" alt="Mascot picker"> | <img src="screenshots/garden.png" width="250" alt="Garden"> |
+| **Home-screen widget** | | |
+| <img src="screenshots/widget.png" width="250" alt="Home-screen widget"> | | |
+
+<sub>Screenshots use the app's sample data (debug demo mode).</sub>
 
 ## Install
 

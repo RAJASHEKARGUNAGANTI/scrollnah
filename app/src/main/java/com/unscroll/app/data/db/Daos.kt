@@ -26,6 +26,10 @@ interface TrackedAppDao {
 
     @Query("DELETE FROM tracked_apps WHERE packageName = :packageName")
     suspend fun delete(packageName: String)
+
+    /** Sets (or clears, with null) an app's own break reminder time. */
+    @Query("UPDATE tracked_apps SET breakMinutes = :minutes WHERE packageName = :packageName")
+    suspend fun setBreakMinutes(packageName: String, minutes: Int?)
 }
 
 @Dao
@@ -107,4 +111,26 @@ interface DailySummaryDao {
 
     @Query("DELETE FROM daily_summary")
     suspend fun deleteAll()
+}
+
+@Dao
+interface BreakLogDao {
+    @Insert
+    suspend fun insert(log: BreakLog)
+
+    /** How often each action ("shown", "break", "snooze") happened since [since] (epoch ms). */
+    @Query("SELECT COUNT(*) FROM break_log WHERE timestamp >= :since AND action = :action")
+    suspend fun count(since: Long, action: String): Int
+
+    @Query("DELETE FROM break_log")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface GardenDao {
+    @Query("SELECT * FROM garden_pots ORDER BY completedOn DESC")
+    fun observeAll(): Flow<List<GardenPot>>
+
+    @Insert
+    suspend fun insert(pot: GardenPot)
 }
