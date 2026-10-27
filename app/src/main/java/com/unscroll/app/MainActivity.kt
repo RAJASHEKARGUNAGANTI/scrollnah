@@ -60,7 +60,7 @@ private fun AppRoot(onReady: () -> Unit) {
             true -> false
             false -> true
             null -> {
-                // Fresh flag. People who set up Unscroll before onboarding existed skip it.
+                // Fresh flag. People who set up ScrollNah before onboarding existed skip it.
                 val hasApps = container.database.trackedAppDao().getAll().isNotEmpty()
                 if (hasApps) container.settings.setOnboarded(true)
                 !hasApps

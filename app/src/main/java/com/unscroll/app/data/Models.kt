@@ -88,7 +88,7 @@ enum class Feature(
 /** An app the user could add to their limits. */
 data class InstalledApp(val packageName: String, val label: String)
 
-/** Every app that has an icon in the launcher, except Unscroll itself. */
+/** Every app that has an icon in the launcher, except ScrollNah itself. */
 fun launchableApps(context: Context): List<InstalledApp> {
     val pm = context.packageManager
     val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)

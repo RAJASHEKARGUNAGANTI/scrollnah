@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Unscroll"
+rootProject.name = "ScrollNah"
 include(":app")

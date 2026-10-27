@@ -60,7 +60,7 @@ Read this first when picking the project back up in a new session / Android Stud
   - `todayUsageMinutes(packages)` walks `UsageEvents` since midnight, pairing `ACTIVITY_RESUMED` /
     `ACTIVITY_PAUSED` per package (an app still open counts up to now). Deliberately NOT using the
     daily `queryUsageStats` buckets, which can spill over from yesterday.
-  - `openUsageAccessSettings()` deep-links to Unscroll's own toggle (`package:` URI), with a
+  - `openUsageAccessSettings()` deep-links to ScrollNah's own toggle (`package:` URI), with a
     fallback to the general Usage access list.
 - `HomeScreen.kt`: if access is missing, a lilac "Let Blobby peek at your screen time" card with a
   "Give usage access" button replaces the Blobby card. Permission + usage are re-checked on every
@@ -73,7 +73,7 @@ Read this first when picking the project back up in a new session / Android Stud
 
 ### Notes
 - Blobby's mood pill, the encouraging line and the "86 metres" fun stat are still static (step 5).
-- Settings opens inside Unscroll's task, so the user returns with Back, which is standard behaviour.
+- Settings opens inside ScrollNah's task, so the user returns with Back, which is standard behaviour.
 
 ## Step 3 — Limits saved to Room ✅ DONE (plus "real data everywhere" pass)
 
@@ -441,7 +441,7 @@ Committed as d5bf426 and released in 2.1.0. Built both flavors, 21 unit tests pa
   SharedPreferences would save ~70 KB but would lose existing users' settings, so no.
 
 ### Still open from the developer's list
-- **10. Match the design PDF:** still not in `design/` (only screenshots and `unscroll-screens.html`).
+- **10. Match the design PDF:** still not in `design/` (only screenshots and `scrollnah-screens.html`).
 
 ## Version 2.0.2 (2026-10-27)
 - `versionCode` 5, `versionName` "2.0.2": the landscape layouts below. GitHub release v2.0.2 (Latest), built

@@ -27,7 +27,7 @@ class UsageRepository(context: Context) {
     private val usageStatsManager =
         appContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-    /** True once the user has switched Unscroll on in Settings > Usage access. */
+    /** True once the user has switched ScrollNah on in Settings > Usage access. */
     fun hasUsageAccess(): Boolean {
         if (DemoMode.active) return true
         val appOps = appContext.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -171,7 +171,7 @@ class UsageRepository(context: Context) {
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
-        /** Opens Settings > Usage access, jumping straight to Unscroll where the phone supports it. */
+        /** Opens Settings > Usage access, jumping straight to ScrollNah where the phone supports it. */
         fun openUsageAccessSettings(context: Context) {
             val direct = Intent(
                 Settings.ACTION_USAGE_ACCESS_SETTINGS,
