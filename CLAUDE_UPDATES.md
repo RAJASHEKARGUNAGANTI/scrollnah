@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-10-27): enhancements batch built and tested on the emulator, NOT committed yet (see "Enhancements + compact app" below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-10-27): v2.1.0 released on GitHub (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -381,8 +381,12 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 2.1.0 (2026-10-27)
+- `versionCode` 6, `versionName` "2.1.0": everything in "Enhancements + compact app" below. GitHub release v2.1.0 (Latest).
+- Not yet tested on a real phone (emulator only). Play listing text (`store/listing.md`) not updated for the new features.
+
 ## Enhancements + compact app (2026-10-27, developer's list + "make it compact")
-Not committed yet. Built both flavors, 21 unit tests pass, tested on the emulator (`Unscroll_Pixel`).
+Committed as d5bf426 and released in 2.1.0. Built both flavors, 21 unit tests pass, tested on the emulator (`Unscroll_Pixel`).
 - **Pick your mascot during setup:** new first step "Pick your buddy" (Blobby / Bloomy cards, reuses
   `MascotChoice` from Settings, saves at once), then "Hi, I'm <mascot>". `STEPS` = 7.
 - **Faster Chill nudges:** `BlockerService.chillGap()`: reopening a limited app nudges straight away unless
