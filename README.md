@@ -41,6 +41,7 @@ A playful Android app that helps you scroll less, with a mascot that reacts to h
 Good to know:
 - Play Protect may warn about an app from outside the Play Store. That's expected for direct downloads.
 - On Android 13+, the optional Reels/Shorts tracker can be greyed out at first: go to **Settings > Apps > ScrollNah > ⋮ > Allow restricted settings**, then turn it on.
+- UPI and bank apps like BHIM may refuse to open while any app uses Accessibility, including the optional tracker. When that happens, ScrollNah's notification has a one-tap **Turn off tracker** button; turn it back on later in **Limits**.
 
 ## Feedback
 

@@ -138,7 +138,7 @@ object LimitActions {
     }
 
     private const val STREAK_NOTIFICATION_ID = 2
-    private const val PAYMENT_HELP_NOTIFICATION_ID = 3
+    const val PAYMENT_HELP_NOTIFICATION_ID = 3
 
     /**
      * A UPI/bank app was opened while the Reels & Shorts tracker (Accessibility) is on.
@@ -159,8 +159,16 @@ object LimitActions {
             Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
             PendingIntent.FLAG_IMMUTABLE
         )
+        // One tap switches the tracker off (BHIM and similar apps then open). Turning it back on is up to the user.
+        val turnOff = PendingIntent.getBroadcast(
+            context,
+            PAYMENT_HELP_NOTIFICATION_ID,
+            Intent(context, TrackerOffReceiver::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
         val text = "$appName and other UPI or bank apps may not open while an app uses Accessibility. " +
-            "Turn off ScrollNah's Reels & Shorts tracker while you pay. Your limits and reminders keep working."
+            "Turn off ScrollNah's Reels & Shorts tracker while you pay, and turn it back on later in Limits. " +
+            "Your limits and reminders keep working."
         val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle("$appName not opening?")
@@ -168,7 +176,8 @@ object LimitActions {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setContentIntent(openSettings)
-            .addAction(0, "Open Accessibility settings", openSettings)
+            .addAction(0, "Turn off tracker", turnOff)
+            .addAction(0, "Accessibility settings", openSettings)
             .build()
         try {
             notifications.notify(PAYMENT_HELP_NOTIFICATION_ID, notification)

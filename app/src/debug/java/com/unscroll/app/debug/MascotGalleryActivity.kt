@@ -1,5 +1,6 @@
 package com.unscroll.app.debug
 
+import com.unscroll.app.service.LimitActions
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.BloomEvent
 import android.os.Bundle
@@ -51,6 +52,14 @@ class MascotGalleryActivity : ComponentActivity() {
             val event = BloomEvent.valueOf(name)
             val settings = (application as UnscrollApplication).container.settings
             kotlinx.coroutines.runBlocking { settings.setBloomEvent(event) }
+            finish()
+            return
+        }
+        // Test the "BHIM not opening?" notification without a payment app installed:
+        //   adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --es paymenthelp BHIM
+        intent.getStringExtra("paymenthelp")?.let { appName ->
+            getSharedPreferences("payment_help", MODE_PRIVATE).edit().clear().apply() // skip the once-a-day check
+            LimitActions.showPaymentAppHelp(this, appName)
             finish()
             return
         }

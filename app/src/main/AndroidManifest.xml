@@ -133,6 +133,11 @@
             android:name=".service.BreakSnoozeReceiver"
             android:exported="false" />
 
+        <!-- "Turn off tracker" button on the payment-app notification. -->
+        <receiver
+            android:name=".service.TrackerOffReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".service.BootReceiver"
             android:exported="true">

@@ -381,6 +381,17 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## "Turn off tracker" button for payment apps (2026-10-27, developer request)
+- The "BHIM not opening?" notification (once a day, when a UPI/bank app opens while the tracker is on) now has
+  **Turn off tracker** next to **Accessibility settings**. `TrackerOffReceiver` -> `FeatureWatchService.turnOff()`
+  -> `disableSelf()` (the running service registers itself in `onServiceConnected`). Then the notification goes
+  away and a toast says "Tracker off. You can pay now. Turn it back on in ScrollNah > Limits." Android only lets
+  the user switch it back on (Limits shows the "Limit Reels, Shorts & websites" card again).
+- Tested on the emulator: tracker switched on with `adb shell settings put secure enabled_accessibility_services
+  com.unscroll.app/com.unscroll.app.service.FeatureWatchService` (+ `accessibility_enabled 1`), notification shown
+  with the debug trigger `adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --es paymenthelp BHIM`,
+  tapped the button: no enabled/bound services afterwards, notification gone, no crash. Not tested with BHIM itself.
+
 ## Version 2.1.1 (2026-10-27)
 - `versionCode` 7, `versionName` "2.1.1". Same app as 2.1.0 (only comments, the Gradle project name, README
   screenshots and the design mockup name changed). Released as a new version because moving the v2.1.0 tag
