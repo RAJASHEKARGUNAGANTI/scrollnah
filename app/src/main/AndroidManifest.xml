@@ -133,6 +133,17 @@
             android:name=".service.BreakSnoozeReceiver"
             android:exported="false" />
 
+        <!-- Lets other apps read a shared week-in-review picture (only when the user taps Share). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/shared_files" />
+        </provider>
+
         <!-- "Turn off tracker" button on the payment-app notification. -->
         <receiver
             android:name=".service.TrackerOffReceiver"

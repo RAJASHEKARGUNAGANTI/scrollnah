@@ -126,6 +126,33 @@ interface BreakLogDao {
     suspend fun deleteAll()
 }
 
+/** The Stats screen's own history (see [DayAppStat] and [DayHours]). */
+@Dao
+interface DayStatsDao {
+    @Upsert
+    suspend fun upsertApps(stats: List<DayAppStat>)
+
+    @Upsert
+    suspend fun upsertHours(days: List<DayHours>)
+
+    /** All rows between two dates, inclusive ("yyyy-MM-dd" strings sort correctly). */
+    @Query("SELECT * FROM day_app_stats WHERE date >= :fromDate AND date <= :toDate")
+    suspend fun appsBetween(fromDate: String, toDate: String): List<DayAppStat>
+
+    @Query("SELECT * FROM day_hours WHERE date >= :fromDate AND date <= :toDate ORDER BY date")
+    suspend fun hoursBetween(fromDate: String, toDate: String): List<DayHours>
+
+    /** Days already saved, so they aren't read from Android again. */
+    @Query("SELECT date FROM day_hours")
+    suspend fun savedDates(): List<String>
+
+    @Query("DELETE FROM day_app_stats")
+    suspend fun deleteAllApps()
+
+    @Query("DELETE FROM day_hours")
+    suspend fun deleteAllHours()
+}
+
 @Dao
 interface GardenDao {
     @Query("SELECT * FROM garden_pots ORDER BY completedOn DESC")

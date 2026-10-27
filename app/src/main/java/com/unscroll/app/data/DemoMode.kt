@@ -1,5 +1,8 @@
 package com.unscroll.app.data
 
+import com.unscroll.app.data.db.DayAppStat
+import com.unscroll.app.data.db.DayHours
+import com.unscroll.app.data.db.BreakLog
 import android.content.Context
 import com.unscroll.app.BuildConfig
 import com.unscroll.app.data.db.DailySummary
@@ -48,6 +51,34 @@ object DemoMode {
     fun openCounts(packages: Set<String>): Map<String, Int> =
         mapOf(INSTAGRAM to 3, YOUTUBE to 2, SNAPCHAT to 1).filterKeys { it in packages }
 
+    /** Sample per-app and per-hour numbers for the last [days] days (oldest first, today last). */
+    fun dayDetails(days: Int): List<DayDetail> = (days - 1 downTo 0).map { daysAgo ->
+        val total = if (daysAgo < last14Days.size) last14Days[last14Days.size - 1 - daysAgo] else 60
+        sampleDay(daysAgo, total)
+    }
+
+    /** Most scrolling in the evening (peak 10-11 PM), a little in the morning and at lunch. */
+    private val hourWeights = mapOf(7 to 5, 8 to 6, 12 to 8, 13 to 6, 17 to 5, 18 to 6, 20 to 10, 21 to 16, 22 to 20, 23 to 12)
+
+    /** One sample day: [total] minutes split 46/38/16 between Instagram, YouTube and Snapchat. */
+    private fun sampleDay(daysAgo: Int, total: Int): DayDetail {
+        val insta = if (daysAgo == 0) todayMinutes.getValue(INSTAGRAM) else total * 46 / 100
+        val yt = if (daysAgo == 0) todayMinutes.getValue(YOUTUBE) else total * 38 / 100
+        val snap = if (daysAgo == 0) todayMinutes.getValue(SNAPCHAT) else total - insta - yt
+        val apps = mapOf(
+            INSTAGRAM to AppDay(insta, maxOf(1, insta * 2 / 7), 7 * 60 + 5 + (daysAgo * 7) % 30),
+            YOUTUBE to AppDay(yt, maxOf(1, yt / 9), 12 * 60 + 20 + (daysAgo * 11) % 40),
+            SNAPCHAT to AppDay(snap, maxOf(1, snap / 2), 8 * 60 + (daysAgo * 5) % 25)
+        )
+        // Today only has the hours that already happened.
+        val nowHour = java.time.LocalTime.now().hour
+        val weights = if (daysAgo == 0) hourWeights.filterKeys { it <= nowHour }.ifEmpty { mapOf(nowHour to 1) } else hourWeights
+        val sum = weights.values.sum()
+        val minutes = insta + yt + snap
+        val hours = IntArray(24) { h -> (weights[h] ?: 0) * minutes / sum }
+        return DayDetail(UsageRepository.startOfDay(daysAgo), apps, hours, hasData = true)
+    }
+
     fun dailyTotals(days: Int): List<DayTotal> =
         last14Days.takeLast(days).mapIndexed { i, minutes ->
             DayTotal(UsageRepository.startOfDay(days - 1 - i), minutes, hasData = true)
@@ -85,14 +116,37 @@ object DemoMode {
             )
         }
 
-        // Streak: the last 5 days under the limit, and an older 9-day best streak.
+        // Streak: the last 5 days under the limit, and an older 9-day best streak (days 12-20).
+        // About five weeks of days in total, for the month calendar and the 4-week trend.
         val limit = 95
         val days = mutableListOf<DailySummary>()
-        for (d in 1..5) days += DailySummary(today.minusDays(d.toLong()).toString(), last14Days[13 - d], limit)
-        days += DailySummary(today.minusDays(6).toString(), 112, limit)
+        for (d in 1..11) days += DailySummary(today.minusDays(d.toLong()).toString(), last14Days[13 - d], limit)
         for (d in 12..20) days += DailySummary(today.minusDays(d.toLong()).toString(), 60, limit)
         days += DailySummary(today.minusDays(21).toString(), 130, limit)
+        listOf(88, 75, 120, 64, 92, 58, 81, 99, 70, 66, 140, 85, 77).forEachIndexed { i, minutes ->
+            days += DailySummary(today.minusDays(22L + i).toString(), minutes, limit)
+        }
         db.dailySummaryDao().upsertAll(days)
+
+        // The Stats screen's own history (per app, per hour) for the last four weeks.
+        val details = days.filter { LocalDate.parse(it.date).isAfter(today.minusDays(28)) }.map { summary ->
+            val daysAgo = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.parse(summary.date), today).toInt()
+            // The last two weeks match the chart's sample totals, so "vs last week" agrees everywhere.
+            val minutes = if (daysAgo < last14Days.size) last14Days[last14Days.size - 1 - daysAgo] else summary.usedMinutes
+            summary.date to sampleDay(daysAgo, minutes)
+        }
+        db.dayStatsDao().upsertApps(details.flatMap { (date, day) ->
+            day.apps.map { (pkg, app) -> DayAppStat(date, pkg, app.minutes, app.opens, app.firstUseMinute) }
+        })
+        db.dayStatsDao().upsertHours(details.map { (date, day) -> DayHours.of(date, day.minutesByHour) })
+
+        // Break reminders this week: 6 shown, 4 breaks taken, 2 snoozed.
+        listOf(BreakLog.BREAK, BreakLog.BREAK, BreakLog.SNOOZE, BreakLog.BREAK, BreakLog.SNOOZE, BreakLog.BREAK)
+            .forEachIndexed { i, action ->
+                val time = now - (i + 1) * 20 * 3_600_000L
+                db.breakLogDao().insert(BreakLog(packageName = INSTAGRAM, sessionMinutes = 20, action = BreakLog.SHOWN, timestamp = time))
+                db.breakLogDao().insert(BreakLog(packageName = INSTAGRAM, sessionMinutes = 20, action = action, timestamp = time + 60_000L))
+            }
 
 
         settings.setUserName("Alex")

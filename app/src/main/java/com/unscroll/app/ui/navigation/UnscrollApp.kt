@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.navigation
 
+import com.unscroll.app.ui.screens.WeekReviewScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,7 @@ fun UnscrollApp() {
     // "Add an app" and "Break reminders" aren't tabs, so highlight Limits while they're open.
     val currentDestination = when (currentRoute) {
         ADD_APP_ROUTE, BREAKS_ROUTE -> Destination.LIMITS
+        WEEK_REVIEW_ROUTE -> Destination.STATS
         else -> Destination.entries.find { it.route == currentRoute } ?: Destination.HOME
     }
 
@@ -45,7 +47,8 @@ fun UnscrollApp() {
 
     Scaffold(
         bottomBar = {
-            if (currentDestination != Destination.PAUSE) {
+            // Pause and the week-in-review cards are full screen.
+            if (currentDestination != Destination.PAUSE && currentRoute != WEEK_REVIEW_ROUTE) {
                 UnscrollBottomNav(current = currentDestination) { destination ->
                     val go = {
                         pendingLeave = null
@@ -120,8 +123,14 @@ fun UnscrollApp() {
             }
             composable(Destination.STATS.route) {
                 ReadableWidth {
-                    WeeklyReportScreen(onBack = { navController.popBackStack() })
+                    WeeklyReportScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenReview = { navController.navigate(WEEK_REVIEW_ROUTE) }
+                    )
                 }
+            }
+            composable(WEEK_REVIEW_ROUTE) {
+                WeekReviewScreen(onClose = { navController.popBackStack() })
             }
             composable(Destination.PAUSE.route) {
                 PauseRoute(

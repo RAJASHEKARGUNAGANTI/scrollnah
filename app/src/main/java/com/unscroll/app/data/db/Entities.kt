@@ -91,6 +91,38 @@ data class BreakLog(
     }
 }
 
+/**
+ * One limited app on one finished day: minutes (app + website), how many times it was
+ * opened, and the first time it was opened after 4 AM ([firstUseMinute] = minutes after
+ * midnight, null = not used). ScrollNah saves these itself because Android only keeps
+ * detailed history for about a week. Used by the Stats screen.
+ */
+@Entity(tableName = "day_app_stats", primaryKeys = ["date", "packageName"])
+data class DayAppStat(
+    val date: String, // "yyyy-MM-dd"
+    val packageName: String,
+    val minutes: Int,
+    val opens: Int,
+    val firstUseMinute: Int?
+)
+
+/**
+ * Minutes on limited apps in each hour of one finished day, saved as 24 numbers
+ * ("0,0,5,..."; hour 0 = midnight to 1 AM). A row also means "we have data for that day".
+ */
+@Entity(tableName = "day_hours")
+data class DayHours(
+    @PrimaryKey val date: String, // "yyyy-MM-dd"
+    val hourMinutes: String
+) {
+    fun minutesByHour(): IntArray =
+        hourMinutes.split(',').map { it.toIntOrNull() ?: 0 }.let { list -> IntArray(24) { list.getOrElse(it) { 0 } } }
+
+    companion object {
+        fun of(date: String, minutesByHour: IntArray) = DayHours(date, minutesByHour.joinToString(","))
+    }
+}
+
 /** A finished Bloomy pot (4 flowers) in the user's garden. Never deleted. */
 @Entity(tableName = "garden_pots")
 data class GardenPot(

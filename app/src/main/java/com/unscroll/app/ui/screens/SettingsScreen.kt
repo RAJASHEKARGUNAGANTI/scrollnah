@@ -311,6 +311,8 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                         container.database.featureDao().deleteAllUsage()
                         container.database.pauseLogDao().deleteAll()
                         container.database.breakLogDao().deleteAll()
+                        container.database.dayStatsDao().deleteAllApps()
+                        container.database.dayStatsDao().deleteAllHours()
                         container.settings.setCelebratedStreak(0)
                     }
                     Toast.makeText(context, "History cleared", Toast.LENGTH_SHORT).show()

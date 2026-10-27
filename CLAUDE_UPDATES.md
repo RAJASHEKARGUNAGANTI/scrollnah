@@ -381,6 +381,35 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Stats screen upgrade (2026-10-27, developer: "go ahead with all")
+Committed and pushed to main (not in a release yet). All nine ideas from the Stats list, built on the phone only (no server, no new library):
+- **Own history (Room v5, `MIGRATION_4_5`):** `day_app_stats` (date, app, minutes incl. website time, opens,
+  first use after 4 AM) and `day_hours` (24 numbers: minutes per hour). `StreakRepository.saveDayDetails()` saves
+  finished days Android still remembers (reads 10 days back) every time finished days are saved, so these stats
+  keep going after Android forgets (~7-10 days). Clear history deletes them too. Bloomy's growth is unchanged
+  (still from `daily_summary`).
+- **Logic:** `data/WeekStats.kt` (split sessions into days/hours/opens/first use, per-app totals vs last week,
+  peak hour, average first use, 4-week trend, month grid) + `WeekStatsTest` (11 tests, 32 total now).
+  `Growth.flowerDates()` replays saved days to mark new-flower days. `MascotLines.weekVerdict()` = up to 3
+  first-person lines (vs last week, streak, weekends vs weekdays, late-night peak, best/toughest day, Pause wins).
+- **Screen:** `WeeklyReportScreen.kt` (layout, tappable chart: tap a bar = that day's apps) + `StatsCards.kt`
+  (Where the time went, verdict, review banner, scroll o'clock, Did the nudges work?, month calendar with
+  previous/next month, 4-week trend). Loader: `data/WeekReportLoader.kt`.
+- **Week in review:** `WeekReviewScreen.kt` (route `week_review`, full screen, no bottom bar): 5 swipeable cards
+  sized to the screen (shorter screens show less, the wordmark and mascot always fit), always light colours.
+  "Share this card" records the card with a GraphicsLayer, saves `cache/shared/scrollnah-week.png`, shares it
+  through a FileProvider (`${applicationId}.files`, `xml/shared_files.xml`) with clip data so the share sheet
+  can show a preview.
+- **Bug fixed on the way:** `todayOpenCounts` started from `Long.MIN_VALUE`, so `start - lastEnd` overflowed and the
+  first visit of the day wasn't counted (the Pause pill's "3rd time today" was one short).
+- Letter tiles scale their letter with the tile size. Demo mode has per-app/per-hour samples for 4 weeks, ~5 weeks
+  of days for the calendar, and break reminder answers.
+- Tested on the emulator: v4 -> v5 upgrade (no crash), demo data (all cards, Bloomy flower mark on the calendar,
+  month navigation, tap-a-day, review cards, share sheet with preview, the shared PNG), dark mode, 360x640dp at
+  font scale 1.3 (fixed: trend labels were cut, review cards cut off the wordmark/mascot/third verdict line), and real
+  usage with demo mode off (today's Chrome/YouTube from Android). Not checked: saving a real finished day into the new
+  tables (the emulator had no earlier days of history); privacy policy updated for the new data and Share.
+
 ## "Turn off tracker" button for payment apps (2026-10-27, developer request)
 - The "BHIM not opening?" notification (once a day, when a UPI/bank app opens while the tracker is on) now has
   **Turn off tracker** next to **Accessibility settings**. `TrackerOffReceiver` -> `FeatureWatchService.turnOff()`

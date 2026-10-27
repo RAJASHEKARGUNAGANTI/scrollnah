@@ -66,9 +66,9 @@ class UsageRepository(context: Context) {
             .groupBy { it.packageName }
             .forEach { (pkg, sessions) ->
                 var visits = 0
-                var lastEnd = Long.MIN_VALUE
+                var lastEnd: Long? = null // null = no visit yet (MIN_VALUE here overflowed and skipped the first visit)
                 sessions.sortedBy { it.start }.forEach { s ->
-                    if (s.start - lastEnd > 5_000L) visits++
+                    if (lastEnd == null || s.start - lastEnd!! > 5_000L) visits++
                     lastEnd = s.end
                 }
                 counts[pkg] = visits
@@ -94,6 +94,23 @@ class UsageRepository(context: Context) {
             }
             val hasData = firstKnown != null && firstKnown < dayEnd && dayStart >= dayStartOf(firstKnown)
             DayTotal(dayStart, (ms / 60_000L).toInt(), hasData)
+        }
+    }
+
+    /**
+     * Per-app minutes, opens, first use and minutes per hour for each of the last [days] days
+     * (oldest first, today last). Days older than Android's kept history have hasData = false.
+     */
+    fun dayDetails(packages: Set<String>, days: Int): List<DayDetail> {
+        if (DemoMode.active) return DemoMode.dayDetails(days)
+        val dayStarts = (days - 1 downTo 0).map { startOfDay(it) }
+        val result = readSessions(dayStarts.first(), System.currentTimeMillis(), packages)
+        val firstKnown = result.firstEventTime
+        return dayStarts.map { dayStart ->
+            val dayEnd = dayStart + DAY_MS
+            val hasData = firstKnown != null && firstKnown < dayEnd && dayStart >= dayStartOf(firstKnown)
+            val overlapping = result.sessions.filter { it.end > dayStart && it.start < dayEnd }
+            WeekStats.splitDay(overlapping, dayStart, dayEnd, hasData)
         }
     }
 

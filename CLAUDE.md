@@ -92,9 +92,16 @@ Based on the share of today's total limit used (summed across enabled limited ap
 
 ### 4. Weekly report ("Your week")
 - Total social time this week + badge comparing with last week ("1h 10m less").
-- 7-day bar chart with a dashed daily-limit line; bars over the limit are orange, today is ink.
+- 7-day bar chart with a dashed daily-limit line; bars over the limit are orange, today is ink. Tapping a bar shows that day's apps.
+- "Where the time went": each limited app (real icon), minutes, visits, minutes per visit, change vs last week.
+- The mascot's verdict: up to three first-person lines picked on the phone from the week's numbers (`MascotLines.weekVerdict`, no AI).
+- "Your week in review": swipeable cards (total, top app, best/toughest day, scroll o'clock, verdict), each shareable as a picture through Android's share menu (FileProvider, cache only).
 - Two cards: streak ("5 days under your limit in a row") and time won back ("1 movie").
+- "Your scroll o'clock": minutes per hour, busiest hour, first scroll of the day (after 4 AM).
+- "Did the nudges work?": Pause screen "Nah, I'm good" share (ring) and break reminders taken vs shown.
+- "Why you reached for it" (Pause screen reasons), a month calendar (lime under / orange over, Bloomy's new-flower days when Bloomy is the mascot), and a 4-week trend of the daily average.
 - Friend challenge card ("You vs [friend]") — a "coming soon" placeholder in v1.
+- Data: Android keeps detailed usage events only ~7-10 days, so ScrollNah saves its own per-day summaries (`day_app_stats`: minutes, opens, first use per app; `day_hours`: minutes per hour) for finished days, next to `daily_summary`. Logic in `data/WeekStats.kt` (tested), loading in `data/WeekReportLoader.kt`.
 
 ### 5. Theme picker (in Settings)
 - Choose Blobby or Bloomy, with a preview of the mascot. For Bloomy, also show the current pot and a "Garden" entry that lists saved pots.

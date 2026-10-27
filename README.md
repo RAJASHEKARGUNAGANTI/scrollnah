@@ -12,7 +12,8 @@ A playful Android app that helps you scroll less, with a mascot that reacts to h
 - **Bloomy's garden**: four flowers fill a pot, and finished pots are kept in your garden. Bloomy celebrates every new flower.
 - **Focus mode** (lock your apps for 30 min to 2 hours, or 30 min from a **Quick Settings tile**) and a **bedtime** schedule.
 - **Home-screen widgets**: a card with today's numbers, a small one, and an animated mascot that bobs, sways and blinks right on your wallpaper.
-- **Streaks**, a weekly report, and light and dark themes. Works with TalkBack.
+- **A weekly report** that shows where the time went (per app, per day), when you scroll most, whether the nudges worked, a month calendar and a 4-week trend, plus your mascot's verdict and a swipeable **week in review** you can share as a picture.
+- **Streaks**, and light and dark themes. Works with TalkBack.
 - **Small**: about 1.4 MB.
 - **Private by design**: no account, and everything stays on your phone. Read the [privacy policy](https://rajashekargunaganti.github.io/scrollnah/privacy-policy).
 

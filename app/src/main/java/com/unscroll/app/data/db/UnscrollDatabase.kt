@@ -10,9 +10,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         TrackedApp::class, FeatureLimit::class, FeatureUsage::class, PauseLog::class, DailySummary::class,
-        BreakLog::class, GardenPot::class
+        BreakLog::class, GardenPot::class, DayAppStat::class, DayHours::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class UnscrollDatabase : RoomDatabase() {
@@ -22,6 +22,7 @@ abstract class UnscrollDatabase : RoomDatabase() {
     abstract fun dailySummaryDao(): DailySummaryDao
     abstract fun breakLogDao(): BreakLogDao
     abstract fun gardenDao(): GardenDao
+    abstract fun dayStatsDao(): DayStatsDao
 
     companion object {
         /** Version 2 added the daily_summary table (streaks). Existing data is kept. */
@@ -57,9 +58,24 @@ abstract class UnscrollDatabase : RoomDatabase() {
             }
         }
 
+        /** Version 5: the Stats screen's own per-app and per-hour history (Android keeps only ~1 week). */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `day_app_stats` (`date` TEXT NOT NULL, `packageName` TEXT NOT NULL, " +
+                        "`minutes` INTEGER NOT NULL, `opens` INTEGER NOT NULL, `firstUseMinute` INTEGER, " +
+                        "PRIMARY KEY(`date`, `packageName`))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `day_hours` (`date` TEXT NOT NULL, `hourMinutes` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`date`))"
+                )
+            }
+        }
+
         fun create(context: Context): UnscrollDatabase =
             Room.databaseBuilder(context, UnscrollDatabase::class.java, "unscroll.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
     }
 }

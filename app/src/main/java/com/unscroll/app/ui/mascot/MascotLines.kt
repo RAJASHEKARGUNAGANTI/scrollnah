@@ -168,6 +168,63 @@ object MascotLines {
         else -> "I'm melting here. Time for a break?"
     }
 
+    /** What the weekly verdict can talk about. Anything null or zero is simply skipped. */
+    data class WeekFacts(
+        val vsLastWeek: Int? = null,               // minutes; negative = less than last week
+        val bestDay: Pair<LocalDate, Int>? = null,  // finished day with the fewest minutes
+        val toughestDay: Pair<LocalDate, Int>? = null,
+        val weekdayAverage: Int? = null,
+        val weekendAverage: Int? = null,
+        val peakHour: Int? = null,                 // 0-23
+        val streak: Int = 0,
+        val pauses: Int = 0,
+        val walkedAway: Int = 0
+    )
+
+    /**
+     * The mascot's verdict on the week: up to three first-person lines, most interesting first.
+     * Worked out on the phone from the week's numbers (no AI, nothing sent anywhere).
+     */
+    fun weekVerdict(theme: MascotTheme, facts: WeekFacts): List<String> {
+        val bloomy = theme == MascotTheme.BLOOMY
+        val lines = mutableListOf<String>()
+        facts.vsLastWeek?.let { diff ->
+            when {
+                diff <= -10 -> lines += if (bloomy) "${duration(-diff)} less than last week. My leaves are doing a little dance."
+                else "${duration(-diff)} less than last week. I'm doing a very wobbly happy dance."
+                diff >= 10 -> lines += if (bloomy) "${duration(diff)} more than last week. I could use a bit more sunshine."
+                else "${duration(diff)} more than last week. Let's go a little easier on me."
+            }
+        }
+        if (facts.streak >= 3) lines += "${facts.streak} days under your limit in a row. Keep it going!"
+        val weekday = facts.weekdayAverage
+        val weekend = facts.weekendAverage
+        if (weekday != null && weekend != null) {
+            when {
+                weekend > weekday * 1.3 -> lines += "Weekends are wild: about ${duration(weekend - weekday)} more a day than weekdays."
+                weekday > weekend * 1.3 -> lines += "Weekdays are the busy ones. On weekends you're a natural."
+            }
+        }
+        facts.peakHour?.let { hour ->
+            val range = com.unscroll.app.data.WeekStats.hourRange(hour)
+            when {
+                hour >= 21 || hour < 3 -> lines += "You scroll most around $range. That's my bedtime, you know."
+                hour in 5..9 -> lines += "You scroll most around $range. Breakfast first, maybe?"
+            }
+        }
+        facts.bestDay?.let { (date, minutes) -> lines += "${dayName(date)} was your best day: just ${duration(minutes)}." }
+        facts.toughestDay?.let { (date, minutes) ->
+            if (facts.bestDay?.first != date) lines += "${dayName(date)} was the toughest (${duration(minutes)}). What happened there?"
+        }
+        if (facts.pauses >= 3 && facts.walkedAway * 2 >= facts.pauses) {
+            lines += "You said \"Nah, I'm good\" ${facts.walkedAway} of ${facts.pauses} times. Proud of you."
+        }
+        return lines.take(3).ifEmpty { listOf("Not much to report yet. Give me a few more days.") }
+    }
+
+    private fun dayName(date: LocalDate): String =
+        date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+
     /** The bubble's speech text, e.g. "20 min straight! My eyes hurt." */
     fun bubbleText(theme: MascotTheme, mood: MoodLevel, minutes: Int): String = when {
         mood < MoodLevel.OVER -> "${duration(minutes)} straight! My eyes hurt."

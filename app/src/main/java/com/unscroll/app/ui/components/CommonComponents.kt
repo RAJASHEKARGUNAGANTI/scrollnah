@@ -157,7 +157,14 @@ fun LetterTile(
             .clearAndSetSemantics {}, // decoration: the app name is always next to it
         contentAlignment = Alignment.Center
     ) {
-        Text(letter, fontFamily = BodyFontFamily, fontWeight = FontWeight.Black, color = contentColorOn(color))
+        // The letter grows with the tile (40dp tile = 16sp letter).
+        Text(
+            letter,
+            fontFamily = BodyFontFamily,
+            fontWeight = FontWeight.Black,
+            fontSize = (size.value * 0.4f).sp,
+            color = contentColorOn(color)
+        )
     }
 }
 

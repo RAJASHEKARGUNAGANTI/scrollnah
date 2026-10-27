@@ -1,14 +1,9 @@
 package com.unscroll.app.ui.screens
 
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import com.unscroll.app.ui.components.spokenDuration
-import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +33,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,14 +46,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.DayTotal
-import com.unscroll.app.data.StreakInfo
-import com.unscroll.app.data.StreakRepository
-import com.unscroll.app.data.db.totalLimitOn
-import com.unscroll.app.data.db.TrackedApp
-import com.unscroll.app.ui.mascot.LocalMascot
-import com.unscroll.app.data.UsageRepository
-import com.unscroll.app.data.Websites
-import com.unscroll.app.data.db.ReasonCount
+import com.unscroll.app.data.WeekReport
+import com.unscroll.app.data.loadWeekReport
 import com.unscroll.app.ui.components.FireIcon
 import com.unscroll.app.ui.components.MovieIcon
 import com.unscroll.app.ui.components.NeoCard
@@ -60,57 +55,34 @@ import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.NeoProgressBar
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.formatMinutes
-import com.unscroll.app.ui.theme.Ink
+import com.unscroll.app.ui.components.spokenDuration
 import com.unscroll.app.ui.theme.Lilac
 import com.unscroll.app.ui.theme.Lime
 import com.unscroll.app.ui.theme.Neo
 import com.unscroll.app.ui.theme.Orange
 import com.unscroll.app.ui.theme.ShadowOffsetLarge
-import com.unscroll.app.ui.theme.White
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Everything the report shows, worked out from real usage history. */
-private data class WeekReport(
-    val thisWeek: List<DayTotal>,
-    val totalMinutes: Int,
-    val vsLastWeekMinutes: Int?, // negative = less than last week; null = not enough history
-    val streakDays: Int,
-    val bestStreak: Int,
-    val dailyLimits: List<Int>,      // each day's total budget (weekend limits can differ), same order as thisWeek
-    val reasons: List<ReasonCount>, // Pause-screen answers, last 7 days
-    val pauses: Int,
-    val walkedAway: Int
-)
-
+/**
+ * "Your week": the weekly report. The cards themselves live in StatsCards.kt; the numbers
+ * come from [loadWeekReport].
+ */
 @Composable
-fun WeeklyReportScreen(onBack: () -> Unit = {}) {
-    val context = LocalContext.current
+fun WeeklyReportScreen(onBack: () -> Unit = {}, onOpenReview: () -> Unit = {}) {
     val container = appContainer()
     val apps by container.database.trackedAppDao().observeAll().collectAsStateWithLifecycle(emptyList())
     val hasAccess = remember { container.usage.hasUsageAccess() }
     var report by remember { mutableStateOf<WeekReport?>(null) }
+    // A tapped bar in the chart (0-6) shows that day's apps; null = the whole week.
+    var selectedDay by rememberSaveable { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(apps) {
         if (!hasAccess || apps.isEmpty()) return@LaunchedEffect
-        val packages = apps.map { it.packageName }.toSet()
-        report = withContext(Dispatchers.IO) {
-            val days = container.streaks.dailyTotalsWithWeb(packages, days = 14) // app + website time
-            container.streaks.recordFinishedDays()
-            val streakInfo = container.streaks.currentInfo()
-
-            val weekStart = UsageRepository.startOfDay(6)
-            val pauseDao = container.database.pauseLogDao()
-            buildReport(
-                days, apps, streakInfo,
-                reasons = pauseDao.reasonCounts(weekStart),
-                pauses = pauseDao.pauseCount(weekStart),
-                walkedAway = pauseDao.walkedAwayCount(weekStart)
-            )
-        }
+        report = withContext(Dispatchers.IO) { loadWeekReport(container, apps) }
     }
 
     LazyColumn(
@@ -125,7 +97,10 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}) {
             apps.isEmpty() -> item { InfoCard("Add some apps in Limits and your week will show up here.") }
             current == null -> item { InfoCard("Crunching your numbers...") }
             else -> {
-                item { WeekSummaryCard(current) }
+                item { WeekSummaryCard(current, selectedDay, onSelectDay = { selectedDay = it }) }
+                item { AppsCard(current, selectedDay, onShowWeek = { selectedDay = null }) }
+                item { VerdictCard(current) }
+                item { ReviewBannerCard(onOpenReview) }
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatTileCard(
@@ -150,7 +125,11 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}) {
                         )
                     }
                 }
+                item { ScrollClockCard(current) }
+                item { NudgesCard(current) }
                 item { ReasonsCard(current) }
+                item { MonthCalendarCard(current) }
+                item { TrendCard(current) }
                 item {
                     NeoCard(backgroundColor = Lilac, contentPadding = PaddingValues(16.dp)) {
                         Text("Friend challenges", fontWeight = FontWeight.Bold)
@@ -162,50 +141,27 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}) {
     }
 }
 
-private fun buildReport(
-    days: List<DayTotal>,
-    apps: List<TrackedApp>,
-    streak: StreakInfo,
-    reasons: List<ReasonCount>,
-    pauses: Int,
-    walkedAway: Int
-): WeekReport {
-    val lastWeek = days.take(7)
-    val thisWeek = days.takeLast(7)
-    val total = thisWeek.sumOf { it.minutes }
-    val vsLast = if (lastWeek.all { it.hasData }) total - lastWeek.sumOf { it.minutes } else null
-
-    // The dashed line: the sum of the enabled limits for each day (weekend limits can differ).
-    val limits = thisWeek.map { apps.totalLimitOn(StreakRepository.dateOf(it.dayStart)) }
-
-    return WeekReport(thisWeek, total, vsLast, streak.current, streak.best, limits, reasons, pauses, walkedAway)
-}
-
 /** What the user answered on the Pause screen this week. */
 @Composable
 private fun ReasonsCard(report: WeekReport) {
     NeoCard(contentPadding = PaddingValues(16.dp)) {
         Text("Why you reached for it", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-        if (report.pauses == 0) {
+        if (report.reasons.isEmpty()) {
             Text(
-                "No Pause screens this week. Either you're doing great, or nothing hit its limit yet.",
+                if (report.pauses == 0) "No Pause screens this week. Either you're doing great, or nothing hit its limit yet."
+                else "Tap a reason on the Pause screen and it'll show up here.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 6.dp)
             )
             return@NeoCard
         }
-        Text(
-            "${LocalMascot.current.theme.mascotName} stepped in ${report.pauses} ${if (report.pauses == 1) "time" else "times"}. " +
-                "You said \"Nah, I'm good\" ${report.walkedAway} of them.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)
-        )
-        val topCount = report.reasons.firstOrNull()?.count ?: 0
+        val topCount = report.reasons.first().count
         report.reasons.take(4).forEach { r ->
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = 10.dp)
+                    .semantics(mergeDescendants = true) {},
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Shares the row with the bar instead of a fixed width, so it fits narrow phones.
@@ -218,9 +174,6 @@ private fun ReasonsCard(report: WeekReport) {
                 Text("${r.count}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 10.dp))
             }
         }
-        if (report.reasons.isEmpty()) {
-            Text("Tap a reason on the Pause screen and it'll show up here.", style = MaterialTheme.typography.bodyMedium)
-        }
     }
 }
 
@@ -232,7 +185,7 @@ private fun InfoCard(text: String) {
 }
 
 @Composable
-private fun WeekSummaryCard(report: WeekReport) {
+private fun WeekSummaryCard(report: WeekReport, selectedDay: Int?, onSelectDay: (Int?) -> Unit) {
     NeoCard(shadowOffset = ShadowOffsetLarge, contentPadding = PaddingValues(18.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) { // the pill keeps its room on narrow phones
@@ -244,12 +197,17 @@ private fun WeekSummaryCard(report: WeekReport) {
             }
         }
         Spacer(Modifier.height(14.dp))
-        WeekChart(report.thisWeek, report.dailyLimits)
+        WeekChart(report.thisWeek, report.dailyLimits, selectedDay, onSelectDay)
+        Text(
+            "Tap a day to see its apps.",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 
 @Composable
-private fun WeekChart(days: List<DayTotal>, limits: List<Int>) {
+private fun WeekChart(days: List<DayTotal>, limits: List<Int>, selected: Int?, onSelect: (Int?) -> Unit) {
     val maxBarHeight = 140.dp
     val maxValue = (days.maxOf { it.minutes }.coerceAtLeast(limits.max()).coerceAtLeast(1) * 1.15f)
     // The label shows the usual (weekday) limit; weekend days may have their own line height.
@@ -257,20 +215,10 @@ private fun WeekChart(days: List<DayTotal>, limits: List<Int>) {
     val limitFraction = (limitMinutes / maxValue).coerceIn(0f, 1f)
     val gap = 8.dp
     val dayLetter = SimpleDateFormat("EEEEE", Locale.getDefault())
+    val dayName = SimpleDateFormat("EEEE", Locale.getDefault())
     val barShape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
 
-    // TalkBack reads the whole chart as one sentence per day instead of unlabeled bars.
-    val dayName = SimpleDateFormat("EEEE", Locale.getDefault())
-    val spoken = days.mapIndexed { i, day ->
-        val name = if (i == days.lastIndex) "Today" else dayName.format(Date(day.dayStart))
-        when {
-            !day.hasData -> "$name: no data"
-            day.minutes > limits[i] -> "$name: ${spokenDuration(day.minutes)}, over the limit"
-            else -> "$name: ${spokenDuration(day.minutes)}"
-        }
-    }.joinToString(". ")
-
-    Column(Modifier.clearAndSetSemantics { contentDescription = "Last 7 days. $spoken." }) {
+    Column {
         Box(Modifier.fillMaxWidth().height(maxBarHeight)) {
             Row(
                 Modifier.fillMaxSize(),
@@ -279,20 +227,43 @@ private fun WeekChart(days: List<DayTotal>, limits: List<Int>) {
             ) {
                 days.forEachIndexed { index, day ->
                     val isToday = index == days.lastIndex
+                    val isSelected = selected == index
                     val fraction = (day.minutes / maxValue).coerceIn(0.03f, 1f)
                     val color: Color = when {
                         isToday -> Neo.colors.content
                         day.minutes > limits[index] -> Orange // over that day's own limit
                         else -> Lime
                     }
+                    val name = if (isToday) "Today" else dayName.format(Date(day.dayStart))
+                    val spoken = when {
+                        !day.hasData -> "$name: no data"
+                        day.minutes > limits[index] -> "$name: ${spokenDuration(day.minutes)}, over the limit"
+                        else -> "$name: ${spokenDuration(day.minutes)}"
+                    }
+                    // The whole column is the touch target (tiny bars are still easy to tap).
                     Box(
                         Modifier
                             .weight(1f)
-                            .fillMaxHeight(fraction)
-                            .alpha(if (day.hasData) 1f else 0.3f) // no history for that day
-                            .background(color, barShape)
-                            .border(2.dp, Neo.colors.outline, barShape)
-                    )
+                            .fillMaxHeight()
+                            .clickable(role = Role.Button, onClickLabel = "show this day's apps") {
+                                onSelect(if (isSelected) null else index)
+                            }
+                            .semantics {
+                                contentDescription = spoken
+                                this.selected = isSelected
+                            },
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(fraction)
+                                // No history for that day, or another day is picked: faded.
+                                .alpha(if (!day.hasData || (selected != null && !isSelected)) 0.35f else 1f)
+                                .background(color, barShape)
+                                .border(if (isSelected) 4.dp else 2.dp, Neo.colors.outline, barShape)
+                        )
+                    }
                 }
             }
             if (limitMinutes > 0) {
@@ -323,17 +294,23 @@ private fun WeekChart(days: List<DayTotal>, limits: List<Int>) {
                         .offset(y = maxBarHeight * (1f - limitFraction) - 20.dp)
                         .background(Neo.colors.surface, RoundedCornerShape(6.dp))
                         .padding(horizontal = 4.dp, vertical = 1.dp)
+                        .semantics { contentDescription = "Daily limit ${spokenDuration(limitMinutes)}" }
                 )
             }
         }
         Spacer(Modifier.height(6.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            days.forEach { day ->
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics {}, // the bars already say their day
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            days.forEachIndexed { index, day ->
                 Text(
                     dayLetter.format(Date(day.dayStart)),
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = if (selected == index) FontWeight.Black else FontWeight.Bold,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }

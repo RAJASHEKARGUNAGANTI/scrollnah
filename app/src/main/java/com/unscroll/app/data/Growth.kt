@@ -21,8 +21,10 @@ object Growth {
     const val DAYS_PER_FLOWER = 7
     const val MAX_FLOWERS = 4
 
-    /** [newFlowers] = flowers grown during this walk (for the "new flower!" celebration). */
-    data class Result(val progress: PotProgress, val finishedPots: List<String>, val newFlowers: Int = 0)
+    /** [grownOn] = the dates a flower grew during this walk ("new flower!" celebration, calendar marks). */
+    data class Result(val progress: PotProgress, val finishedPots: List<String>, val grownOn: List<String> = emptyList()) {
+        val newFlowers: Int get() = grownOn.size
+    }
 
     /**
      * Walks through finished days (oldest first) that come after [start].lastDate:
@@ -37,7 +39,7 @@ object Growth {
         var run = start.daysTowardNext
         var last = start.lastDate?.let { LocalDate.parse(it) }
         val finished = mutableListOf<String>()
-        var grown = 0
+        val grown = mutableListOf<String>()
 
         for (day in days.sortedBy { it.date }) {
             val date = LocalDate.parse(day.date)
@@ -52,7 +54,7 @@ object Growth {
                 run++
                 if (run == DAYS_PER_FLOWER) {
                     flowers++
-                    grown++
+                    grown += day.date
                     run = 0
                     if (flowers == MAX_FLOWERS) finished += day.date
                 }
@@ -64,6 +66,9 @@ object Growth {
         }
         return Result(PotProgress(flowers, run, last?.toString()), finished, grown)
     }
+
+    /** Every date a flower grew, replaying all saved days from an empty pot (for the Stats calendar). */
+    fun flowerDates(days: List<DailySummary>): Set<String> = advance(PotProgress(), days).grownOn.toSet()
 }
 
 /** Keeps Bloomy's pot up to date with the saved days and stores finished pots in the garden. */

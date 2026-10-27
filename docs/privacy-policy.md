@@ -4,7 +4,7 @@ title: ScrollNah privacy policy
 
 # ScrollNah privacy policy
 
-_Last updated: 26 October 2026_
+_Last updated: 27 October 2026_
 
 ScrollNah is an Android app that helps you spend less time on the apps you choose, with a friendly mascot (Blobby or Bloomy). This policy explains what the app looks at, what it keeps, and where it keeps it.
 
@@ -28,6 +28,7 @@ All of this is stored only on your phone, inside the app's private storage:
 
 - The apps you limit, your daily limits, strictness, bedtime and break reminder settings
 - Daily minute totals, your streak and Bloomy's garden
+- For the weekly report: per day, the minutes and number of visits for each app you limit, the time of your first use, and how many minutes fell in each hour of the day
 - Your answers on the Pause screen (for example "Bored") and whether you took a break, used for your weekly report
 - Your name, if you type one, so the app can say hello
 - Your mascot and light/dark choice
@@ -36,11 +37,13 @@ All of this is stored only on your phone, inside the app's private storage:
 
 **Nothing.** ScrollNah does not send any data to the developer or to anyone else. The app has no internet features of its own.
 
+If you tap **Share** on a "week in review" card, ScrollNah makes a picture of that card and opens Android's share menu. The picture goes only to the app you pick there, and only because you chose to share it.
+
 The only link out of the app is **Settings > Feedback**, which opens a GitHub Discussions page in your browser with your message filled in, plus your app version, Android version and phone model to help with bugs. Nothing is sent unless you choose to post it on GitHub yourself, where GitHub's own privacy policy applies.
 
 ## Deleting your data
 
-- **Settings > Data > Clear history** deletes your saved minutes, streak days, Pause answers and break history (your limits and garden stay).
+- **Settings > Data > Clear history** deletes your saved minutes, weekly report history, streak days, Pause answers and break history (your limits and garden stay).
 - **Uninstalling ScrollNah** deletes everything it stored.
 
 ## Children

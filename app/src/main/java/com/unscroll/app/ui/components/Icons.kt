@@ -253,3 +253,28 @@ fun PencilIcon(modifier: Modifier = Modifier, size: Dp = 18.dp, tint: Color = Lo
         drawPath(path, tint, style = stroke)
     }
 }
+
+/** Share: a box with an arrow coming out of the top. */
+@Composable
+fun ShareIcon(modifier: Modifier = Modifier, size: Dp = 22.dp) {
+    StrokeIcon(modifier, size) { s, stroke, tint ->
+        val path = Path().apply {
+            moveTo(12f * s, 15f * s); lineTo(12f * s, 3f * s)
+            moveTo(7f * s, 8f * s); lineTo(12f * s, 3f * s); lineTo(17f * s, 8f * s)
+            moveTo(5f * s, 12f * s); lineTo(5f * s, 20f * s); lineTo(19f * s, 20f * s); lineTo(19f * s, 12f * s)
+        }
+        drawPath(path, tint, style = stroke)
+    }
+}
+
+/** Clock face at about ten past ten. */
+@Composable
+fun ClockIcon(modifier: Modifier = Modifier, size: Dp = 26.dp) {
+    StrokeIcon(modifier, size) { s, stroke, tint ->
+        drawCircle(tint, radius = 9f * s, center = Offset(12f * s, 12f * s), style = stroke)
+        val path = Path().apply {
+            moveTo(12f * s, 7f * s); lineTo(12f * s, 12f * s); lineTo(15.5f * s, 14f * s)
+        }
+        drawPath(path, tint, style = stroke)
+    }
+}

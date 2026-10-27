@@ -1,5 +1,7 @@
 package com.unscroll.app.data
 
+import com.unscroll.app.data.db.DayAppStat
+import com.unscroll.app.data.db.DayHours
 import android.content.Context
 import com.unscroll.app.data.db.DailySummary
 import com.unscroll.app.data.db.UnscrollDatabase
@@ -77,6 +79,34 @@ class StreakRepository(
             }
             .filter { it.date !in saved }
         if (newDays.isNotEmpty()) db.dailySummaryDao().upsertAll(newDays)
+        saveDayDetails(packages, installDay)
+    }
+
+    /**
+     * Saves per-app numbers (minutes, opens, first use) and minutes per hour for finished days
+     * Android still remembers, so the Stats screen can show them after Android forgets them.
+     */
+    private suspend fun saveDayDetails(packages: Set<String>, installDay: Long) {
+        val saved = db.dayStatsDao().savedDates().toSet()
+        val details = usage.dayDetails(packages, days = DETAIL_DAYS)
+            .dropLast(1) // today isn't finished yet
+            .filter { it.hasData && it.dayStart >= installDay && dateOf(it.dayStart).toString() !in saved }
+        if (details.isEmpty()) return
+        val webRows = db.featureDao().usageBetween(
+            dateOf(details.first().dayStart).toString(), dateOf(details.last().dayStart).toString()
+        )
+        val apps = details.flatMap { day ->
+            val date = dateOf(day.dayStart).toString()
+            packages.mapNotNull { pkg ->
+                val app = day.apps[pkg]
+                // Website time counts too (it has no hours or opens, only minutes).
+                val webMinutes = ((webRows.find { it.date == date && it.featureId == Websites.usageKey(pkg) }?.millis ?: 0L) / 60_000L).toInt()
+                if (app == null && webMinutes == 0) null
+                else DayAppStat(date, pkg, (app?.minutes ?: 0) + webMinutes, app?.opens ?: 0, app?.firstUseMinute)
+            }
+        }
+        db.dayStatsDao().upsertApps(apps)
+        db.dayStatsDao().upsertHours(details.map { DayHours.of(dateOf(it.dayStart).toString(), it.minutesByHour) })
     }
 
     /** Streak numbers plus today's live usage. */
@@ -118,6 +148,9 @@ class StreakRepository(
             }
             return current to maxOf(best, current)
         }
+
+        /** How far back Android's history is read for the Stats details (it keeps about 7-10 days). */
+        private const val DETAIL_DAYS = 10
 
         /** Streak lengths the mascot celebrates. */
         val MILESTONES = listOf(3, 7, 14, 30, 60, 100)
