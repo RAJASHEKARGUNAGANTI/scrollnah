@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TrackedApp::class, FeatureLimit::class, FeatureUsage::class, PauseLog::class, DailySummary::class,
         BreakLog::class, GardenPot::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class UnscrollDatabase : RoomDatabase() {
@@ -50,9 +50,16 @@ abstract class UnscrollDatabase : RoomDatabase() {
             }
         }
 
+        /** Version 4: a different limit on weekends (per app). */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `tracked_apps` ADD COLUMN `weekendLimitMinutes` INTEGER")
+            }
+        }
+
         fun create(context: Context): UnscrollDatabase =
             Room.databaseBuilder(context, UnscrollDatabase::class.java, "unscroll.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
     }
 }

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Medium (4x2) widget. Drawn by MediumMascotWidget (Glance); the app refreshes it from BlockerService. -->
+<!-- Medium (4x2) widget (layout/widget_medium.xml). Drawn by MascotWidgets.kt; the app refreshes it from BlockerService. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
-    android:initialLayout="@layout/glance_default_loading_layout"
+    android:initialLayout="@layout/widget_loading_card"
     android:minWidth="250dp"
     android:minHeight="110dp"
     android:minResizeWidth="180dp"

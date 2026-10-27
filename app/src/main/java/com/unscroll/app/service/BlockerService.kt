@@ -265,13 +265,13 @@ class BlockerService : Service() {
         if (rule != null) {
             // Bedtime honours +5 passes (not in Beast); focus never does.
             if (rule == PauseReason.BEDTIME && strictness != Strictness.BEAST && Allowances.isActive(app)) return
-            val gap = if (strictness == Strictness.CHILL && rule == PauseReason.BEDTIME) 5 * 60_000L else 3_000L
+            val gap = if (strictness == Strictness.CHILL && rule == PauseReason.BEDTIME) chillGap(justOpened) else 3_000L
             if (now - (lastActionAt[app] ?: 0L) < gap) return
             lastActionAt[app] = now
             debug("$app paused by $rule, strictness=$strictness -> acting")
             LimitActions.onLimitReached(
                 this,
-                PauseTarget(app, limited.appName, app, limited.limitMinutes, openCount = null, reason = rule),
+                PauseTarget(app, limited.appName, app, limited.limitOn(), openCount = null, reason = rule),
                 strictness
             )
             return
@@ -291,29 +291,32 @@ class BlockerService : Service() {
         }
         // App time + website time.
         val used = (usedMinutes[app] ?: 0) + (webMinutes[app] ?: 0)
-        if (justOpened) debug("$app used $used of ${limited.limitMinutes} min, allowance=${Allowances.isActive(app)}")
-        if (used < limited.limitMinutes) return
+        val limit = limited.limitOn() // today's budget (weekend one on Sat/Sun if set)
+        if (justOpened) debug("$app used $used of $limit min, allowance=${Allowances.isActive(app)}")
+        if (used < limit) return
         // Beast mode never honours "+5 min" passes, even ones taken before switching to it.
         if (strictness != Strictness.BEAST && Allowances.isActive(app)) return
 
         // 4. Don't repeat ourselves too often. Chill nudges are spaced out; the Pause screen
         //    is retried quickly in case the user slipped past it.
-        val minGap = when {
-            strictness != Strictness.CHILL -> 3_000L
-            justOpened -> 60_000L
-            else -> 5 * 60_000L
-        }
+        val minGap = if (strictness == Strictness.CHILL) chillGap(justOpened) else 3_000L
         if (now - (lastActionAt[app] ?: 0L) < minGap) return
         lastActionAt[app] = now
 
-        debug("$app over limit ($used/${limited.limitMinutes} min), strictness=$strictness -> acting")
+        debug("$app over limit ($used/$limit min), strictness=$strictness -> acting")
         val opens = container.usage.todayOpenCounts(setOf(app))[app]
         LimitActions.onLimitReached(
             this,
-            PauseTarget(app, limited.appName, app, limited.limitMinutes, opens),
+            PauseTarget(app, limited.appName, app, limit, opens),
             strictness
         )
     }
+
+    /**
+     * Time between Chill nudges for one app: when the app is (re)opened, nudge straight away
+     * unless we did in the last 10 s (quick app switches); while it stays open, every 5 minutes.
+     */
+    private fun chillGap(justOpened: Boolean): Long = if (justOpened) 10_000L else 5 * 60_000L
 
     /** Break reminders: has the user been on this limited app long enough for a reminder? */
     private fun checkBreak(now: Long, app: TrackedApp?) {

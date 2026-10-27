@@ -59,7 +59,6 @@ Video: Play may ask for a short video. Use `store/fgs-demo.mp4` (record a new on
 - `SYSTEM_ALERT_WINDOW` (Display over other apps): shows the Pause screen and the mascot bubble over a limited app.
 - `RECEIVE_BOOT_COMPLETED`: restarts the limit checks after a reboot.
 - `POST_NOTIFICATIONS`: reminders and nudges.
-- `WAKE_LOCK`, `ACCESS_NETWORK_STATE`: added by the home-screen widget library (WorkManager); no network access is used.
 
 ## Release > Setup > App signing (do this once, before the first upload)
 

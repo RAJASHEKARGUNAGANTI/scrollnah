@@ -21,6 +21,7 @@ class GrowthTest {
         val result = Growth.advance(PotProgress(), days(*good(7)))
         assertEquals(PotProgress(1, 0, start.plusDays(6).toString()), result.progress)
         assertEquals(emptyList<String>(), result.finishedPots)
+        assertEquals(1, result.newFlowers)
     }
 
     @Test
@@ -28,6 +29,7 @@ class GrowthTest {
         val result = Growth.advance(PotProgress(), days(*good(6)))
         assertEquals(0, result.progress.flowers)
         assertEquals(6, result.progress.daysTowardNext)
+        assertEquals(0, result.newFlowers)
     }
 
     @Test
@@ -56,6 +58,7 @@ class GrowthTest {
         val result = Growth.advance(PotProgress(), days(*good(28)))
         assertEquals(4, result.progress.flowers) // the full pot shows until the next day
         assertEquals(listOf(start.plusDays(27).toString()), result.finishedPots)
+        assertEquals(4, result.newFlowers)
 
         // The next day starts a new seed.
         val next = Growth.advance(result.progress, days(true, from = start.plusDays(28)))

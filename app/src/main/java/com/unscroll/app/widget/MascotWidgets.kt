@@ -1,302 +1,169 @@
 package com.unscroll.app.widget
 
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.view.View
 import android.widget.RemoteViews
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.coerceIn
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.glance.GlanceId
-import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
-import androidx.glance.LocalSize
-import androidx.glance.action.actionStartActivity
-import androidx.glance.action.clickable
-import androidx.glance.appwidget.AndroidRemoteViews
-import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.LinearProgressIndicator
-import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
-import androidx.glance.background
-import androidx.glance.color.ColorProvider
-import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
-import androidx.glance.layout.Column
-import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
-import androidx.glance.layout.padding
-import androidx.glance.layout.size
-import androidx.glance.layout.width
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextAlign
-import androidx.glance.text.TextStyle
 import com.unscroll.app.MainActivity
 import com.unscroll.app.R
+import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.durationPair
 import com.unscroll.app.ui.mascot.MascotBitmap
 import com.unscroll.app.ui.mascot.MascotLines
-import com.unscroll.app.ui.theme.Ink
-import com.unscroll.app.ui.theme.Lime
-import com.unscroll.app.ui.theme.Orange
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /*
- * Home-screen widgets, built with Jetpack Glance (Compose-style code that Android
- * turns into a widget). Both follow the chosen mascot theme and today's mood.
+ * Home-screen widgets, built with plain RemoteViews layouts (res/layout/widget_medium.xml,
+ * widget_small.xml and widget_mascot_frames.xml). No widget library: it keeps the app small.
+ * All three follow the chosen mascot theme and today's mood.
  *
  * Widgets don't update on their own: BlockerService calls [MascotWidgets.refreshIfChanged]
- * every minute, and the app calls [MascotWidgets.refresh] when it opens.
+ * every minute, the app calls [MascotWidgets.refresh] when it opens, and Android asks
+ * every 30 minutes (updatePeriodMillis in the widget info files in res/xml).
  */
 
-/** Medium widget (4x2): mascot, mood pill, title, the app closest to its limit, streak. */
-class MediumMascotWidget : GlanceAppWidget() {
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        MascotWidgets.reload(context)
-        provideContent { WithLatestState { state, mascot -> MediumContent(state, mascot) } }
+/** Shared by the three widgets: when Android asks for an update, redraw them all. */
+abstract class MascotWidgetProvider : AppWidgetProvider() {
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        // Reading today's numbers takes a moment, so finish in the background.
+        val pending = goAsync()
+        (context.applicationContext as UnscrollApplication).container.appScope.launch {
+            try {
+                MascotWidgets.refresh(context)
+            } finally {
+                pending.finish()
+            }
+        }
     }
 }
 
+/** Medium widget (4x2). Keeps the old class name so widgets people already placed keep working. */
+class BlobbyWidget : MascotWidgetProvider()
+
 /** Small widget (2x2): mascot + "4 min left" + "on Instagram today". */
-class SmallMascotWidget : GlanceAppWidget() {
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        MascotWidgets.reload(context)
-        provideContent { WithLatestState { state, mascot -> SmallContent(state, mascot) } }
-    }
-}
+class SmallMascotWidgetReceiver : MascotWidgetProvider()
 
 /**
  * Animated mascot widget (2x2): no background and no text, just the mascot in today's
  * mood standing on the wallpaper. It bobs (Blobby) or sways (Bloomy) and blinks.
  */
-class MascotOnlyWidget : GlanceAppWidget() {
-    // Exact = we get the real size, so the mascot can be as big as the space allows.
-    override val sizeMode = SizeMode.Exact
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        MascotWidgets.reload(context)
-        val motion = MascotFrames.animationsOn(context)
-        provideContent {
-            val state by MascotWidgets.latest.collectAsState()
-            val current = state ?: return@provideContent
-            val frames = remember(current.theme, current.mood, current.flowers, motion) {
-                MascotFrames.remoteViews(context, current, motion)
-            }
-            MascotOnlyContent(frames)
-        }
-    }
-}
-
-/**
- * Glance keeps a widget's content running for a while after it's drawn, and an update
- * during that time only redraws it. So the content watches [MascotWidgets.latest]
- * instead of keeping its own copy: new numbers or a new theme show up right away.
- */
-@Composable
-private fun WithLatestState(content: @Composable (WidgetState, ImageProvider) -> Unit) {
-    val state by MascotWidgets.latest.collectAsState()
-    val current = state ?: return
-    val mascot = remember(current.theme, current.mood, current.flowers) {
-        ImageProvider(MascotBitmap.render(current.theme, current.mood, current.flowers, MASCOT_PX))
-    }
-    content(current, mascot)
-}
-
-/**
- * Receiver for the medium widget. It keeps the old class name so widgets people
- * already placed (from before the Glance version) keep working.
- */
-class BlobbyWidget : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = MediumMascotWidget()
-}
-
-class SmallMascotWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = SmallMascotWidget()
-}
-
-class MascotOnlyWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = MascotOnlyWidget()
-}
+class MascotOnlyWidgetReceiver : MascotWidgetProvider()
 
 object MascotWidgets {
-    /** The newest widget data. Running widgets redraw by themselves when it changes. */
-    val latest = MutableStateFlow<WidgetState?>(null)
-
-    /** Re-reads today's data (used when a widget starts drawing). */
-    suspend fun reload(context: Context) {
-        latest.value = WidgetData.load(context)
-    }
+    /** What the widgets show right now, so we only redraw when something changed. */
+    @Volatile private var last: WidgetState? = null
 
     /** Redraws every placed widget. */
     suspend fun refresh(context: Context) {
         if (!anyPlaced(context)) return
-        reload(context)
-        updateAll(context)
+        val state = withContext(Dispatchers.IO) { WidgetData.load(context) }
+        last = state
+        draw(context, state)
     }
 
     /** Redraws only if the mood, numbers, theme or day changed since last time. */
     suspend fun refreshIfChanged(context: Context) {
         if (!anyPlaced(context)) return
-        val state = WidgetData.load(context)
-        if (state == latest.value) return
-        latest.value = state
-        updateAll(context)
+        val state = withContext(Dispatchers.IO) { WidgetData.load(context) }
+        if (state == last) return
+        last = state
+        draw(context, state)
     }
 
-    private suspend fun updateAll(context: Context) {
-        MediumMascotWidget().updateAll(context)
-        SmallMascotWidget().updateAll(context)
-        MascotOnlyWidget().updateAll(context)
+    private fun draw(context: Context, state: WidgetState) {
+        val manager = AppWidgetManager.getInstance(context)
+        fun update(provider: Class<*>, views: () -> RemoteViews) {
+            val ids = manager.getAppWidgetIds(ComponentName(context, provider))
+            if (ids.isNotEmpty()) manager.updateAppWidget(ids, views())
+        }
+        val mascot by lazy { MascotBitmap.render(state.theme, state.mood, state.flowers, MASCOT_PX) }
+        update(BlobbyWidget::class.java) { mediumViews(context, state, mascot) }
+        update(SmallMascotWidgetReceiver::class.java) { smallViews(context, state, mascot) }
+        update(MascotOnlyWidgetReceiver::class.java) {
+            MascotFrames.remoteViews(context, state, MascotFrames.animationsOn(context)).apply {
+                setOnClickPendingIntent(R.id.mascot_frames, openApp(context))
+            }
+        }
     }
 
-    private suspend fun anyPlaced(context: Context): Boolean {
-        val manager = GlanceAppWidgetManager(context)
-        return manager.getGlanceIds(MediumMascotWidget::class.java).isNotEmpty() ||
-            manager.getGlanceIds(SmallMascotWidget::class.java).isNotEmpty() ||
-            manager.getGlanceIds(MascotOnlyWidget::class.java).isNotEmpty()
+    private fun anyPlaced(context: Context): Boolean {
+        val manager = AppWidgetManager.getInstance(context)
+        return listOf(BlobbyWidget::class.java, SmallMascotWidgetReceiver::class.java, MascotOnlyWidgetReceiver::class.java)
+            .any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
     }
 }
 
 private const val MASCOT_PX = 220
 
-// Colours: ink text on the light card, light text on the dark card (night mode).
-private val TextColor = ColorProvider(day = Ink, night = Color(0xFFF2EEFF))
-private val PillTextColor = ColorProvider(day = Color.White, night = Ink)
+/** Tapping a widget opens the app. */
+private fun openApp(context: Context): PendingIntent = PendingIntent.getActivity(
+    context,
+    0,
+    Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+)
 
-private val openApp get() = actionStartActivity<MainActivity>()
+/** "Blobby, happy" for TalkBack. */
+private fun spokenMood(state: WidgetState) = state.theme.moodPill(state.mood).replace(" · ", ", ")
 
-@Composable
-private fun MediumContent(state: WidgetState, mascot: ImageProvider) {
-    Row(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .background(ImageProvider(R.drawable.widget_background))
-            .padding(start = 12.dp, top = 10.dp, end = 16.dp, bottom = 14.dp) // extra end/bottom = the hard shadow
-            .clickable(openApp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(mascot, contentDescription = state.theme.mascotName, modifier = GlanceModifier.size(92.dp))
-        Spacer(GlanceModifier.width(10.dp))
-        Column(GlanceModifier.defaultWeight()) {
-            if (state.setupTitle != null) {
-                Title(state.setupTitle)
-                SmallText(state.setupDetail.orEmpty())
-                return@Column
-            }
-            Text(
-                state.theme.moodPill(state.mood).uppercase(),
-                style = TextStyle(color = PillTextColor, fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                modifier = GlanceModifier
-                    .background(ImageProvider(R.drawable.widget_pill))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            )
-            Spacer(GlanceModifier.height(4.dp))
-            Title(MascotLines.widgetTitle(state.theme, state.mood))
-            Spacer(GlanceModifier.height(6.dp))
-            Row(GlanceModifier.fillMaxWidth()) {
-                Text(
-                    state.topApp.orEmpty(),
-                    style = TextStyle(color = TextColor, fontSize = 12.sp, fontWeight = FontWeight.Bold),
-                    maxLines = 1,
-                    modifier = GlanceModifier.defaultWeight()
-                )
-                Text(
-                    durationPair(state.topUsed, state.topLimit, " / "),
-                    style = TextStyle(color = TextColor, fontSize = 12.sp)
-                )
-            }
-            Spacer(GlanceModifier.height(3.dp))
-            ProgressBar(state.topUsed, state.topLimit)
-            Spacer(GlanceModifier.height(5.dp))
-            SmallText(streakText(state))
-        }
+private fun mediumViews(context: Context, state: WidgetState, mascot: android.graphics.Bitmap): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.widget_medium)
+    views.setOnClickPendingIntent(R.id.widget_root, openApp(context))
+    views.setImageViewBitmap(R.id.mascot, mascot)
+    views.setContentDescription(R.id.mascot, spokenMood(state))
+
+    val setup = state.setupTitle != null
+    // While setting up: just a title and a hint. Otherwise the pill, numbers, bar and streak.
+    for (id in intArrayOf(R.id.pill, R.id.numbers, R.id.bar, R.id.streak)) {
+        views.setViewVisibility(id, if (setup) View.GONE else View.VISIBLE)
     }
-}
-
-@Composable
-private fun SmallContent(state: WidgetState, mascot: ImageProvider) {
-    Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .background(ImageProvider(R.drawable.widget_background))
-            .padding(start = 8.dp, top = 8.dp, end = 12.dp, bottom = 12.dp)
-            .clickable(openApp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(mascot, contentDescription = state.theme.mascotName, modifier = GlanceModifier.size(64.dp))
-        if (state.setupTitle != null) {
-            SmallText(state.setupDetail.orEmpty(), center = true)
-            return@Column
-        }
-        val left = state.topLimit - state.topUsed
-        Text(
-            if (left > 0) "${duration(left)} left" else "Time's up",
-            style = TextStyle(color = TextColor, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
-            maxLines = 1
-        )
-        SmallText("on ${state.topApp} today", center = true)
+    views.setViewVisibility(R.id.setup_detail, if (setup) View.VISIBLE else View.GONE)
+    if (setup) {
+        views.setTextViewText(R.id.title, state.setupTitle)
+        views.setTextViewText(R.id.setup_detail, state.setupDetail.orEmpty())
+        return views
     }
+
+    views.setTextViewText(R.id.pill, state.theme.moodPill(state.mood).uppercase())
+    views.setTextViewText(R.id.title, MascotLines.widgetTitle(state.theme, state.mood))
+    views.setTextViewText(R.id.top_app, state.topApp.orEmpty())
+    views.setTextViewText(R.id.top_minutes, durationPair(state.topUsed, state.topLimit, " / "))
+
+    // Lime bar, or orange when close to the limit (like Home).
+    val progress = if (state.topLimit > 0) (state.topUsed * 100 / state.topLimit).coerceIn(0, 100) else 0
+    val nearLimit = progress >= 70
+    views.setViewVisibility(R.id.bar_lime, if (nearLimit) View.GONE else View.VISIBLE)
+    views.setViewVisibility(R.id.bar_orange, if (nearLimit) View.VISIBLE else View.GONE)
+    views.setProgressBar(if (nearLimit) R.id.bar_orange else R.id.bar_lime, 100, progress, false)
+
+    views.setTextViewText(R.id.streak, streakText(state))
+    return views
 }
 
-/** The animated widget: just the moving mascot in today's mood, as big as the space allows. */
-@Composable
-private fun MascotOnlyContent(frames: RemoteViews) {
-    val space = LocalSize.current
-    val mascotSize = minOf(space.width, space.height).coerceIn(56.dp, 220.dp)
-    Box(
-        modifier = GlanceModifier.fillMaxSize().clickable(openApp),
-        contentAlignment = Alignment.Center
-    ) {
-        AndroidRemoteViews(frames, GlanceModifier.size(mascotSize))
+private fun smallViews(context: Context, state: WidgetState, mascot: android.graphics.Bitmap): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.widget_small)
+    views.setOnClickPendingIntent(R.id.widget_root, openApp(context))
+    views.setImageViewBitmap(R.id.mascot, mascot)
+    views.setContentDescription(R.id.mascot, spokenMood(state))
+
+    if (state.setupTitle != null) {
+        views.setViewVisibility(R.id.time_left, View.GONE)
+        views.setTextViewText(R.id.detail, state.setupDetail.orEmpty())
+        return views
     }
-}
-
-@Composable
-private fun Title(text: String) {
-    Text(text, style = TextStyle(color = TextColor, fontSize = 17.sp, fontWeight = FontWeight.Bold), maxLines = 2)
-}
-
-@Composable
-private fun SmallText(text: String, center: Boolean = false) {
-    Text(
-        text,
-        style = TextStyle(color = TextColor, fontSize = 11.sp, textAlign = if (center) TextAlign.Center else TextAlign.Start),
-        maxLines = 2
-    )
-}
-
-/** Used / limit bar in a bordered pill. Orange when close to the limit (like Home). */
-@Composable
-private fun ProgressBar(used: Int, limit: Int) {
-    val progress = if (limit > 0) (used.toFloat() / limit).coerceIn(0f, 1f) else 0f
-    Box(
-        GlanceModifier
-            .fillMaxWidth()
-            .height(12.dp)
-            .background(ImageProvider(R.drawable.widget_bar_frame))
-            .padding(2.dp)
-    ) {
-        LinearProgressIndicator(
-            progress = progress,
-            modifier = GlanceModifier.fillMaxSize(),
-            color = androidx.glance.unit.ColorProvider(if (progress >= 0.7f) Orange else Lime),
-            backgroundColor = androidx.glance.unit.ColorProvider(Color.Transparent)
-        )
-    }
+    val left = state.topLimit - state.topUsed
+    views.setViewVisibility(R.id.time_left, View.VISIBLE)
+    views.setTextViewText(R.id.time_left, if (left > 0) "${duration(left)} left" else "Time's up")
+    views.setTextViewText(R.id.detail, "on ${state.topApp} today")
+    return views
 }
 
 /** "10-day streak" (Blobby) or "10-day streak, 1 flower" (Bloomy). */

@@ -98,7 +98,7 @@ fun PauseRoute(onDone: () -> Unit, onGoToLimits: () -> Unit) {
     PauseScreen(
         appName = app.appName,
         openCount = opens,
-        limitMinutes = app.limitMinutes,
+        limitMinutes = app.limitOn(),
         locked = strictness == Strictness.BEAST, // preview matches the user's strictness
         isPreview = !DemoMode.active,
         onDecline = { reason ->

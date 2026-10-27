@@ -77,7 +77,8 @@ fun UnscrollApp() {
                 ReadableWidth {
                     HomeScreen(
                         onEditLimits = { navController.navigate(Destination.LIMITS.route) },
-                        onOpenSettings = { navController.navigate(SETTINGS_ROUTE) }
+                        onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                        onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
                     )
                 }
             }

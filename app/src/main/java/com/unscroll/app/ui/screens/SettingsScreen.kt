@@ -2,6 +2,9 @@
 
 package com.unscroll.app.ui.screens
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.FlowRow
 import android.content.Context
 import android.content.Intent
@@ -17,7 +20,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
@@ -38,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -313,24 +321,36 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     }
 }
 
-/** A theme card: the mascot preview, its name, lime when picked. */
+/**
+ * A theme card: the mascot preview, its name, lime when picked. [detail] replaces the
+ * "Picked / Tap to pick" line (setup uses it to say what each mascot does).
+ */
 @Composable
-private fun MascotChoice(theme: MascotTheme, flowers: Int, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun MascotChoice(
+    theme: MascotTheme,
+    flowers: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    mascotSize: Dp = 84.dp,
+    detail: String? = null
+) {
     val background = if (selected) Lime else Neo.colors.surface
     Column(
         modifier
             .clip(CardShape)
             .background(background, CardShape)
             .border(BorderWidth, Neo.colors.outline, CardShape)
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Mascot(mood = MoodLevel.HAPPY, look = MascotLook(theme, flowers), size = 84.dp, animated = selected)
+        Mascot(mood = MoodLevel.HAPPY, look = MascotLook(theme, flowers), size = mascotSize, animated = selected)
         Text(theme.mascotName, fontWeight = FontWeight.Bold, color = contentColorOn(background), modifier = Modifier.padding(top = 6.dp))
         Text(
-            if (selected) "Picked" else "Tap to pick",
+            detail ?: if (selected) "Picked" else "Tap to pick",
             style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
             color = contentColorOn(background)
         )
     }
@@ -417,7 +437,7 @@ private data class Perms(
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
         NeoCard(contentPadding = PaddingValues(14.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
         }
@@ -431,7 +451,7 @@ private fun SettingRow(title: String, detail: String, action: String, onClick: (
             Text(title, fontWeight = FontWeight.Bold)
             Text(detail, style = MaterialTheme.typography.bodyMedium)
         }
-        ActionPill(action, onClick)
+        ActionPill(action, onClick, spoken = "$action $title") // e.g. "Edit Name"
     }
 }
 
@@ -445,34 +465,43 @@ private fun PermissionRow(title: String, detail: String, granted: Boolean, onAll
         if (granted) {
             Text("On", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp))
         } else {
-            ActionPill("Allow", onAllow)
+            ActionPill("Allow", onAllow, spoken = "Allow $title")
         }
     }
 }
 
 @Composable
-private fun ActionPill(text: String, onClick: () -> Unit) {
+private fun ActionPill(text: String, onClick: () -> Unit, spoken: String = text) {
     Box(
         Modifier
+            .heightIn(min = 44.dp)
             .clip(PillShape)
             .background(Lime, PillShape)
             .border(BorderWidth, Neo.colors.outline, PillShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = spoken }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(text, fontWeight = FontWeight.Bold, color = Ink)
     }
 }
 
+/** Lime pill. [isChoice] = one of a pick-one set (TalkBack says "selected"); false = a plain button. */
 @Composable
-internal fun ChoicePill(text: String, selected: Boolean, onClick: () -> Unit) {
+internal fun ChoicePill(text: String, selected: Boolean, isChoice: Boolean = true, onClick: () -> Unit) {
     Box(
         Modifier
+            .heightIn(min = 44.dp)
             .clip(PillShape)
             .background(if (selected) Lime else Neo.colors.surface, PillShape)
             .border(BorderWidth, Neo.colors.outline, PillShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .then(
+                if (isChoice) Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+                else Modifier.clickable(role = Role.Button, onClick = onClick)
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(text, fontWeight = FontWeight.Bold, color = if (selected) Ink else Neo.colors.content)
     }

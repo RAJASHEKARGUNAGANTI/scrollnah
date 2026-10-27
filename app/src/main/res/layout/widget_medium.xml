@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Medium (4x2) widget: mascot, mood pill, title, the app closest to its limit, streak.
+     Filled in by MascotWidgets.kt. Dark colours come from the -night resources. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="14dp">
+    <!-- Extra end/bottom padding = room for the hard shadow. -->
+
+    <ImageView
+        android:id="@+id/mascot"
+        android:layout_width="92dp"
+        android:layout_height="92dp"
+        android:scaleType="fitCenter" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/widget_pill"
+            android:paddingStart="8dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="2dp"
+            android:textColor="@color/widget_pill_text"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/widget_text"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <!-- Only while setting up (no usage access or no limits yet). -->
+        <TextView
+            android:id="@+id/setup_detail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:textColor="@color/widget_text"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/numbers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/top_app"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/widget_text"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/top_minutes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/widget_text"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Used / limit bar in a bordered pill: lime, or orange when close to the limit. -->
+        <FrameLayout
+            android:id="@+id/bar"
+            android:layout_width="match_parent"
+            android:layout_height="12dp"
+            android:layout_marginTop="3dp"
+            android:background="@drawable/widget_bar_frame"
+            android:padding="2dp">
+
+            <ProgressBar
+                android:id="@+id/bar_lime"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:max="100"
+                android:progressDrawable="@drawable/widget_bar_lime" />
+
+            <ProgressBar
+                android:id="@+id/bar_orange"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:max="100"
+                android:progressDrawable="@drawable/widget_bar_orange"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/streak"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:maxLines="2"
+            android:textColor="@color/widget_text"
+            android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

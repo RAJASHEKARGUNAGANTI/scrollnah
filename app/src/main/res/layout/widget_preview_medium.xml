@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Preview of the medium widget in the launcher's widget picker (the real one is Glance code). -->
+<!-- Preview of the medium widget in the launcher's widget picker (the real one is drawn by MascotWidgets.kt). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -33,7 +33,7 @@
             android:paddingEnd="8dp"
             android:paddingBottom="2dp"
             android:text="BLOBBY · HAPPY"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/widget_pill_text"
             android:textSize="10sp"
             android:textStyle="bold" />
 

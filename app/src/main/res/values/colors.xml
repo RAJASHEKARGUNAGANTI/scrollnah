@@ -2,6 +2,7 @@
 <resources>
     <!-- Home-screen widget text (dark version in values-night). -->
     <color name="widget_text">#16131F</color>
+    <color name="widget_pill_text">#FFFFFF</color>
 
     <!-- Opening (splash) screen. Dark versions in values-night. -->
     <color name="splash_background">#F2EEFF</color>

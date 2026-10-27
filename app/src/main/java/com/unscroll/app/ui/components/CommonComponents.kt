@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.components
 
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +27,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -125,6 +133,8 @@ fun NeoPill(
         letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
         onTextLayout = { onLineCount?.invoke(it.lineCount) },
         modifier = modifier
+            // TalkBack reads the normal-case text, with a pause instead of "middle dot".
+            .semantics { contentDescription = text.replace(" · ", ", ") }
             .clip(PillShape)
             .background(fill)
             .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -143,17 +153,23 @@ fun LetterTile(
         modifier = modifier
             .size(size)
             .background(color, shape)
-            .border(BorderWidth, Neo.colors.outline, shape),
+            .border(BorderWidth, Neo.colors.outline, shape)
+            .clearAndSetSemantics {}, // decoration: the app name is always next to it
         contentAlignment = Alignment.Center
     ) {
         Text(letter, fontFamily = BodyFontFamily, fontWeight = FontWeight.Black, color = contentColorOn(color))
     }
 }
 
+/** [spoken] is what TalkBack says for the bar, e.g. "20 of 30 minutes used". */
 @Composable
-fun NeoProgressBar(progress: Float, color: Color, modifier: Modifier = Modifier) {
+fun NeoProgressBar(progress: Float, color: Color, modifier: Modifier = Modifier, spoken: String? = null) {
     Box(
         modifier = modifier
+            .semantics {
+                progressBarRangeInfo = ProgressBarRangeInfo(progress.coerceIn(0f, 1f), 0f..1f)
+                if (spoken != null) stateDescription = spoken
+            }
             .fillMaxWidth()
             .height(10.dp)
             .clip(PillShape)
@@ -189,7 +205,7 @@ fun NeoButtonPrimary(
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
                 .clip(ButtonShape)
-                .clickable(enabled = enabled, onClick = onClick),
+                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -215,7 +231,7 @@ fun NeoButtonOutline(
             .heightIn(min = 52.dp)
             .clip(ButtonShape)
             .border(BorderWidth, LocalContentColor.current, ButtonShape)
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         // Uses the surrounding content colour: ink on the orange Pause screen, light on dark cards.
@@ -238,7 +254,7 @@ fun NeoChip(
             .clip(PillShape)
             .background(if (selected) com.unscroll.app.ui.theme.White else Color.Transparent, PillShape)
             .border(BorderWidth, lineColor, PillShape)
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {

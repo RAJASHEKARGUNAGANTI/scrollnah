@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.screens
 
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -73,7 +74,12 @@ fun GardenScreen(onBack: () -> Unit = {}) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { pot ->
                         val number = pots.size - pots.indexOf(pot)
-                        NeoCard(modifier = Modifier.weight(1f), contentPadding = PaddingValues(12.dp)) {
+                        NeoCard(
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics(mergeDescendants = true) {}, // "Pot 2, finished 3 Oct 2026"
+                            contentPadding = PaddingValues(12.dp)
+                        ) {
                             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Mascot(mood = MoodLevel.THRIVING, look = fullPot, animated = false, size = 110.dp)
                                 Text("Pot $number", fontWeight = FontWeight.Bold)

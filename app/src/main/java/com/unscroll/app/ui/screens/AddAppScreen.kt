@@ -1,5 +1,7 @@
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.ui.components.AppTile
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -110,12 +112,12 @@ fun AddAppScreen(onBack: () -> Unit = {}) {
 @Composable
 private fun AppChoiceRow(app: InstalledApp, minutesToday: Int, onClick: () -> Unit) {
     NeoCard(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.clickable(role = Role.Button, onClickLabel = "add", onClick = onClick),
         shadow = false,
         contentPadding = PaddingValues(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LetterTile(letterFor(app.label), tileColorFor(app.packageName))
+            AppTile(app.packageName, app.label)
             Column(
                 Modifier
                     .weight(1f)

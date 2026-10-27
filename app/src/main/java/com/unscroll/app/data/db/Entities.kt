@@ -2,9 +2,12 @@ package com.unscroll.app.data.db
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.time.DayOfWeek
+import java.time.LocalDate
 
 /**
  * An app the user picked in Limits, with its daily budget.
+ * [weekendLimitMinutes] = a different budget on Saturday and Sunday (null = same every day).
  * [breakMinutes] = its own break reminder time (null = use the general one).
  */
 @Entity(tableName = "tracked_apps")
@@ -14,8 +17,20 @@ data class TrackedApp(
     val limitMinutes: Int,
     val enabled: Boolean = true,
     val addedAt: Long = System.currentTimeMillis(),
-    val breakMinutes: Int? = null
-)
+    val breakMinutes: Int? = null,
+    val weekendLimitMinutes: Int? = null
+) {
+    /** The budget for [date]: the weekend one on Saturday and Sunday (if set), else the normal one. */
+    fun limitOn(date: LocalDate = LocalDate.now()): Int =
+        if (weekendLimitMinutes != null && isWeekend(date)) weekendLimitMinutes else limitMinutes
+}
+
+fun isWeekend(date: LocalDate): Boolean =
+    date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
+
+/** Sum of the enabled apps' budgets for [date]. */
+fun List<TrackedApp>.totalLimitOn(date: LocalDate = LocalDate.now()): Int =
+    filter { it.enabled }.sumOf { it.limitOn(date) }
 
 /** Daily budget for an in-app feature like Instagram Reels or YouTube Shorts. */
 @Entity(tableName = "feature_limits")

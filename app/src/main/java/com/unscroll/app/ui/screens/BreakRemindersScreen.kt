@@ -2,6 +2,8 @@
 
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.ui.components.AppTile
+import androidx.compose.ui.semantics.heading
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,6 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -145,7 +150,8 @@ fun BreakRemindersScreen(onBack: () -> Unit = {}) {
                             Stepper(
                                 minutes = settings.minutes,
                                 onDecrease = { save(settings.copy(minutes = stepDown(settings.minutes))) },
-                                onIncrease = { save(settings.copy(minutes = stepUp(settings.minutes))) }
+                                onIncrease = { save(settings.copy(minutes = stepUp(settings.minutes))) },
+                                what = "Break reminder time"
                             )
                         }
                     }
@@ -228,7 +234,7 @@ private fun stepUp(minutes: Int) = (minutes + LIMIT_STEP_MINUTES).coerceAtMost(M
 @Composable
 private fun SectionTitle(title: String, detail: String?) {
     Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
         if (detail != null) Text(detail, style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -244,7 +250,7 @@ private fun SwitchRow(title: String, detail: String, checked: Boolean, onToggle:
             Text(title, fontWeight = FontWeight.Bold)
             Text(detail, style = MaterialTheme.typography.bodyMedium)
         }
-        NeoSwitch(checked = checked, onToggle = onToggle)
+        NeoSwitch(checked = checked, onToggle = onToggle, label = title)
     }
 }
 
@@ -254,7 +260,7 @@ private fun OverrideRow(app: TrackedApp, onChange: (Int?) -> Unit) {
     val minutes = app.breakMinutes ?: return
     NeoCard(contentPadding = PaddingValues(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LetterTile(letterFor(app.appName), tileColorFor(app.packageName))
+            AppTile(app.packageName, app.appName)
             Column(
                 Modifier
                     .padding(start = 10.dp)
@@ -265,14 +271,16 @@ private fun OverrideRow(app: TrackedApp, onChange: (Int?) -> Unit) {
                 Stepper(
                     minutes = minutes,
                     onDecrease = { onChange(stepDown(minutes)) },
-                    onIncrease = { onChange(stepUp(minutes)) }
+                    onIncrease = { onChange(stepUp(minutes)) },
+                    what = "${app.appName} break time"
                 )
             }
             Box(
                 Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .clickable { onChange(null) }, // back to the general time
+                    .clickable(role = Role.Button) { onChange(null) } // back to the general time
+                    .semantics { contentDescription = "Use the general break time for ${app.appName}" },
                 contentAlignment = Alignment.Center
             ) { CloseIcon() }
         }
@@ -287,7 +295,7 @@ private fun PermissionHint(title: String, detail: String, onAllow: () -> Unit) {
                 Text(title, fontWeight = FontWeight.Bold)
                 Text(detail, style = MaterialTheme.typography.bodyMedium)
             }
-            ChoicePill("Allow", selected = true, onClick = onAllow)
+            ChoicePill("Allow", selected = true, onClick = onAllow, isChoice = false)
         }
     }
 }
@@ -310,11 +318,11 @@ private fun AddOverrideDialog(apps: List<TrackedApp>, hasApps: Boolean, onPick: 
                                 .fillMaxWidth()
                                 .heightIn(min = 52.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { onPick(app) }
+                                .clickable(role = Role.Button) { onPick(app) }
                                 .padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            LetterTile(letterFor(app.appName), tileColorFor(app.packageName), size = 36.dp)
+                            AppTile(app.packageName, app.appName, size = 36.dp)
                             Text(app.appName, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
                         }
                     }

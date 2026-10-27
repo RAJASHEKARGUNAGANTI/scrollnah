@@ -3,6 +3,7 @@ package com.unscroll.app.data
 import android.content.Context
 import com.unscroll.app.data.db.DailySummary
 import com.unscroll.app.data.db.UnscrollDatabase
+import com.unscroll.app.data.db.totalLimitOn
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -62,7 +63,6 @@ class StreakRepository(
         val enabled = db.trackedAppDao().getAll().filter { it.enabled }
         if (enabled.isEmpty()) return
         val packages = enabled.map { it.packageName }.toSet()
-        val limit = enabled.sumOf { it.limitMinutes }
 
         val installDay = UsageRepository.dayStartOf(
             context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
@@ -71,7 +71,10 @@ class StreakRepository(
         val newDays = dailyTotalsWithWeb(packages, days = 8)
             .dropLast(1) // today isn't finished yet
             .filter { it.hasData && it.dayStart >= installDay }
-            .map { DailySummary(dateOf(it.dayStart).toString(), it.minutes, limit) }
+            .map { day ->
+                val date = dateOf(day.dayStart)
+                DailySummary(date.toString(), day.minutes, enabled.totalLimitOn(date)) // that day's budget
+            }
             .filter { it.date !in saved }
         if (newDays.isNotEmpty()) db.dailySummaryDao().upsertAll(newDays)
     }
@@ -82,7 +85,7 @@ class StreakRepository(
         val (current, best) = computeStreaks(db.dailySummaryDao().all(), LocalDate.now())
         if (enabled.isEmpty() || !usage.hasUsageAccess()) return StreakInfo(current, best, 0, 0)
         val today = dailyTotalsWithWeb(enabled.map { it.packageName }.toSet(), days = 1).last()
-        return StreakInfo(current, best, today.minutes, enabled.sumOf { it.limitMinutes })
+        return StreakInfo(current, best, today.minutes, enabled.totalLimitOn())
     }
 
     companion object {

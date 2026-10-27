@@ -1,5 +1,7 @@
 package com.unscroll.app.ui.navigation
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,7 +59,7 @@ private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> 
             .clip(shape)
             .background(if (selected) Lime else androidx.compose.ui.graphics.Color.Transparent, shape)
             .border(2.dp, if (selected) Neo.colors.outline else androidx.compose.ui.graphics.Color.Transparent, shape)
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick) // TalkBack: "Home, tab, selected"
             .padding(horizontal = 14.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

@@ -74,6 +74,23 @@ android {
         compose = true
         buildConfig = true // gives us BuildConfig.DEBUG
     }
+
+    // Keeping the app small:
+    // - The app is in English, so only keep English text from the libraries we use
+    //   (they ship their own words in ~90 languages).
+    androidResources {
+        localeFilters += "en"
+    }
+    packaging {
+        resources {
+            // Only needed for Kotlin reflection and coroutine debugging, which the app doesn't use.
+            excludes += listOf("kotlin/**.kotlin_builtins", "DebugProbesKt.bin", "META-INF/*.version")
+        }
+        jniLibs {
+            // DataStore's helper for sharing settings between processes; ScrollNah uses one process.
+            excludes += "**/libdatastore_shared_counter.so"
+        }
+    }
 }
 
 dependencies {
@@ -97,8 +114,6 @@ dependencies {
     // Splash screen (the opening screen) that looks the same on every Android version
     implementation(libs.androidx.core.splashscreen)
 
-    // Home-screen widget built with Compose-style code
-    implementation(libs.androidx.glance.appwidget)
 
     // Unit tests for the pure logic (moods, break sessions, Bloomy's growth)
     testImplementation(libs.junit)

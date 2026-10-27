@@ -21,7 +21,8 @@ object Growth {
     const val DAYS_PER_FLOWER = 7
     const val MAX_FLOWERS = 4
 
-    data class Result(val progress: PotProgress, val finishedPots: List<String>)
+    /** [newFlowers] = flowers grown during this walk (for the "new flower!" celebration). */
+    data class Result(val progress: PotProgress, val finishedPots: List<String>, val newFlowers: Int = 0)
 
     /**
      * Walks through finished days (oldest first) that come after [start].lastDate:
@@ -36,6 +37,7 @@ object Growth {
         var run = start.daysTowardNext
         var last = start.lastDate?.let { LocalDate.parse(it) }
         val finished = mutableListOf<String>()
+        var grown = 0
 
         for (day in days.sortedBy { it.date }) {
             val date = LocalDate.parse(day.date)
@@ -50,6 +52,7 @@ object Growth {
                 run++
                 if (run == DAYS_PER_FLOWER) {
                     flowers++
+                    grown++
                     run = 0
                     if (flowers == MAX_FLOWERS) finished += day.date
                 }
@@ -59,7 +62,7 @@ object Growth {
             }
             last = date
         }
-        return Result(PotProgress(flowers, run, last?.toString()), finished)
+        return Result(PotProgress(flowers, run, last?.toString()), finished, grown)
     }
 }
 
@@ -75,5 +78,15 @@ class GrowthRepository(private val db: UnscrollDatabase, private val settings: S
         if (result.progress == start) return@withLock
         result.finishedPots.forEach { db.gardenDao().insert(GardenPot(completedOn = it)) }
         settings.setPotProgress(result.progress)
+        // Bloomy celebrates on Home the next time the app opens (only if Bloomy is the mascot).
+        val event = when {
+            result.finishedPots.isNotEmpty() -> BloomEvent.POT
+            result.newFlowers > 0 -> BloomEvent.FLOWER
+            else -> null
+        }
+        if (event != null && settings.mascotTheme.first() == MascotTheme.BLOOMY) settings.setBloomEvent(event)
     }
 }
+
+/** Something worth celebrating in Bloomy's pot: a new flower, or a full pot moved to the garden. */
+enum class BloomEvent { FLOWER, POT }

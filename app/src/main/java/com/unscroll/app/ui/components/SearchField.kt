@@ -1,5 +1,8 @@
 package com.unscroll.app.ui.components
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -39,7 +42,8 @@ fun AppSearchField(query: String, onQueryChange: (String) -> Unit, modifier: Mod
                     Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .clickable { onQueryChange("") },
+                        .clickable(role = Role.Button) { onQueryChange("") }
+                        .semantics { contentDescription = "Clear search" },
                     contentAlignment = Alignment.Center
                 ) { CloseIcon() }
             }

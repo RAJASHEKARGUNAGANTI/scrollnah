@@ -25,6 +25,7 @@ class SettingsRepository(context: Context) {
     private val potFlowersKey = intPreferencesKey("pot_flowers")
     private val potDaysKey = intPreferencesKey("pot_days")
     private val potLastDateKey = stringPreferencesKey("pot_last_date")
+    private val bloomEventKey = stringPreferencesKey("bloom_event")
     private val breakEnabledKey = booleanPreferencesKey("break_enabled")
     private val breakMinutesKey = intPreferencesKey("break_minutes")
     private val breakStyleKey = stringPreferencesKey("break_style")
@@ -81,6 +82,22 @@ class SettingsRepository(context: Context) {
             prefs[potFlowersKey] = progress.flowers
             prefs[potDaysKey] = progress.daysTowardNext
             if (progress.lastDate == null) prefs.remove(potLastDateKey) else prefs[potLastDateKey] = progress.lastDate
+        }
+    }
+
+    /** A new flower or full pot Bloomy hasn't celebrated yet (null = nothing to show). */
+    val bloomEvent: Flow<BloomEvent?> = store.data.map { prefs ->
+        BloomEvent.entries.find { it.name == prefs[bloomEventKey] }
+    }
+
+    /** A full pot beats a flower: never replace a pending POT with FLOWER. null clears it. */
+    suspend fun setBloomEvent(event: BloomEvent?) {
+        store.edit { prefs ->
+            when {
+                event == null -> prefs.remove(bloomEventKey)
+                event == BloomEvent.FLOWER && prefs[bloomEventKey] == BloomEvent.POT.name -> Unit
+                else -> prefs[bloomEventKey] = event.name
+            }
         }
     }
 

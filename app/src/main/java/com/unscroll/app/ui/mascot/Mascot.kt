@@ -1,6 +1,22 @@
 package com.unscroll.app.ui.mascot
 
 import android.graphics.Bitmap
+import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.sin
 import android.provider.Settings
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
@@ -72,9 +88,11 @@ fun DrawScope.drawMascot(
 }
 
 /**
- * The mascot on screen, in the given mood. When [animated] is on, it bobs (Blobby)
- * or sways (Bloomy), blinks now and then, and fades between moods.
+ * The mascot on screen, in the given mood. When [animated] is on, it moves in a way
+ * that fits the mood (see [AnimatedMascot]), blinks now and then, and fades between moods.
  * [onOrange] = it sits on an orange page or card, so its main colour changes.
+ * [contentDescription] = what TalkBack says (null = decoration, skipped by TalkBack).
+ * [pokeable] = tapping it makes it jump and wiggle (Home's mood card).
  */
 @Composable
 fun Mascot(
@@ -83,71 +101,186 @@ fun Mascot(
     size: Dp = 132.dp,
     onOrange: Boolean = false,
     animated: Boolean = true,
-    look: MascotLook = LocalMascot.current
+    look: MascotLook = LocalMascot.current,
+    contentDescription: String? = null,
+    pokeable: Boolean = false
 ) {
     // Respect "Remove animations" in the phone's accessibility settings.
     val context = LocalContext.current
     val motionOn = animated && remember {
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
     }
+    val described = if (contentDescription == null) modifier else modifier.semantics {
+        this.contentDescription = contentDescription
+        role = Role.Image
+    }
     if (motionOn) {
-        AnimatedMascot(mood, modifier, size, onOrange, look)
+        AnimatedMascot(mood, described, size, onOrange, look, pokeable)
     } else {
         // Still picture: no animation clock running (cheaper in lists like the garden).
-        Canvas(modifier.size(size)) { drawMascot(look.theme, mood, look.flowers, onOrange) }
+        Canvas(described.size(size)) { drawMascot(look.theme, mood, look.flowers, onOrange) }
     }
 }
 
+/**
+ * The moving mascot. Each mood has its own body language:
+ * - thriving: bouncy, with a little hop every few seconds
+ * - happy: a gentle bob
+ * - okay: a slower, smaller bob while the eyes look around
+ * - worried / thirsty: quick nervous bob and a shiver now and then
+ * - melting / wilting: a slow, heavy sag
+ * Blobby squishes from the bottom; Bloomy's pot stays put and the stems sway more or less.
+ * Changing mood gives a small "boing", and a poke makes it jump and wiggle.
+ */
 @Composable
-private fun AnimatedMascot(mood: MoodLevel, modifier: Modifier, size: Dp, onOrange: Boolean, look: MascotLook) {
+private fun AnimatedMascot(
+    mood: MoodLevel,
+    modifier: Modifier,
+    size: Dp,
+    onOrange: Boolean,
+    look: MascotLook,
+    pokeable: Boolean
+) {
     val transition = rememberInfiniteTransition(label = "mascot")
-    // -1..1 and back: drives the bob, squish and sway. Nervous moods move faster, melting is slow.
+
+    // Breathing / bobbing rhythm (-1..1 and back) and how strongly each mood moves.
     val bobMs = when (mood) {
-        MoodLevel.WORRIED -> 700
-        MoodLevel.OVER -> 2000
-        else -> 1400
+        MoodLevel.THRIVING -> 1100
+        MoodLevel.HAPPY -> 1400
+        MoodLevel.OKAY -> 1900
+        MoodLevel.WORRIED -> 650
+        MoodLevel.OVER -> 2600
+    }
+    val squish = when (mood) { // Blobby's squash and stretch
+        MoodLevel.THRIVING -> 0.035f
+        MoodLevel.OKAY -> 0.015f
+        MoodLevel.OVER -> 0.05f // heavy and droopy
+        else -> 0.025f
+    }
+    val swayAmount = when (mood) { // Bloomy's stems
+        MoodLevel.THRIVING -> 1.4f
+        MoodLevel.HAPPY -> 1f
+        MoodLevel.OKAY -> 0.8f
+        MoodLevel.WORRIED -> 0.5f
+        MoodLevel.OVER -> 0.3f
     }
     val bob by transition.animateFloat(
         initialValue = -1f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(bobMs, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(bobMs, easing = EaseInOutSine), RepeatMode.Reverse),
         label = "bob"
     )
     val glance by transition.animateFloat(
         initialValue = -1f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(2600, easing = EaseInOutSine), RepeatMode.Reverse),
         label = "glance"
     )
     val twinkle by transition.animateFloat(
         initialValue = 0.75f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(900, easing = EaseInOutSine), RepeatMode.Reverse),
         label = "twinkle"
     )
+    // Thriving: rest, hop up, land with a squash, settle. (0 = on the ground, 1 = top of the hop.)
+    val hop by transition.animateFloat(
+        initialValue = 0f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            keyframes {
+                durationMillis = 2800
+                0f at 0
+                0f at 1900
+                1f at 2150 using FastOutSlowInEasing
+                0f at 2380 using FastOutLinearInEasing
+                -0.6f at 2480 // squash on landing
+                0f at 2800 using FastOutSlowInEasing
+            }
+        ),
+        label = "hop"
+    )
+    // Worried: still, then a quick shiver (-1..1 a few times), then still again.
+    val shiver by transition.animateFloat(
+        initialValue = 0f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            keyframes {
+                durationMillis = 3200
+                0f at 0
+                0f at 2600
+                -1f at 2660
+                1f at 2740
+                -1f at 2820
+                1f at 2900
+                -0.5f at 2980
+                0f at 3060
+            }
+        ),
+        label = "shiver"
+    )
 
-    // Blink: eyes close for a moment every few seconds.
+    // Blink: eyes close for a moment every few seconds, sometimes twice in a row.
     val eyeOpen = remember { Animatable(1f) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(Random.nextLong(2_500, 5_000))
-            eyeOpen.animateTo(0.1f, tween(80))
-            eyeOpen.animateTo(1f, tween(120))
+            repeat(if (Random.nextInt(5) == 0) 2 else 1) {
+                eyeOpen.animateTo(0.1f, tween(80))
+                eyeOpen.animateTo(1f, tween(120))
+            }
+        }
+    }
+
+    // Mood change: a small springy "boing" (skipped the first time it appears).
+    val boing = remember { Animatable(1f) }
+    var shownMood by remember { mutableStateOf(mood) }
+    LaunchedEffect(mood) {
+        if (mood != shownMood) {
+            shownMood = mood
+            boing.snapTo(0.86f)
+            boing.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = 380f))
+        }
+    }
+
+    // Poke: 0 -> 1 over 700 ms; drives a jump and a wiggle that fades out.
+    val poke = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val tapModifier = if (!pokeable) Modifier else Modifier.clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null, // no grey ripple box around the mascot
+        onClickLabel = "poke"
+    ) {
+        scope.launch {
+            poke.snapTo(0f)
+            poke.animateTo(1f, tween(700, easing = LinearEasing))
         }
     }
 
     val b = bob
-    val pose = MascotPose(eyeOpen = eyeOpen.value, glance = glance, sway = b, twinkle = twinkle)
+    val hopUp = if (mood == MoodLevel.THRIVING) hop.coerceAtLeast(0f) else 0f
+    val landing = if (mood == MoodLevel.THRIVING) hop.coerceAtMost(0f) else 0f // -0.6..0
+    val shake = if (mood == MoodLevel.WORRIED) shiver else 0f
+    val p = poke.value
+    val pokeJump = if (p in 0.001f..0.999f) sin(p * PI.toFloat()) else 0f
+    val pokeWiggle = if (p in 0.001f..0.999f) sin(p * PI.toFloat() * 5f) * (1f - p) else 0f
+
+    val pose = MascotPose(eyeOpen = eyeOpen.value, glance = glance, sway = b * swayAmount, twinkle = twinkle)
     // The caller's modifier (position, padding...) goes on the outer box so things like
     // Modifier.align(...) work; the canvas inside just fills the requested size.
-    Crossfade(targetState = Triple(mood, look, onOrange), modifier = modifier, label = "mood") { (m, l, orange) ->
+    Crossfade(targetState = Triple(mood, look, onOrange), modifier = modifier.then(tapModifier), label = "mood") { (m, l, orange) ->
         Canvas(
             modifier = Modifier
                 .size(size)
                 .graphicsLayer {
-                    // Blobby bobs and squishes from the bottom; Bloomy's pot stays put and the stems sway.
+                    val h = this.size.height
+                    transformOrigin = TransformOrigin(0.5f, 1f) // everything happens from the bottom
+                    rotationZ = shake * 3f + pokeWiggle * 8f
                     if (l.theme == MascotTheme.BLOBBY) {
-                        translationY = b * this.size.height * 0.03f
-                        scaleY = 1f + b * 0.025f
-                        scaleX = 1f - b * 0.025f
-                        transformOrigin = TransformOrigin(0.5f, 1f)
+                        // Bob, hop and poke move the blob; squash and stretch keep it squishy.
+                        translationY = b * h * 0.03f - (hopUp * 0.14f + pokeJump * 0.12f) * h
+                        val stretch = b * squish + hopUp * 0.06f + landing * 0.12f
+                        scaleY = (1f + stretch) * boing.value
+                        scaleX = (1f - stretch) * (2f - boing.value)
+                    } else {
+                        // Bloomy: the pot stays on the ground, it just stretches up a little.
+                        translationY = -pokeJump * h * 0.05f
+                        scaleY = (1f + hopUp * 0.04f) * boing.value
+                        scaleX = 2f - boing.value
                     }
                 }
         ) {

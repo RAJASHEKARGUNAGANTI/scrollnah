@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Small (2x2) widget. Drawn by SmallMascotWidget (Glance). -->
+<!-- Small (2x2) widget (layout/widget_small.xml). Drawn by MascotWidgets.kt. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_small_description"
-    android:initialLayout="@layout/glance_default_loading_layout"
+    android:initialLayout="@layout/widget_loading_card"
     android:minWidth="110dp"
     android:minHeight="110dp"
     android:previewLayout="@layout/widget_preview_small"

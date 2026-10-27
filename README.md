@@ -4,15 +4,16 @@
 
 A playful Android app that helps you scroll less, with a mascot that reacts to how much you scroll: **Blobby** the orange blob, or **Bloomy**, a plant that grows a flower for every week you stay under your limits.
 
-- **Daily limits** for any app, plus separate limits for **Instagram Reels** and **YouTube Shorts**.
+- **Daily limits** for any app (a different one on weekends if you like), plus separate limits for **Instagram Reels** and **YouTube Shorts**.
 - **Websites count too**: youtube.com, instagram.com and others in your browser use the same limits.
 - **Three strictness levels**: Chill (a gentle nudge), Firm (a pause screen with a breath, then +5 minutes if you really want), Beast (locked until midnight).
 - **Five moods**: your mascot goes from thriving to melting (or wilting) as you use up your day.
 - **Break reminders** after a long stretch on one app, as a notification, a mascot bubble, or both.
-- **Bloomy's garden**: four flowers fill a pot, and finished pots are kept in your garden.
-- **Focus mode** (lock your apps for 30 min to 2 hours) and a **bedtime** schedule.
+- **Bloomy's garden**: four flowers fill a pot, and finished pots are kept in your garden. Bloomy celebrates every new flower.
+- **Focus mode** (lock your apps for 30 min to 2 hours, or 30 min from a **Quick Settings tile**) and a **bedtime** schedule.
 - **Home-screen widgets**: a card with today's numbers, a small one, and an animated mascot that bobs, sways and blinks right on your wallpaper.
-- **Streaks**, a weekly report, and light and dark themes.
+- **Streaks**, a weekly report, and light and dark themes. Works with TalkBack.
+- **Small**: about 1.4 MB.
 - **Private by design**: no account, and everything stays on your phone. Read the [privacy policy](https://rajashekargunaganti.github.io/scrollnah/privacy-policy).
 
 ## Screenshots
@@ -70,7 +71,7 @@ keyPassword=...
 
 ## Tech
 
-Kotlin + Jetpack Compose (Material 3, heavily restyled), Room, DataStore, Jetpack Glance widgets, a foreground service using `UsageStatsManager`, and (GitHub version only) an optional Accessibility service that only detects Reels/Shorts and browser address bars. Targets Android 16 (API 36).
+Kotlin + Jetpack Compose (Material 3, heavily restyled), Room, DataStore, plain RemoteViews widgets, a foreground service using `UsageStatsManager`, and (GitHub version only) an optional Accessibility service that only detects Reels/Shorts and browser address bars. Targets Android 16 (API 36).
 
 Privacy policy: <https://rajashekargunaganti.github.io/scrollnah/privacy-policy> (source: [docs/privacy-policy.md](docs/privacy-policy.md), published with GitHub Pages from `main` > `/docs`).
 

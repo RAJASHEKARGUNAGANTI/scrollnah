@@ -13,12 +13,14 @@ Always write the name as **ScrollNah** (capital N) in the UI and docs. The lower
 - Pause screen: a full-screen Activity launched over the app (needs `SYSTEM_ALERT_WINDOW` to open from the background).
 - Mascot bubble: an overlay window (`SYSTEM_ALERT_WINDOW`).
 - Notifications: `NotificationCompat` with action buttons. Ask for `POST_NOTIFICATIONS` on Android 13+.
-- Home-screen widget: **Jetpack Glance**.
+- Home-screen widgets: plain **RemoteViews** layouts (`widget/MascotWidgets.kt`). Jetpack Glance was used until 2026-10-27 and removed to keep the app small (it added ~600 KB); don't add it back.
+- Keep the APK small (developer request, 2026-10-27: "we need to make it compact"; 1.43 MB now). Check the size before adding a library; fonts are trimmed copies (`tools/subset_fonts.py`), app text is English only (`localeFilters`).
 - **Do NOT use AccessibilityService** for blocking. Google Play restricts it for non-accessibility apps.
   - **Exception (decided 2026-10-11):** an opt-in, off-by-default `FeatureWatchService` is used ONLY to detect Instagram Reels / YouTube Shorts and, at the developer's request, the websites of limited apps in browsers (reads only the browser address bar). Both are impossible with UsageStats. It must stay opt-in, show a prominent disclosure before sending the user to Settings, only inspect those apps and the address bar, and never store screen content or addresses (minutes only). Expect extra Play Store review/declaration for this. Break reminders and moods must NOT depend on it.
   - UPI/bank apps (BHIM, PhonePe, GPay, Paytm, bank apps; list in `data/PaymentApps.kt`) often refuse to open while any app's Accessibility service is on and ask the user to close/uninstall it. Never try to hide from or get around that check. Instead: say so in the tracker's disclosure and in Settings, show a once-a-day notification with a link to Accessibility settings when a payment app opens while the tracker is on, and never draw the bubble over payment apps.
 - Local storage: Room (usage logs, limits, streak days, break reminder log, saved pots) + DataStore (settings, chosen theme, break reminder settings, current pot progress).
-- Mascot art: drawn with Compose Canvas shapes (one drawing function per theme, also rendered to bitmaps for the widget, bubble and notifications). Lottie animations later.
+- Mascot art: drawn with Compose Canvas shapes (one drawing function per theme, also rendered to bitmaps for the widget, bubble and notifications). Motion is Compose animation (per-mood movement in `AnimatedMascot`); no Lottie, to keep the app small.
+- App icons in lists come from the phone (`AppTile`), with the letter tile as fallback.
 
 ## Design system
 
@@ -97,7 +99,7 @@ Based on the share of today's total limit used (summed across enabled limited ap
 ### 5. Theme picker (in Settings)
 - Choose Blobby or Bloomy, with a preview of the mascot. For Bloomy, also show the current pot and a "Garden" entry that lists saved pots.
 
-### 6. Home-screen widget (Jetpack Glance)
+### 6. Home-screen widgets (RemoteViews)
 - Follows the chosen theme and shows the current mood art.
 - **Medium (4×2):** mascot, mood pill (e.g. "Thirsty"), title ("Bloomy needs a break"), the most-used limited app with a "26 / 30 min" bar, and streak text ("10-day streak, 1 flower" for Bloomy, "10-day streak" for Blobby).
 - **Small (2×2):** mascot + "4 min left" + "on Instagram today".
@@ -127,7 +129,7 @@ Based on the share of today's total limit used (summed across enabled limited ap
 
 ## Also built (beyond this spec — keep them)
 
-Onboarding, Settings (name, light/dark, permissions, feedback via GitHub Discussions, About), streaks + milestone celebrations + evening streak nudge, focus mode and bedtime schedule, Reels/Shorts and website limits (opt-in Accessibility exception above), "Why you reached for it" stats card, debug-only demo mode for screenshots. Details in `CLAUDE_UPDATES.md`.
+Onboarding (starts with "Pick your buddy"), Settings (name, light/dark, permissions, feedback via GitHub Discussions, About), streaks + milestone celebrations + evening streak nudge, Bloomy's "New flower!" / "Full pot!" celebration, focus mode (also a Quick Settings tile) and bedtime schedule, weekday/weekend limits, Reels/Shorts and website limits (opt-in Accessibility exception above), "Why you reached for it" stats card, debug-only demo mode for screenshots. Details in `CLAUDE_UPDATES.md`.
 
 ## Build order
 
@@ -139,8 +141,8 @@ Onboarding, Settings (name, light/dark, permissions, feedback via GitHub Discuss
 6. Break reminders: session tracking, settings screen, notification with actions, then the mascot bubble.
 7. Weekly report from real data + streak tracking.
 8. Bloomy theme: mood art, weekly flower growth, garden of saved pots, theme picker.
-9. Home-screen widget with Glance (both themes).
-10. Later: friend challenges, AI weekly insights via an LLM API, Lottie animations. **The first build is fully on-device:** anything that needs a server (AI insights, friend challenges) waits until after v1. Never ship an API key in the APK.
+9. Home-screen widgets (both themes; Glance at first, now plain RemoteViews).
+10. Later: friend challenges, AI weekly insights via an LLM API. **The first build is fully on-device:** anything that needs a server (AI insights, friend challenges) waits until after v1. Never ship an API key in the APK.
 
 ## Working notes
 

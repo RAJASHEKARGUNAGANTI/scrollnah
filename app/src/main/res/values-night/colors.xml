@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="widget_text">#F2EEFF</color>
+    <color name="widget_pill_text">#16131F</color>
     <color name="splash_background">#16131F</color>
 </resources>

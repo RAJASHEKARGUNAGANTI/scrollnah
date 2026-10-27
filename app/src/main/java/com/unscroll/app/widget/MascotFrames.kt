@@ -44,6 +44,8 @@ internal object MascotFrames {
             // With animations off, every slot shows the same still picture.
             views.setImageViewBitmap(id, drawings[if (motion) SEQUENCE[i] else MID])
         }
+        // The frames are hidden from TalkBack; the widget as a whole says who it is and the mood.
+        views.setContentDescription(R.id.mascot_frames, state.theme.moodPill(state.mood).replace(" · ", ", "))
         return views
     }
 }

@@ -49,7 +49,7 @@ object WidgetData {
         // (name, used, limit) for each limited app.
         val rows = apps.map { app ->
             val webMs = webRows.find { it.featureId == Websites.usageKey(app.packageName) }?.millis ?: 0L
-            Triple(app.appName, (appMinutes[app.packageName] ?: 0) + (webMs / 60_000L).toInt(), app.limitMinutes)
+            Triple(app.appName, (appMinutes[app.packageName] ?: 0) + (webMs / 60_000L).toInt(), app.limitOn(today))
         }
         val used = rows.sumOf { it.second }
         val limit = rows.sumOf { it.third }

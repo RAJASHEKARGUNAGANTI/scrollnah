@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-10-26): spec updated in `CLAUDE.md` (mascot themes, 5 moods, break reminders, Glance widget). All of it is BUILT ✅ (see "Spec update 2026-10-26" below). Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-10-27): enhancements batch built and tested on the emulator, NOT committed yet (see "Enhancements + compact app" below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -346,6 +346,7 @@ debug gallery (below).
 - Card drawables now have a hard 4dp shadow (`widget_background.xml` + night version); bar frame and pill
   have night versions. Static preview layouts for the widget picker.
 - Release APK is now ~2.6 MB (Glance adds ~0.8 MB). Gallery verified absent from the release manifest.
+- **2026-10-27: Glance removed** (see "Enhancements + compact app"): same widgets, now plain RemoteViews.
 
 ### Tests
 - First unit tests: `./gradlew testDebugUnitTest` (JUnit 4). `MoodLevelTest`, `GrowthTest`, `SessionTrackerTest`
@@ -379,6 +380,60 @@ debug gallery (below).
   a full on-screen keyboard (the emulator shows a floating toolbar).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
+
+## Enhancements + compact app (2026-10-27, developer's list + "make it compact")
+Not committed yet. Built both flavors, 21 unit tests pass, tested on the emulator (`Unscroll_Pixel`).
+- **Pick your mascot during setup:** new first step "Pick your buddy" (Blobby / Bloomy cards, reuses
+  `MascotChoice` from Settings, saves at once), then "Hi, I'm <mascot>". `STEPS` = 7.
+- **Faster Chill nudges:** `BlockerService.chillGap()`: reopening a limited app nudges straight away unless
+  a nudge went out in the last 10 s (was up to 60 s); while it stays open, every 5 min (unchanged).
+  Same for Chill at bedtime. Not timed on a device (needs 5+ min of real use).
+- **Quick Settings "Focus" tile:** `service/FocusTileService.kt` (+ `ic_tile_focus.xml`, manifest entry with
+  `TOGGLEABLE_TILE`). Tap = focus for 30 min, tap again = end early (not in Beast: toast). No Usage access =
+  opens the app. Home's Focus card calls `FocusTileService.refresh()`. Tested on the emulator via
+  `adb shell cmd statusbar add-tile com.unscroll.app/.service.FocusTileService`. The emulator still drew a ">"
+  arrow on the tile after the toggle flag was added (not re-checked; likely cached by System UI).
+- **Bloomy celebrates growth:** `Growth.Result.newFlowers`; `GrowthRepository.update()` stores a `BloomEvent`
+  (FLOWER or POT, only when Bloomy is the mascot; a pending POT is never downgraded) in DataStore
+  (`bloom_event`). Home shows `BloomDialog` once ("New flower!" / "Full pot!" + "See garden"), after any
+  streak celebration. Debug trigger: `adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --es bloom FLOWER`.
+- **Weekday / weekend limits:** `TrackedApp.weekendLimitMinutes` (null = same every day), Room v4
+  (`MIGRATION_3_4`), `limitOn(date)` / `totalLimitOn(date)` used by the blocker, website tracker, Pause screen,
+  Home, widgets, streaks and the weekly chart (dashed limit line drawn per day). Limits screen: "+ Different on
+  weekends" adds a Sat & Sun stepper, X goes back to one limit. Upgrade from v3 tested (no crash, data kept).
+- **App icons:** `ui/components/AppIcon.kt` `AppTile` shows the app's real icon (read from the phone, so no
+  size cost) in the usual bordered tile; letter tile while loading or if the app isn't installed. Reels/Shorts
+  rows use their app's icon. Used on Home, Limits, Add app, setup, Break reminders.
+- **Smoother mascot motion (no Lottie, no size cost):** per-mood body language in `AnimatedMascot`
+  (thriving hop, worried shiver, melting sag, Bloomy sways more when happy), sine easing, a springy "boing"
+  on mood change, occasional double blink, tap-to-poke on Home's mood card. "Remove animations" still = still.
+- **Screen-reader (TalkBack) pass:** roles and states for switches (`toggleable`, Role.Switch), chips/option
+  cards/mascot cards (selectable), nav tabs (Role.Tab), buttons; labels for icon buttons (Back, Settings,
+  light/dark, Remove X, Clear search, Edit name), steppers ("Raise YouTube weekend limit", value read as
+  "30 minutes"), bedtime times, Allow buttons; one sentence per limit row and for the weekly chart; headings;
+  letter tiles/app icons hidden (name is next to them); pill text read without the "·"; widget mood labels.
+  Checked with `uiautomator dump` (content-desc), not by listening with TalkBack on.
+- **Small fixes:** touch targets of 44 dp for remove buttons, pills and time chips; Limits list doesn't flash
+  "add your first app" while loading; Home "Edit" centred on its heading; tile + switch line up with the app name.
+
+### App size: 2,604,965 -> 1,428,794 bytes (github release APK, -45%)
+1. **Fonts trimmed** with `tools/subset_fonts.py` (fonttools): Bricolage = static ExtraBold 800 only,
+   DM Sans = variable but only 400-700; Latin + Latin-1 + Latin Ext-A + punctuation, default OpenType
+   features, no hinting. 649 KB -> 116 KB (~300 KB smaller inside the APK). Other scripts (a Hindi or Telugu
+   name) fall back to the phone's system font. `Type.kt` uses the static Bricolage file directly.
+2. **English-only library text** (`androidResources.localeFilters += "en"`) and packaging excludes (Kotlin
+   builtins, DebugProbesKt.bin, DataStore's multi-process `.so`).
+3. **Glance replaced by plain RemoteViews widgets** (`widget/MascotWidgets.kt`, `layout/widget_medium.xml`,
+   `widget_small.xml`, `widget_bar_lime/orange.xml`, neutral `widget_loading_card/empty.xml` as initial layouts).
+   Glance shipped ~990 layout files plus WorkManager: about 600 KB. Same look (light + dark checked), same
+   receiver class names, so widgets already on home screens keep working (checked by upgrading the emulator).
+   Side effect: the merged manifest no longer has WAKE_LOCK / ACCESS_NETWORK_STATE.
+   Tried R8 `-repackageclasses`: the APK got bigger (1.46 MB), so it's not used.
+- Left as is: classes.dex (Compose, Material 3, Room, DataStore) ~1.25 MB compressed. Replacing DataStore with
+  SharedPreferences would save ~70 KB but would lose existing users' settings, so no.
+
+### Still open from the developer's list
+- **10. Match the design PDF:** still not in `design/` (only screenshots and `unscroll-screens.html`).
 
 ## Version 2.0.2 (2026-10-27)
 - `versionCode` 5, `versionName` "2.0.2": the landscape layouts below. GitHub release v2.0.2 (Latest), built

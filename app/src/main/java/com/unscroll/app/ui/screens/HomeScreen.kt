@@ -2,6 +2,14 @@
 
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.ui.components.AppTile
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.unscroll.app.ui.components.spokenDuration
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.FlowRow
 import android.Manifest
 import android.os.Build
@@ -48,13 +56,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
+import com.unscroll.app.data.BloomEvent
 import com.unscroll.app.data.Feature
+import com.unscroll.app.data.Growth
+import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.StreakInfo
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.service.BlockerService
 import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
+import com.unscroll.app.service.FocusTileService
 import com.unscroll.app.data.StreakRepository
 import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.data.Websites
@@ -77,6 +89,11 @@ import com.unscroll.app.ui.components.durationPair
 import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.mascot.LocalMascot
 import com.unscroll.app.ui.mascot.Mascot
+import com.unscroll.app.ui.mascot.MascotLook
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import com.unscroll.app.ui.mascot.MascotLines
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.ButtonShape
@@ -100,6 +117,7 @@ import java.time.LocalDate
 private data class LimitProgress(
     val key: String,
     val name: String,
+    val packageName: String, // for the app's icon (Reels/Shorts use their app's icon)
     val letter: String,
     val tileColor: Color,
     val usedMinutes: Int,
@@ -107,7 +125,7 @@ private data class LimitProgress(
 )
 
 @Composable
-fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
+fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val context = LocalContext.current
     val container = appContainer()
     val scope = rememberCoroutineScope()
@@ -136,6 +154,8 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
         }
     }
     val celebrated by container.settings.celebratedStreak.collectAsStateWithLifecycle(initialValue = -1)
+    val bloomEvent by container.settings.bloomEvent.collectAsStateWithLifecycle(initialValue = null)
+    val mascotTheme = LocalMascot.current.theme
 
     // Android 13+ asks for notifications with a popup. If the user said no before,
     // the popup won't show again, so send them to Settings instead.
@@ -175,13 +195,14 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
     val appRows = trackedApps.filter { it.enabled }.map { app ->
         LimitProgress(
             key = app.packageName,
+            packageName = app.packageName,
             name = app.appName,
             letter = letterFor(app.appName),
             tileColor = tileColorFor(app.packageName),
             // App time + time on its website in a browser.
             usedMinutes = (usedMinutes[app.packageName] ?: 0) +
                 ((featureUsage.find { it.featureId == Websites.usageKey(app.packageName) }?.millis ?: 0L) / 60_000L).toInt(),
-            limitMinutes = app.limitMinutes
+            limitMinutes = app.limitOn() // today's budget (weekend one on Sat/Sun if set)
         )
     }
     val featureRows = featureLimits.filter { it.enabled && FeatureWatchService.available }.mapNotNull { limit ->
@@ -189,6 +210,7 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
         val ms = featureUsage.find { it.featureId == limit.featureId }?.millis ?: 0L
         LimitProgress(
             key = feature.id,
+            packageName = feature.packageName,
             name = feature.title,
             letter = feature.letter,
             tileColor = tileColorFor(feature.packageName),
@@ -250,10 +272,12 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
                         FocusRules.startFocus(minutes)
                         focusLeftMs = FocusRules.focusRemainingMs()
                         BlockerService.startIfNeeded(context)
+                        FocusTileService.refresh(context) // the Quick Settings tile shows it too
                     },
                     onEnd = {
                         FocusRules.endFocus()
                         focusLeftMs = 0
+                        FocusTileService.refresh(context)
                     }
                 )
             }
@@ -265,15 +289,16 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Today's limits", style = MaterialTheme.typography.headlineSmall)
+                    Text("Today's limits", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
                     Text(
                         "Edit",
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
-                            .clickable(onClick = onEditLimits)
-                            .padding(8.dp)
+                            .clickable(role = Role.Button, onClick = onEditLimits)
+                            .semantics { contentDescription = "Edit limits" }
+                            .padding(12.dp)
                     )
                 }
             }
@@ -281,8 +306,16 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
         }
     }
 
+    // One celebration at a time: the streak first, then Bloomy's new flower or full pot.
+    val event = bloomEvent
     if (reached != null && celebrated >= 0 && reached > celebrated) {
         CelebrationDialog(days = reached, onDone = { scope.launch { container.settings.setCelebratedStreak(reached) } })
+    } else if (event != null && mascotTheme == MascotTheme.BLOOMY) {
+        BloomDialog(
+            event = event,
+            onDone = { scope.launch { container.settings.setBloomEvent(null) } },
+            onOpenGarden = onOpenGarden
+        )
     }
 
     if (showNameDialog) {
@@ -323,44 +356,48 @@ private fun HomeHeader(
                     fontSize = MaterialTheme.typography.bodyLarge.fontSize,
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { showEdit = !showEdit }
+                        .clickable(onClickLabel = "show the edit name button") { showEdit = !showEdit }
                         .padding(vertical = 4.dp)
                 )
                 if (showEdit) {
                     Box(
                         Modifier
                             .padding(start = 8.dp)
-                            .size(32.dp)
+                            .size(36.dp)
                             .clip(PillShape)
                             .background(Lime, PillShape)
                             .border(BorderWidth, Neo.colors.outline, PillShape)
-                            .clickable {
+                            .clickable(role = Role.Button) {
                                 showEdit = false
                                 onEditName()
-                            },
+                            }
+                            .semantics { contentDescription = "Edit your name" },
                         contentAlignment = Alignment.Center
                     ) { PencilIcon(tint = Ink) }
                 }
             }
-            Text("scrollnah", style = MaterialTheme.typography.headlineLarge)
+            Text("scrollnah", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // Light/dark switch: shows the mode you'll switch TO.
-            HeaderButton(onClick = onToggleTheme) { if (isDark) SunIcon() else MoonIcon() }
-            HeaderButton(onClick = onOpenSettings) { GearIcon() }
+            HeaderButton(onClick = onToggleTheme, label = if (isDark) "Switch to light mode" else "Switch to dark mode") {
+                if (isDark) SunIcon() else MoonIcon()
+            }
+            HeaderButton(onClick = onOpenSettings, label = "Settings") { GearIcon() }
         }
     }
 }
 
 @Composable
-private fun HeaderButton(onClick: () -> Unit, icon: @Composable () -> Unit) {
+private fun HeaderButton(onClick: () -> Unit, label: String, icon: @Composable () -> Unit) {
     Box(
         Modifier
             .size(46.dp)
             .clip(ButtonShape)
             .background(Neo.colors.surface, ButtonShape)
             .border(BorderWidth, Neo.colors.outline, ButtonShape)
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) { icon() }
 }
@@ -385,7 +422,13 @@ private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?)
     ) {
         if (pillOnTop) NeoPill(text.pill, modifier = Modifier.padding(bottom = 10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Mascot(mood = mood, size = 110.dp, onOrange = overLimit)
+            Mascot(
+                mood = mood,
+                size = 110.dp,
+                onOrange = overLimit,
+                contentDescription = LocalMascot.current.theme.mascotName,
+                pokeable = true // tap for a jump and a wiggle
+            )
             Column(
                 modifier = Modifier.padding(start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -495,8 +538,8 @@ private fun BlockingSetupCard(
             "Open App info",
             fontWeight = FontWeight.Bold,
             modifier = Modifier
-                .clickable(onClick = onAppInfo)
-                .padding(vertical = 10.dp)
+                .clickable(role = Role.Button, onClick = onAppInfo)
+                .padding(vertical = 12.dp)
         )
     }
 }
@@ -518,11 +561,14 @@ private fun SetupRow(title: String, detail: String, done: Boolean, onClick: () -
         } else {
             Box(
                 Modifier
+                    .heightIn(min = 44.dp)
                     .clip(ButtonShape)
                     .background(Lime, ButtonShape)
                     .border(BorderWidth, Neo.colors.outline, ButtonShape)
-                    .clickable(onClick = onClick)
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .clickable(role = Role.Button, onClick = onClick)
+                    .semantics { contentDescription = "Allow $title" }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text("Allow", fontWeight = FontWeight.Bold, color = Ink)
             }
@@ -549,8 +595,9 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable(onClick = onEnd)
-                        .padding(vertical = 10.dp)
+                        .clickable(role = Role.Button, onClick = onEnd)
+                        .semantics { contentDescription = "End focus early" }
+                        .padding(vertical = 12.dp)
                 )
             } else {
                 Text(
@@ -575,8 +622,9 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
                             .clip(PillShape)
                             .background(Lime, PillShape)
                             .border(BorderWidth, Neo.colors.outline, PillShape)
-                            .clickable { onStart(minutes) }
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .clickable(role = Role.Button) { onStart(minutes) }
+                            .semantics { contentDescription = "Focus for $label" }
+                            .padding(horizontal = 14.dp, vertical = 12.dp)
                     ) {
                         Text(label, fontWeight = FontWeight.Bold, color = Ink)
                     }
@@ -644,6 +692,60 @@ private fun CelebrationDialog(days: Int, onDone: () -> Unit) {
     )
 }
 
+/** Bloomy grew a flower or filled a pot: shown once, the next time Home opens. */
+@Composable
+private fun BloomDialog(event: BloomEvent, onDone: () -> Unit, onOpenGarden: () -> Unit) {
+    val flowers = if (event == BloomEvent.POT) Growth.MAX_FLOWERS else LocalMascot.current.flowers
+    // A little "pop": the plant springs up when the dialog opens.
+    val pop = remember { Animatable(0.5f) }
+    LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = 250f)) }
+    AlertDialog(
+        onDismissRequest = onDone,
+        containerColor = Lime,
+        icon = {
+            Mascot(
+                mood = MoodLevel.THRIVING,
+                look = MascotLook(MascotTheme.BLOOMY, flowers),
+                size = 112.dp,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                    transformOrigin = TransformOrigin(0.5f, 1f) // grows up out of the pot
+                }
+            )
+        },
+        title = {
+            Text(
+                if (event == BloomEvent.POT) "Full pot!" else "New flower!",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Ink
+            )
+        },
+        text = {
+            Text(
+                when {
+                    event == BloomEvent.POT ->
+                        "Four flowers! This pot is moving to your garden, and I'm starting a new seed. – Bloomy"
+                    flowers > 0 ->
+                        "A whole week under your limits, so I grew flower number $flowers. Thanks for the sunshine! – Bloomy"
+                    else -> "A whole week under your limits, so I grew a new flower. Thanks for the sunshine! – Bloomy"
+                },
+                color = Ink
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDone) { Text("Yay!", fontWeight = FontWeight.Bold, color = Ink) }
+        },
+        dismissButton = if (event == BloomEvent.POT) {
+            {
+                TextButton(onClick = { onDone(); onOpenGarden() }) {
+                    Text("See garden", fontWeight = FontWeight.Bold, color = Ink)
+                }
+            }
+        } else null
+    )
+}
+
 /** Turns today's real minutes into an everyday comparison (see FunStat). */
 @Composable
 private fun FunStatCard(totalMinutes: Int) {
@@ -672,9 +774,16 @@ private fun LimitRow(limit: LimitProgress) {
     val progress = if (limit.limitMinutes > 0) limit.usedMinutes.toFloat() / limit.limitMinutes else 0f
     val barColor = if (progress >= 0.7f) Orange else Lime
 
-    NeoCard(shadow = true, contentPadding = PaddingValues(14.dp)) {
+    // One TalkBack stop per app: "YouTube, 20 of 30 minutes used".
+    NeoCard(
+        modifier = Modifier.clearAndSetSemantics {
+            contentDescription = "${limit.name}, ${spokenDuration(limit.usedMinutes)} used of ${spokenDuration(limit.limitMinutes)}"
+        },
+        shadow = true,
+        contentPadding = PaddingValues(14.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LetterTile(limit.letter, limit.tileColor)
+            AppTile(limit.packageName, limit.name, letter = limit.letter, color = limit.tileColor)
             Column(
                 modifier = Modifier
                     .padding(start = 12.dp)

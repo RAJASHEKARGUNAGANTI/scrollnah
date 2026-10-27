@@ -2,6 +2,13 @@
 
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.ui.components.AppTile
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.platform.LocalConfiguration
 import android.Manifest
 import android.os.Build
@@ -21,6 +28,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,7 +72,9 @@ import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.launchableApps
 import com.unscroll.app.service.BlockerService
 import com.unscroll.app.service.SetupChecks
+import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
+import com.unscroll.app.widget.MascotWidgets
 import com.unscroll.app.ui.mascot.LocalMascot
 import com.unscroll.app.ui.mascot.Mascot
 import com.unscroll.app.ui.components.AppSearchField
@@ -84,9 +95,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val STEPS = 6
+private const val STEPS = 7
 
-/** First-run walkthrough: meet Blobby -> name -> usage access -> pick apps -> strictness -> blocking switches. */
+/** First-run walkthrough: pick a mascot -> meet it -> name -> usage access -> pick apps -> strictness -> permissions. */
 @Composable
 fun OnboardingScreen(onFinished: () -> Unit) {
     val context = LocalContext.current
@@ -147,6 +158,42 @@ fun OnboardingScreen(onFinished: () -> Unit) {
 
         when (step) {
             0 -> Step(
+                pill = "Welcome to ScrollNah",
+                title = "Pick your buddy",
+                body = "Your buddy keeps an eye on your scrolling and reacts to it. You can switch later in Settings.",
+                button = "Next",
+                onNext = { step++ }
+            ) {
+                val current = LocalMascot.current.theme
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.height(IntrinsicSize.Max) // both cards as tall as the taller one
+                ) {
+                    MascotTheme.entries.forEach { theme ->
+                        MascotChoice(
+                            theme = theme,
+                            flowers = 2, // show Bloomy with a couple of flowers, as a taste of what's coming
+                            selected = current == theme,
+                            onClick = {
+                                scope.launch {
+                                    container.settings.setMascotTheme(theme)
+                                    MascotWidgets.refresh(context)
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            mascotSize = if (isShortScreen()) 84.dp else 110.dp,
+                            detail = when (theme) {
+                                MascotTheme.BLOBBY -> "An orange blob who gets happier the less you scroll."
+                                MascotTheme.BLOOMY -> "A little plant that grows a flower for every week under your limits."
+                            }
+                        )
+                    }
+                }
+            }
+
+            1 -> Step(
                 pill = "Hi there",
                 title = "Hi, I'm ${LocalMascot.current.theme.mascotName}.",
                 body = "I'm your ScrollNah buddy. I keep an eye on your scrolling and give you a nudge when it's time to put the phone down. No guilt trips. Let's set things up in under a minute.",
@@ -155,7 +202,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 onNext = { step++ }
             )
 
-            1 -> Step(
+            2 -> Step(
                 pill = "Step 1",
                 title = "What should I call you?",
                 body = "Just a first name or a nickname. You can change it later.",
@@ -177,7 +224,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 )
             }
 
-            2 -> Step(
+            3 -> Step(
                 pill = "Step 2",
                 title = "Count your screen time",
                 body = "ScrollNah needs Usage access to count your minutes. Your data stays on this phone.",
@@ -192,13 +239,13 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 }
             }
 
-            3 -> AppPickerStep(
+            4 -> AppPickerStep(
                 picked = picked,
                 hasUsage = hasUsage,
                 onNext = { step++ }
             )
 
-            4 -> Step(
+            5 -> Step(
                 pill = "Step 4",
                 title = "How strict should I be?",
                 body = when (strictness) {
@@ -244,7 +291,7 @@ private fun ColumnScope.Step(
             Mascot(mood = mood, size = if (isShortScreen()) 104.dp else 150.dp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
         NeoPill(pill)
-        Text(title, style = MaterialTheme.typography.headlineLarge)
+        Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
         Text(body, style = MaterialTheme.typography.bodyLarge)
         content()
     }
@@ -310,7 +357,8 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
             items(list, key = { it.packageName }) { app ->
                 val selected = picked.any { it.packageName == app.packageName }
                 NeoCard(
-                    modifier = Modifier.clickable {
+                    // A checkbox for TalkBack: "Instagram, checked".
+                    modifier = Modifier.toggleable(value = selected, role = Role.Checkbox) {
                         if (selected) picked.removeAll { it.packageName == app.packageName } else picked.add(app)
                     },
                     shadow = false,
@@ -318,7 +366,7 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        LetterTile(letterFor(app.label), tileColorFor(app.packageName))
+                        AppTile(app.packageName, app.label)
                         Column(
                             Modifier
                                 .weight(1f)
@@ -400,11 +448,14 @@ private fun OnboardingPermission(title: String, detail: String, done: Boolean, o
             val shape = RoundedCornerShape(999.dp)
             Box(
                 Modifier
+                    .heightIn(min = 44.dp)
                     .clip(shape)
                     .background(Lime, shape)
                     .border(BorderWidth, Neo.colors.outline, shape)
-                    .clickable(onClick = onAllow)
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .clickable(role = Role.Button, onClick = onAllow)
+                    .semantics { contentDescription = "Allow $title" }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
             ) { Text("Allow", fontWeight = FontWeight.Bold, color = Ink) }
         }
     }

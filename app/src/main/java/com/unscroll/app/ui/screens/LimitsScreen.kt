@@ -1,5 +1,8 @@
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.data.db.TrackedApp
+import com.unscroll.app.ui.components.AppTile
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -27,6 +30,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,6 +86,7 @@ import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.PlusIcon
 import com.unscroll.app.ui.components.letterFor
 import com.unscroll.app.ui.components.duration
+import com.unscroll.app.ui.components.spokenDuration
 import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.theme.Background
 import com.unscroll.app.ui.theme.BorderWidth
@@ -90,8 +102,8 @@ import com.unscroll.app.ui.theme.Orange
 import com.unscroll.app.ui.theme.White
 import kotlinx.coroutines.launch
 
-/** Unsaved changes to one row. Written to Room when the user taps "Lock it in". */
-private data class Draft(val minutes: Int, val enabled: Boolean)
+/** Unsaved edits for one row. [weekendMinutes] = a different limit on Sat & Sun (null = same every day). */
+private data class Draft(val minutes: Int, val enabled: Boolean, val weekendMinutes: Int? = null)
 
 @Composable
 fun LimitsScreen(
@@ -109,7 +121,9 @@ fun LimitsScreen(
     val appDao = container.database.trackedAppDao()
     val featureDao = container.database.featureDao()
 
-    val apps by appDao.observeAll().collectAsStateWithLifecycle(emptyList())
+    // null until the database answers, so the "add your first app" text doesn't flash up first.
+    val loadedApps by appDao.observeAll().collectAsStateWithLifecycle<List<TrackedApp>?>(null)
+    val apps = loadedApps.orEmpty()
     val featureLimits by featureDao.observeLimits().collectAsStateWithLifecycle(emptyList())
     val savedStrictness by container.settings.strictness.collectAsStateWithLifecycle(Strictness.FIRM)
     val breakSettings by container.settings.breakSettings.collectAsStateWithLifecycle(BreakSettings())
@@ -135,7 +149,9 @@ fun LimitsScreen(
 
     // Is anything different from what's saved? (Changing a value and changing it back counts as no change.)
     val hasChanges = apps.any { app ->
-        appDrafts[app.packageName]?.let { it.minutes != app.limitMinutes || it.enabled != app.enabled } == true
+        appDrafts[app.packageName]?.let {
+            it.minutes != app.limitMinutes || it.enabled != app.enabled || it.weekendMinutes != app.weekendLimitMinutes
+        } == true
     } || features.any { f ->
         val saved = featureLimits.find { it.featureId == f.id }
         featureDrafts[f.id]?.let {
@@ -155,7 +171,9 @@ fun LimitsScreen(
     // Writes every changed row (and the strictness) to storage.
     suspend fun saveDrafts() {
         val changedApps = apps.mapNotNull { app ->
-            appDrafts[app.packageName]?.let { app.copy(limitMinutes = it.minutes, enabled = it.enabled) }
+            appDrafts[app.packageName]?.let {
+                app.copy(limitMinutes = it.minutes, enabled = it.enabled, weekendLimitMinutes = it.weekendMinutes)
+            }
         }
         appDao.upsertAll(changedApps)
         featureDao.upsertLimits(featureDrafts.map { (id, d) -> FeatureLimit(id, d.minutes, d.enabled) })
@@ -175,6 +193,7 @@ fun LimitsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { ScreenTitle("Your time-sinks", onBack = { if (hasChanges) askBeforeLeaving = onBack else onBack() }) }
+        if (loadedApps == null) return@LazyColumn // still loading
         item {
             Text(
                 if (apps.isEmpty()) "Add the apps that eat your day and give each a daily budget."
@@ -184,13 +203,15 @@ fun LimitsScreen(
         }
 
         items(apps, key = { it.packageName }) { app ->
-            val draft = appDrafts[app.packageName] ?: Draft(app.limitMinutes, app.enabled)
+            val draft = appDrafts[app.packageName] ?: Draft(app.limitMinutes, app.enabled, app.weekendLimitMinutes)
             LimitEditRow(
                 name = app.appName,
+                packageName = app.packageName,
                 letter = letterFor(app.appName),
                 tileColor = tileColorFor(app.packageName),
                 draft = draft,
                 onChange = { appDrafts[app.packageName] = it },
+                allowWeekend = true,
                 onRemove = {
                     appDrafts.remove(app.packageName)
                     scope.launch { appDao.delete(app.packageName) }
@@ -205,7 +226,7 @@ fun LimitsScreen(
         if (features.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Reels & Shorts", style = MaterialTheme.typography.headlineSmall)
+                    Text("Reels & Shorts", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
                     Text(
                         "Limit just the endless-video part of an app, separately from the app itself.",
                         style = MaterialTheme.typography.bodyMedium
@@ -221,6 +242,7 @@ fun LimitsScreen(
                     ?: Draft(saved?.limitMinutes ?: DEFAULT_FEATURE_LIMIT_MINUTES, saved?.enabled ?: false)
                 LimitEditRow(
                     name = feature.title,
+                    packageName = feature.packageName,
                     letter = feature.letter,
                     tileColor = tileColorFor(feature.packageName),
                     draft = draft,
@@ -235,7 +257,7 @@ fun LimitsScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-                Text("How strict should I be?", style = MaterialTheme.typography.headlineSmall)
+                Text("How strict should I be?", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
                 OptionCardRow(
                     options = Strictness.entries.map { it.title to it.subtitle },
                     selectedIndex = strictness.ordinal,
@@ -315,7 +337,7 @@ private fun BedtimeCard(bedtime: FocusRules.Bedtime, onChange: (FocusRules.Bedti
         ).show()
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-        Text("Bedtime", style = MaterialTheme.typography.headlineSmall)
+        Text("Bedtime", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
         NeoCard(
             modifier = Modifier.alpha(if (bedtime.enabled) 1f else 0.7f),
             contentPadding = PaddingValues(14.dp)
@@ -325,18 +347,22 @@ private fun BedtimeCard(bedtime: FocusRules.Bedtime, onChange: (FocusRules.Bedti
                     Text("Pause my time-sinks at night", fontWeight = FontWeight.Bold)
                     Text("Follows your strictness below.", style = MaterialTheme.typography.bodyMedium)
                 }
-                NeoSwitch(checked = bedtime.enabled, onToggle = { onChange(bedtime.copy(enabled = !bedtime.enabled)) })
+                NeoSwitch(
+                    checked = bedtime.enabled,
+                    onToggle = { onChange(bedtime.copy(enabled = !bedtime.enabled)) },
+                    label = "Bedtime pause"
+                )
             }
             Row(
                 Modifier.padding(top = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                TimeChip(FocusRules.formatTime(bedtime.startMinutes)) {
+                TimeChip(FocusRules.formatTime(bedtime.startMinutes), "Bedtime starts") {
                     pickTime(bedtime.startMinutes) { onChange(bedtime.copy(startMinutes = it)) }
                 }
                 Text("to", fontWeight = FontWeight.Bold)
-                TimeChip(FocusRules.formatTime(bedtime.endMinutes)) {
+                TimeChip(FocusRules.formatTime(bedtime.endMinutes), "Bedtime ends") {
                     pickTime(bedtime.endMinutes) { onChange(bedtime.copy(endMinutes = it)) }
                 }
             }
@@ -345,15 +371,18 @@ private fun BedtimeCard(bedtime: FocusRules.Bedtime, onChange: (FocusRules.Bedti
 }
 
 @Composable
-private fun TimeChip(text: String, onClick: () -> Unit) {
+private fun TimeChip(text: String, what: String, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     Box(
         Modifier
+            .heightIn(min = 44.dp)
             .clip(shape)
             .background(Neo.colors.background, shape)
             .border(BorderWidth, Neo.colors.outline, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .clickable(role = Role.Button, onClickLabel = "change") { onClick() }
+            .clearAndSetSemantics { contentDescription = "$what at $text" }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(text, fontWeight = FontWeight.Bold)
     }
@@ -388,13 +417,16 @@ internal fun ScreenTitle(title: String, onBack: () -> Unit) {
                 .clip(ButtonShape)
                 .background(Neo.colors.surface, ButtonShape)
                 .border(BorderWidth, Neo.colors.outline, ButtonShape)
-                .clickable(onClick = onBack),
+                .clickable(role = Role.Button, onClick = onBack)
+                .semantics { contentDescription = "Back" },
             contentAlignment = Alignment.Center
         ) { BackArrowIcon() }
         Text(
             title,
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(start = 12.dp)
+            modifier = Modifier
+                .padding(start = 12.dp)
+                .semantics { heading() }
         )
     }
 }
@@ -402,18 +434,24 @@ internal fun ScreenTitle(title: String, onBack: () -> Unit) {
 @Composable
 private fun LimitEditRow(
     name: String,
+    packageName: String,
     letter: String,
     tileColor: Color,
     draft: Draft,
     onChange: (Draft) -> Unit,
-    onRemove: (() -> Unit)?
+    onRemove: (() -> Unit)?,
+    allowWeekend: Boolean = false // whole apps can have a different weekend limit; Reels/Shorts can't
 ) {
+    fun down(minutes: Int) = (minutes - LIMIT_STEP_MINUTES).coerceAtLeast(MIN_LIMIT_MINUTES)
+    fun up(minutes: Int) = (minutes + LIMIT_STEP_MINUTES).coerceAtMost(MAX_LIMIT_MINUTES)
+
     NeoCard(
         modifier = Modifier.alpha(if (draft.enabled) 1f else 0.55f),
         contentPadding = PaddingValues(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LetterTile(letter, tileColor)
+        // Tile and switch line up with the app name (the steppers go below it).
+        Row(verticalAlignment = Alignment.Top) {
+            AppTile(packageName, name, Modifier.padding(top = 2.dp), letter = letter, color = tileColor)
             Column(
                 modifier = Modifier
                     .padding(start = 10.dp)
@@ -425,20 +463,64 @@ private fun LimitEditRow(
                     if (onRemove != null) {
                         Box(
                             Modifier
-                                .size(32.dp)
+                                .size(44.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .clickable(onClick = onRemove),
+                                .clickable(role = Role.Button, onClick = onRemove)
+                                .semantics { contentDescription = "Remove $name" },
                             contentAlignment = Alignment.Center
                         ) { CloseIcon() }
                     }
                 }
+                val weekend = draft.weekendMinutes
+                if (weekend != null) Text("Mon–Fri", style = MaterialTheme.typography.labelSmall)
                 Stepper(
                     minutes = draft.minutes,
-                    onDecrease = { onChange(draft.copy(minutes = (draft.minutes - LIMIT_STEP_MINUTES).coerceAtLeast(MIN_LIMIT_MINUTES))) },
-                    onIncrease = { onChange(draft.copy(minutes = (draft.minutes + LIMIT_STEP_MINUTES).coerceAtMost(MAX_LIMIT_MINUTES))) }
+                    onDecrease = { onChange(draft.copy(minutes = down(draft.minutes))) },
+                    onIncrease = { onChange(draft.copy(minutes = up(draft.minutes))) },
+                    what = if (weekend != null) "$name weekday limit" else "$name limit"
+                )
+                if (allowWeekend) {
+                    if (weekend == null) {
+                        // Starts at the weekday value; the user then nudges it up or down.
+                        Text(
+                            "+ Different on weekends",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable(role = Role.Button) { onChange(draft.copy(weekendMinutes = draft.minutes)) }
+                                .heightIn(min = 44.dp)
+                                .wrapContentHeight()
+                                .padding(end = 8.dp)
+                        )
+                    } else {
+                        Text("Sat & Sun", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Stepper(
+                                minutes = weekend,
+                                onDecrease = { onChange(draft.copy(weekendMinutes = down(weekend))) },
+                                onIncrease = { onChange(draft.copy(weekendMinutes = up(weekend))) },
+                                what = "$name weekend limit"
+                            )
+                            Box(
+                                Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable(role = Role.Button) { onChange(draft.copy(weekendMinutes = null)) }
+                                    .semantics { contentDescription = "Use the same limit every day" },
+                                contentAlignment = Alignment.Center
+                            ) { CloseIcon() }
+                        }
+                    }
+                }
+            }
+            Box(Modifier.padding(top = 6.dp)) {
+                NeoSwitch(
+                    checked = draft.enabled,
+                    onToggle = { onChange(draft.copy(enabled = !draft.enabled)) },
+                    label = "Limit $name"
                 )
             }
-            NeoSwitch(checked = draft.enabled, onToggle = { onChange(draft.copy(enabled = !draft.enabled)) })
         }
     }
 }
@@ -451,7 +533,7 @@ private fun BreakRemindersRow(settings: BreakSettings, onClick: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .clip(CardShape)
-                .clickable(onClick = onClick)
+                .clickable(role = Role.Button, onClick = onClick)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -475,7 +557,7 @@ internal fun AddAppButton(onClick: () -> Unit) {
             .heightIn(min = 52.dp)
             .clip(ButtonShape)
             .border(BorderWidth, Neo.colors.outline, ButtonShape)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -512,26 +594,28 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit) {
     }
 }
 
+/** Minus / value / plus. [what] names the value for screen readers, e.g. "YouTube limit". */
 @Composable
-internal fun Stepper(minutes: Int, onDecrease: () -> Unit, onIncrease: () -> Unit) {
+internal fun Stepper(minutes: Int, onDecrease: () -> Unit, onIncrease: () -> Unit, what: String = "Limit") {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        StepperButton("−", onDecrease)
+        StepperButton("−", "Lower $what", onDecrease)
         Text(
             duration(minutes),
             // At least 66dp, wider if big text needs it ("1h 30m").
             modifier = Modifier
                 .widthIn(min = 66.dp)
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 4.dp)
+                .semantics { contentDescription = "$what: ${spokenDuration(minutes)}" },
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyMedium
         )
-        StepperButton("+", onIncrease)
+        StepperButton("+", "Raise $what", onIncrease)
     }
 }
 
 @Composable
-private fun StepperButton(symbol: String, onClick: () -> Unit) {
+private fun StepperButton(symbol: String, description: String, onClick: () -> Unit) {
     val shape = RoundedCornerShape(10.dp)
     Box(
         modifier = Modifier
@@ -539,15 +623,17 @@ private fun StepperButton(symbol: String, onClick: () -> Unit) {
             .clip(shape)
             .background(Neo.colors.background, shape)
             .border(BorderWidth, Neo.colors.outline, shape)
-            .clickable(onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .clearAndSetSemantics { contentDescription = description },
         contentAlignment = Alignment.Center
     ) {
         Text(symbol, fontWeight = FontWeight.Black, color = Neo.colors.content)
     }
 }
 
+/** On/off switch. [label] is what TalkBack reads before "on"/"off", e.g. "Limit YouTube". */
 @Composable
-internal fun NeoSwitch(checked: Boolean, onToggle: () -> Unit) {
+internal fun NeoSwitch(checked: Boolean, onToggle: () -> Unit, label: String? = null) {
     val trackColor = if (checked) Lime else Neo.colors.surface
     val shape = RoundedCornerShape(999.dp)
     Box(
@@ -556,7 +642,8 @@ internal fun NeoSwitch(checked: Boolean, onToggle: () -> Unit) {
             .clip(shape)
             .background(trackColor, shape)
             .border(BorderWidth, Neo.colors.outline, shape)
-            .clickable(onClick = onToggle)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = { onToggle() })
+            .semantics { if (label != null) contentDescription = label }
             .padding(2.dp),
         contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart
     ) {
@@ -587,7 +674,7 @@ internal fun OptionCard(
             .clip(shape)
             .background(background, shape)
             .border(BorderWidth, Neo.colors.outline, shape)
-            .clickable(onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

@@ -1,5 +1,7 @@
 package com.unscroll.app.debug
 
+import com.unscroll.app.UnscrollApplication
+import com.unscroll.app.data.BloomEvent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,6 +45,15 @@ class MascotGalleryActivity : ComponentActivity() {
         // Store artwork: saves big mascot PNGs to files/store/ for the Play listing graphics.
         //   adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --ez export true
         if (intent.getBooleanExtra("export", false)) exportStoreArt()
+        // Test Bloomy's celebration on Home without waiting a week (FLOWER or POT):
+        //   adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --es bloom FLOWER
+        intent.getStringExtra("bloom")?.let { name ->
+            val event = BloomEvent.valueOf(name)
+            val settings = (application as UnscrollApplication).container.settings
+            kotlinx.coroutines.runBlocking { settings.setBloomEvent(event) }
+            finish()
+            return
+        }
         setContent { AppTheme { Gallery() } }
     }
 

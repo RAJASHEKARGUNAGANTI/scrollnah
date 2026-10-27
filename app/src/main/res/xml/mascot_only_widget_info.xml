@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Animated mascot widget (2x2, no background). Drawn by MascotOnlyWidget (Glance). -->
+<!-- Animated mascot widget (2x2, no background; layout/widget_mascot_frames.xml). Drawn by MascotWidgets.kt. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_mascot_description"
-    android:initialLayout="@layout/glance_default_loading_layout"
+    android:initialLayout="@layout/widget_loading_empty"
     android:minWidth="110dp"
     android:minHeight="110dp"
     android:previewLayout="@layout/widget_preview_mascot"

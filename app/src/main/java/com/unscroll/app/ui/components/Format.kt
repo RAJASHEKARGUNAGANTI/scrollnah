@@ -21,6 +21,19 @@ fun letterFor(appName: String): String = appName.firstOrNull()?.uppercase() ?: "
  */
 fun duration(minutes: Int): String = if (minutes < 60) "$minutes min" else formatMinutes(minutes)
 
+/** For screen readers: 90 -> "1 hour 30 minutes", 1 -> "1 minute". */
+fun spokenDuration(minutes: Int): String {
+    val h = minutes / 60
+    val m = minutes % 60
+    val hours = if (h == 1) "1 hour" else "$h hours"
+    val mins = if (m == 1) "1 minute" else "$m minutes"
+    return when {
+        h == 0 -> mins
+        m == 0 -> hours
+        else -> "$hours $mins"
+    }
+}
+
 /**
  * "used of limit" without repeating "min": (3, 5) -> "3 of 5 min",
  * (45, 90) -> "45 min of 1h 30m". [separator] is " of " or " / ".

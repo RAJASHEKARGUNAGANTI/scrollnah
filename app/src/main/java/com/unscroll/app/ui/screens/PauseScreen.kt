@@ -2,6 +2,10 @@
 
 package com.unscroll.app.ui.screens
 
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -128,7 +132,11 @@ fun PauseScreen(
     // The 3-2-1 circle.
     val breathingCircle: @Composable (Modifier) -> Unit = { modifier ->
         NeoShadowSurface(
-            modifier = modifier.size(if (compact) 104.dp else 116.dp),
+            modifier = modifier
+                .size(if (compact) 104.dp else 116.dp)
+                .clearAndSetSemantics {
+                    contentDescription = if (breathingDone) "Breathing done. Nice one." else "Breathe in. $secondsLeft"
+                },
             shape = CircleShape,
             backgroundColor = White // the breathing circle stays white on the orange page
         ) {
@@ -146,8 +154,18 @@ fun PauseScreen(
     // The mascot with its name tag (this screen is the mascot talking to you).
     val mascotWithName: @Composable (Dp) -> Unit = { size ->
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Mascot(mood = MoodLevel.WORRIED, size = size, onOrange = true)
-            Text(LocalMascot.current.theme.mascotName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Mascot(
+                mood = MoodLevel.WORRIED,
+                size = size,
+                onOrange = true,
+                contentDescription = "${LocalMascot.current.theme.mascotName} looks worried"
+            )
+            Text(
+                LocalMascot.current.theme.mascotName,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier.clearAndSetSemantics {} // the mascot's description already says the name
+            )
         }
     }
 
@@ -156,7 +174,9 @@ fun PauseScreen(
             title,
             style = MaterialTheme.typography.headlineMedium.copy(fontSize = if (compact) 28.sp else 32.sp),
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() }
         )
         Text(subtitle, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }

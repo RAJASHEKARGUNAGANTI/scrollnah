@@ -1,5 +1,10 @@
 package com.unscroll.app.ui.screens
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.unscroll.app.ui.components.spokenDuration
 import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -41,6 +46,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.DayTotal
 import com.unscroll.app.data.StreakInfo
+import com.unscroll.app.data.StreakRepository
+import com.unscroll.app.data.db.totalLimitOn
+import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.ui.mascot.LocalMascot
 import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.data.Websites
@@ -72,7 +80,7 @@ private data class WeekReport(
     val vsLastWeekMinutes: Int?, // negative = less than last week; null = not enough history
     val streakDays: Int,
     val bestStreak: Int,
-    val dailyLimit: Int,
+    val dailyLimits: List<Int>,      // each day's total budget (weekend limits can differ), same order as thisWeek
     val reasons: List<ReasonCount>, // Pause-screen answers, last 7 days
     val pauses: Int,
     val walkedAway: Int
@@ -89,8 +97,6 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}) {
     LaunchedEffect(apps) {
         if (!hasAccess || apps.isEmpty()) return@LaunchedEffect
         val packages = apps.map { it.packageName }.toSet()
-        // The dashed line is the sum of today's enabled limits.
-        val dailyLimit = apps.filter { it.enabled }.sumOf { it.limitMinutes }
         report = withContext(Dispatchers.IO) {
             val days = container.streaks.dailyTotalsWithWeb(packages, days = 14) // app + website time
             container.streaks.recordFinishedDays()
@@ -99,7 +105,7 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}) {
             val weekStart = UsageRepository.startOfDay(6)
             val pauseDao = container.database.pauseLogDao()
             buildReport(
-                days, dailyLimit, streakInfo,
+                days, apps, streakInfo,
                 reasons = pauseDao.reasonCounts(weekStart),
                 pauses = pauseDao.pauseCount(weekStart),
                 walkedAway = pauseDao.walkedAwayCount(weekStart)
@@ -158,7 +164,7 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}) {
 
 private fun buildReport(
     days: List<DayTotal>,
-    dailyLimit: Int,
+    apps: List<TrackedApp>,
     streak: StreakInfo,
     reasons: List<ReasonCount>,
     pauses: Int,
@@ -169,14 +175,17 @@ private fun buildReport(
     val total = thisWeek.sumOf { it.minutes }
     val vsLast = if (lastWeek.all { it.hasData }) total - lastWeek.sumOf { it.minutes } else null
 
-    return WeekReport(thisWeek, total, vsLast, streak.current, streak.best, dailyLimit, reasons, pauses, walkedAway)
+    // The dashed line: the sum of the enabled limits for each day (weekend limits can differ).
+    val limits = thisWeek.map { apps.totalLimitOn(StreakRepository.dateOf(it.dayStart)) }
+
+    return WeekReport(thisWeek, total, vsLast, streak.current, streak.best, limits, reasons, pauses, walkedAway)
 }
 
 /** What the user answered on the Pause screen this week. */
 @Composable
 private fun ReasonsCard(report: WeekReport) {
     NeoCard(contentPadding = PaddingValues(16.dp)) {
-        Text("Why you reached for it", style = MaterialTheme.typography.headlineSmall)
+        Text("Why you reached for it", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
         if (report.pauses == 0) {
             Text(
                 "No Pause screens this week. Either you're doing great, or nothing hit its limit yet.",
@@ -235,31 +244,45 @@ private fun WeekSummaryCard(report: WeekReport) {
             }
         }
         Spacer(Modifier.height(14.dp))
-        WeekChart(report.thisWeek, report.dailyLimit)
+        WeekChart(report.thisWeek, report.dailyLimits)
     }
 }
 
 @Composable
-private fun WeekChart(days: List<DayTotal>, limitMinutes: Int) {
+private fun WeekChart(days: List<DayTotal>, limits: List<Int>) {
     val maxBarHeight = 140.dp
-    val maxValue = (days.maxOf { it.minutes }.coerceAtLeast(limitMinutes).coerceAtLeast(1) * 1.15f)
+    val maxValue = (days.maxOf { it.minutes }.coerceAtLeast(limits.max()).coerceAtLeast(1) * 1.15f)
+    // The label shows the usual (weekday) limit; weekend days may have their own line height.
+    val limitMinutes = limits.first()
     val limitFraction = (limitMinutes / maxValue).coerceIn(0f, 1f)
+    val gap = 8.dp
     val dayLetter = SimpleDateFormat("EEEEE", Locale.getDefault())
     val barShape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
 
-    Column {
+    // TalkBack reads the whole chart as one sentence per day instead of unlabeled bars.
+    val dayName = SimpleDateFormat("EEEE", Locale.getDefault())
+    val spoken = days.mapIndexed { i, day ->
+        val name = if (i == days.lastIndex) "Today" else dayName.format(Date(day.dayStart))
+        when {
+            !day.hasData -> "$name: no data"
+            day.minutes > limits[i] -> "$name: ${spokenDuration(day.minutes)}, over the limit"
+            else -> "$name: ${spokenDuration(day.minutes)}"
+        }
+    }.joinToString(". ")
+
+    Column(Modifier.clearAndSetSemantics { contentDescription = "Last 7 days. $spoken." }) {
         Box(Modifier.fillMaxWidth().height(maxBarHeight)) {
             Row(
                 Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(gap)
             ) {
                 days.forEachIndexed { index, day ->
                     val isToday = index == days.lastIndex
                     val fraction = (day.minutes / maxValue).coerceIn(0.03f, 1f)
                     val color: Color = when {
                         isToday -> Neo.colors.content
-                        day.minutes > limitMinutes -> Orange
+                        day.minutes > limits[index] -> Orange // over that day's own limit
                         else -> Lime
                     }
                     Box(
@@ -275,14 +298,21 @@ private fun WeekChart(days: List<DayTotal>, limitMinutes: Int) {
             if (limitMinutes > 0) {
                 val lineColor = Neo.colors.outline
                 Canvas(Modifier.fillMaxSize()) {
-                    val y = size.height * (1f - limitFraction)
-                    drawLine(
-                        color = lineColor,
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 2.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-                    )
+                    // One dashed piece per day, at that day's limit (a straight line if they're all the same).
+                    val gapPx = gap.toPx()
+                    val column = (size.width - gapPx * (days.size - 1)) / days.size
+                    limits.forEachIndexed { i, limit ->
+                        val y = size.height * (1f - (limit / maxValue).coerceIn(0f, 1f))
+                        val start = (i * (column + gapPx) - gapPx / 2f).coerceAtLeast(0f)
+                        val end = (i * (column + gapPx) + column + gapPx / 2f).coerceAtMost(size.width)
+                        drawLine(
+                            color = lineColor,
+                            start = Offset(start, y),
+                            end = Offset(end, y),
+                            strokeWidth = 2.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                        )
+                    }
                 }
                 // Label sits on the left with a white backing so tall bars can't hide it.
                 Text(
@@ -319,7 +349,11 @@ private fun StatTileCard(
     backgroundColor: Color,
     modifier: Modifier = Modifier
 ) {
-    NeoCard(modifier = modifier, backgroundColor = backgroundColor, contentPadding = PaddingValues(14.dp)) {
+    NeoCard(
+        modifier = modifier.semantics(mergeDescendants = true) {}, // read as one: "5 days, under your limit in a row"
+        backgroundColor = backgroundColor,
+        contentPadding = PaddingValues(14.dp)
+    ) {
         icon()
         Spacer(Modifier.height(6.dp))
         Text(value, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 26.sp))

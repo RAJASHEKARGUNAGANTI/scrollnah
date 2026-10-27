@@ -173,9 +173,9 @@ class FeatureWatchService : AccessibilityService() {
                 val app = trackedApps[pkg]?.takeIf { it.enabled } ?: return@launch
                 val usedMinutes = appMinutes(pkg) + (webMs / 60_000L).toInt()
                 val ruleApplies = rule != null && !(rule == PauseReason.BEDTIME && passActive(pkg))
-                if (ruleApplies || (usedMinutes >= app.limitMinutes && !passActive(pkg))) {
+                if (ruleApplies || (usedMinutes >= app.limitOn() && !passActive(pkg))) {
                     val target = PauseTarget(
-                        pkg, app.appName, pkg, app.limitMinutes,
+                        pkg, app.appName, pkg, app.limitOn(),
                         openCount = null, reason = if (ruleApplies) rule!! else PauseReason.LIMIT
                     )
                     handler.post { act(target, stillShowing = { seen?.webAppPackage == pkg }, pressBack = false) }

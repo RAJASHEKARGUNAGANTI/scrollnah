@@ -12,21 +12,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.unscroll.app.R
 
-// Bricolage Grotesque and DM Sans are variable fonts, so each weight is the
-// same font file with a different wght axis setting baked in.
-private fun bricolage(weight: Int) = Font(
-    resId = R.font.bricolage_grotesque,
-    weight = FontWeight(weight),
-    variationSettings = FontVariation.Settings(FontVariation.weight(weight))
-)
-
+// The font files are trimmed copies (see tools/subset_fonts.py) to keep the app small:
+// Bricolage Grotesque is a plain ExtraBold (800) font, and DM Sans is a variable font
+// that only goes from 400 to 700, so each weight below sets its wght axis.
 private fun dmSans(weight: Int) = Font(
     resId = R.font.dm_sans,
     weight = FontWeight(weight),
     variationSettings = FontVariation.Settings(FontVariation.weight(weight))
 )
 
-val DisplayFontFamily = FontFamily(bricolage(800))
+val DisplayFontFamily = FontFamily(Font(R.font.bricolage_grotesque, FontWeight.ExtraBold))
 val BodyFontFamily = FontFamily(dmSans(400), dmSans(500), dmSans(700))
 
 // Headline style for Blobby card titles, section headers, big numbers.
