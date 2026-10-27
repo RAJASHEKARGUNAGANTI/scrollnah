@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-10-27): v2.1.1 released on GitHub (= 2.1.0 + README screenshots and ScrollNah naming) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-10-27): v2.2.0 released on GitHub (Stats screen upgrade + "Turn off tracker" button) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -381,8 +381,12 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 2.2.0 (2026-10-27)
+- `versionCode` 8, `versionName` "2.2.0": the Stats screen upgrade below and the "Turn off tracker" button.
+  Release APK smoke-tested on the emulator (Stats, review cards, Share). Not yet run on a real phone.
+
 ## Stats screen upgrade (2026-10-27, developer: "go ahead with all")
-Committed and pushed to main (not in a release yet). All nine ideas from the Stats list, built on the phone only (no server, no new library):
+Released in 2.2.0. All nine ideas from the Stats list, built on the phone only (no server, no new library):
 - **Own history (Room v5, `MIGRATION_4_5`):** `day_app_stats` (date, app, minutes incl. website time, opens,
   first use after 4 AM) and `day_hours` (24 numbers: minutes per hour). `StreakRepository.saveDayDetails()` saves
   finished days Android still remembers (reads 10 days back) every time finished days are saved, so these stats
