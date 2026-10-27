@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-10-27): v2.1.0 released on GitHub (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-10-27): v2.1.1 released on GitHub (= 2.1.0 + README screenshots and ScrollNah naming) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -380,6 +380,11 @@ debug gallery (below).
   a full on-screen keyboard (the emulator shows a floating toolbar).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
+
+## Version 2.1.1 (2026-10-27)
+- `versionCode` 7, `versionName` "2.1.1". Same app as 2.1.0 (only comments, the Gradle project name, README
+  screenshots and the design mockup name changed). Released as a new version because moving the v2.1.0 tag
+  needs a force push, which Claude's safety check blocks.
 
 ## Version 2.1.0 (2026-10-27)
 - `versionCode` 6, `versionName` "2.1.0": everything in "Enhancements + compact app" below. GitHub release v2.1.0 (Latest).
