@@ -21,14 +21,16 @@ A playful Android app that helps you scroll less, with a mascot that reacts to h
 | Home | Pause screen | Your week |
 |:---:|:---:|:---:|
 | <img src="screenshots/home-blobby.png" width="250" alt="Home with Blobby"> | <img src="screenshots/pause.png" width="250" alt="Pause screen"> | <img src="screenshots/stats.png" width="250" alt="Weekly report"> |
-| **Limits** | **Break reminders** | **A break reminder** |
-| <img src="screenshots/limits.png" width="250" alt="Limits"> | <img src="screenshots/break-reminders.png" width="250" alt="Break reminder settings"> | <img src="screenshots/break-reminder.png" width="250" alt="Break reminder notification and bubble over Chrome"> |
+| **Limits (weekday and weekend)** | **Break reminders** | **A break reminder** |
+| <img src="screenshots/limits.png" width="250" alt="Limits with real app icons and a different weekend limit for YouTube"> | <img src="screenshots/break-reminders.png" width="250" alt="Break reminder settings"> | <img src="screenshots/break-reminder.png" width="250" alt="Break reminder notification and bubble over Chrome"> |
 | **Bloomy on Home** | **Pick your mascot** | **Bloomy's garden** |
 | <img src="screenshots/home-bloomy.png" width="250" alt="Home with Bloomy"> | <img src="screenshots/mascot-picker.png" width="250" alt="Mascot picker"> | <img src="screenshots/garden.png" width="250" alt="Garden"> |
+| **Pick your buddy (setup)** | **Bloomy grew a flower** | **Focus from Quick Settings** |
+| <img src="screenshots/setup.png" width="250" alt="Setup: pick Blobby or Bloomy"> | <img src="screenshots/bloom.png" width="250" alt="New flower celebration"> | <img src="screenshots/focus-tile.png" width="250" alt="Focus tile in Quick Settings"> |
 | **Home-screen widgets** | | |
 | <img src="screenshots/widget.png" width="250" alt="Home-screen widgets"> | | |
 
-<sub>Screenshots use the app's sample data (debug demo mode).</sub>
+<sub>Screenshots use the app's sample data (debug demo mode). Apps that aren't installed on the test phone (Instagram, Snapchat) show a letter instead of their icon.</sub>
 
 ## Install
 

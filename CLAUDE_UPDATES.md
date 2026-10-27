@@ -384,6 +384,10 @@ debug gallery (below).
 ## Version 2.1.0 (2026-10-27)
 - `versionCode` 6, `versionName` "2.1.0": everything in "Enhancements + compact app" below. GitHub release v2.1.0 (Latest).
 - Not yet tested on a real phone (emulator only). Play listing text (`store/listing.md`) not updated for the new features.
+- README: new screenshots `setup.png` (Pick your buddy), `bloom.png` (New flower!), `focus-tile.png` (Quick Settings,
+  focus on), and a new `limits.png` (app icons + YouTube weekend limit). Same method as "README screenshots" below;
+  the emulator's demo status bar wouldn't show the Wi-Fi icon this time (clock + battery only). The Focus tile showed
+  no ">" arrow once it was removed and added again (System UI caches the toggle flag).
 
 ## Enhancements + compact app (2026-10-27, developer's list + "make it compact")
 Committed as d5bf426 and released in 2.1.0. Built both flavors, 21 unit tests pass, tested on the emulator (`Unscroll_Pixel`).
@@ -442,9 +446,9 @@ Committed as d5bf426 and released in 2.1.0. Built both flavors, 21 unit tests pa
 ## Version 2.0.2 (2026-10-27)
 - `versionCode` 5, `versionName` "2.0.2": the landscape layouts below. GitHub release v2.0.2 (Latest), built
   with `./gradlew assembleGithubRelease` (the github flavor = what GitHub releases ship, tracker included).
-- Release steps now: bump version -> commit -> `./gradlew clean assembleGithubRelease` ->
-  `gh release create vX.Y.Z app/build/outputs/apk/github/release/app-github-release.apk#ScrollNah-X.Y.Z.apk
-  --target <FULL commit SHA> --latest` (a short SHA is rejected). Push without piping the output (piped pushes
+- Release steps now: bump version -> commit -> `./gradlew clean assembleGithubRelease` -> copy the APK to a
+  file named `ScrollNah-X.Y.Z.apk` (the `file#label` trick only sets the label, the download keeps the old file
+  name) -> `gh release create vX.Y.Z ScrollNah-X.Y.Z.apk --target <FULL commit SHA> --latest` (a short SHA is rejected). Push without piping the output (piped pushes
   failed twice for no clear reason).
 
 ## Rotation / landscape (2026-10-27, developer: "it always tilts, should follow the phone's tilt setting")
