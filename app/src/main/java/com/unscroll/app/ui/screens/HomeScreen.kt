@@ -74,7 +74,6 @@ import com.unscroll.app.data.Websites
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.ui.components.FireIcon
 import com.unscroll.app.ui.components.FunStat
-import com.unscroll.app.ui.components.GearIcon
 import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
@@ -126,7 +125,7 @@ private data class LimitProgress(
 )
 
 @Composable
-fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
+fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val context = LocalContext.current
     val container = appContainer()
     val scope = rememberCoroutineScope()
@@ -236,7 +235,6 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenSettings: () -> Unit = {}, o
                 userName = userName,
                 isDark = Neo.colors.isDark,
                 onToggleTheme = { scope.launch { container.settings.setDarkMode(!isDarkNow) } },
-                onOpenSettings = onOpenSettings,
                 onEditName = { showNameDialog = true }
             )
         }
@@ -340,7 +338,6 @@ private fun HomeHeader(
     userName: String,
     isDark: Boolean,
     onToggleTheme: () -> Unit,
-    onOpenSettings: () -> Unit,
     onEditName: () -> Unit
 ) {
     var showEdit by remember { mutableStateOf(false) }
@@ -384,7 +381,6 @@ private fun HomeHeader(
             HeaderButton(onClick = onToggleTheme, label = if (isDark) "Switch to light mode" else "Switch to dark mode") {
                 if (isDark) SunIcon() else MoonIcon()
             }
-            HeaderButton(onClick = onOpenSettings, label = "Settings") { GearIcon() }
         }
     }
 }

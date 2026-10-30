@@ -165,16 +165,6 @@ fun StatsNavIcon(modifier: Modifier = Modifier, size: Dp = 22.dp) {
 }
 
 @Composable
-fun PauseNavIcon(modifier: Modifier = Modifier, size: Dp = 22.dp) {
-    StrokeIcon(modifier, size) { s, stroke, tint ->
-        fun p(x: Float, y: Float) = Offset(x * s, y * s)
-        drawCircle(tint, radius = 9f * s, center = p(12f, 12f), style = stroke)
-        drawLine(tint, p(10f, 9f), p(10f, 15f), strokeWidth = stroke.width, cap = StrokeCap.Round)
-        drawLine(tint, p(14f, 9f), p(14f, 15f), strokeWidth = stroke.width, cap = StrokeCap.Round)
-    }
-}
-
-@Composable
 fun CloseIcon(modifier: Modifier = Modifier, size: Dp = 18.dp) {
     StrokeIcon(modifier, size) { s, stroke, tint ->
         val path = Path().apply {

@@ -71,11 +71,11 @@ Based on the share of today's total limit used (summed across enabled limited ap
 ## Screens
 
 ### 1. Home
-- Header: "Hey [name]" + "scrollnah" wordmark, light/dark button, settings button.
+- Header: "Hey [name]" + "scrollnah" wordmark, light/dark button (Settings is a tab, not a header button).
 - Lime mascot card (turns orange when over the limit): mascot in today's mood, signed mood pill ("Blobby · thriving"), headline like "Only 38 min of scrolling today!", short encouraging line.
 - Fun stat card: today's minutes turned into something silly (songs, sitcom episodes; scroll distance can't be measured).
 - "Today's limits" list: each app with a letter tile, name, "used / limit min", and a progress bar (orange when close to the limit). "Edit" opens Limits.
-- Bottom nav: Home, Limits, Stats, Pause.
+- Bottom nav: Home, Limits, Stats, Settings (decided 2026-10-30: the Pause tab was only a preview, so Settings took its place).
 
 ### 2. Pause screen (shown when a limited app is over its limit and the strictness mode is Firm or Beast)
 - Full orange background. Pill: "3rd time today".
@@ -88,6 +88,7 @@ Based on the share of today's total limit used (summed across enabled limited ap
 - Back button, title, short description.
 - List of apps: letter tile, name, minus/plus stepper (5 min steps, 5–180), on/off switch.
 - "How strict should I be?" (3 cards): Chill = gentle nudge notification, Firm = pause screen, Beast = hard lock until midnight.
+- "See the Pause screen" link under the strictness cards (Firm and Beast): a full-screen preview of the Pause screen. **The preview never saves anything** (no Pause answer, so Stats don't change) and doesn't open the app; its buttons just show "Just a preview. Nothing was saved." and go back.
 - "Break reminders" row ("After 20 min on one app") that opens screen 7.
 - "Lock it in" orange button saves.
 

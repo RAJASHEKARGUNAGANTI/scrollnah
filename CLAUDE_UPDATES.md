@@ -381,6 +381,18 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Settings tab instead of the Pause tab (2026-10-30, developer request)
+Committed (not in a release yet). README/store screenshots still show the old Pause tab.
+- Bottom nav: Home, Limits, Stats, **Settings** (gear icon). The gear button at the top of Home is gone (the
+  light/dark button stays). `Destination.SETTINGS` replaced `Destination.PAUSE`; `PauseNavIcon` removed.
+  Settings keeps its back arrow like Limits and Stats. Garden highlights the Settings tab.
+- The Pause preview moved to Limits: "See the Pause screen" under "How strict should I be?" (Firm/Beast only), route
+  `pause_preview`, full screen. Asks first if Limits has unsaved changes.
+- **Bug fixed:** the old Pause tab's buttons saved real Pause answers (and "Open for 5 minutes" opened the app), so
+  trying the preview changed "Why you reached for it" and "Did the nudges work?". Now the preview saves nothing and
+  shows a toast. Tested on the emulator with demo data: tapped Bored + "Nah, I'm good", then Work thing + "Open for 5
+  minutes"; Stats stayed at 10 / 7 and Bored 4, Pure habit 3, Replying 2, Work thing 1; the app wasn't opened.
+
 ## Version 2.2.1 (2026-10-30)
 - `versionCode` 9, `versionName` "2.2.1": Bloomy's growing bud below. Release APK not run on a device or emulator
   (drawing-only change since 2.2.0, which was smoke-tested); version and signature checked.

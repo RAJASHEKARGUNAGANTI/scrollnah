@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.DemoMode
 import com.unscroll.app.data.Strictness
-import com.unscroll.app.data.db.PauseLog
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.ui.mascot.LocalMascot
@@ -36,13 +36,15 @@ import com.unscroll.app.ui.theme.LocalNeoColors
 import com.unscroll.app.ui.theme.Lime
 import com.unscroll.app.ui.theme.Orange
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * The Pause tab: a preview of what the mascot shows at a limit, using the user's
- * most-used limited app, its real open count today and their strictness.
- * (The real one is PauseActivity, opened by BlockerService.)
+ * A preview of the Pause screen (opened from Limits), using the user's most-used limited
+ * app, its real open count today and their strictness. (The real one is PauseActivity,
+ * opened by BlockerService.)
+ *
+ * It's only a look: the buttons don't save a Pause answer (so Stats aren't changed) and
+ * don't open the app.
  */
 @Composable
 fun PauseRoute(onDone: () -> Unit, onGoToLimits: () -> Unit) {
@@ -101,13 +103,12 @@ fun PauseRoute(onDone: () -> Unit, onGoToLimits: () -> Unit) {
         limitMinutes = app.limitOn(),
         locked = strictness == Strictness.BEAST, // preview matches the user's strictness
         isPreview = !DemoMode.active,
-        onDecline = { reason ->
-            container.appScope.launch { container.database.pauseLogDao().insert(PauseLog(packageName = app.packageName, reason = reason, openedAnyway = false)) }
+        onDecline = {
+            Toast.makeText(context, "Just a preview. Nothing was saved.", Toast.LENGTH_SHORT).show()
             onDone()
         },
-        onAllowFiveMinutes = { reason ->
-            container.appScope.launch { container.database.pauseLogDao().insert(PauseLog(packageName = app.packageName, reason = reason, openedAnyway = true)) }
-            context.packageManager.getLaunchIntentForPackage(app.packageName)?.let { context.startActivity(it) }
+        onAllowFiveMinutes = {
+            Toast.makeText(context, "Just a preview. Nothing was saved.", Toast.LENGTH_SHORT).show()
             onDone()
         }
     )

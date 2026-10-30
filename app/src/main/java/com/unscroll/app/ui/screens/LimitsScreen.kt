@@ -110,6 +110,7 @@ fun LimitsScreen(
     onBack: () -> Unit = {},
     onAddApp: () -> Unit = {},
     onOpenBreaks: () -> Unit = {},
+    onPreviewPause: () -> Unit = {},
     onSaved: () -> Unit = {},
     onUnsavedChanges: (Boolean) -> Unit = {}, // tells the app whether leaving needs a prompt
     pendingLeave: (() -> Unit)? = null,       // set by the app when the user tries to leave with unsaved changes
@@ -271,6 +272,20 @@ fun LimitsScreen(
                     },
                     style = MaterialTheme.typography.bodyMedium
                 )
+                if (strictness != Strictness.CHILL) {
+                    // Unsaved edits would be lost on the way, so ask first (like Break reminders).
+                    Text(
+                        "See the Pause screen",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(role = Role.Button) { if (hasChanges) askBeforeLeaving = onPreviewPause else onPreviewPause() }
+                            .heightIn(min = 44.dp)
+                            .wrapContentHeight()
+                            .padding(end = 8.dp)
+                    )
+                }
             }
         }
         item {

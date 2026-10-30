@@ -34,10 +34,11 @@ fun UnscrollApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    // "Add an app" and "Break reminders" aren't tabs, so highlight Limits while they're open.
+    // Pages that aren't tabs highlight the tab they were opened from.
     val currentDestination = when (currentRoute) {
-        ADD_APP_ROUTE, BREAKS_ROUTE -> Destination.LIMITS
+        ADD_APP_ROUTE, BREAKS_ROUTE, PAUSE_PREVIEW_ROUTE -> Destination.LIMITS
         WEEK_REVIEW_ROUTE -> Destination.STATS
+        GARDEN_ROUTE -> Destination.SETTINGS
         else -> Destination.entries.find { it.route == currentRoute } ?: Destination.HOME
     }
 
@@ -47,8 +48,8 @@ fun UnscrollApp() {
 
     Scaffold(
         bottomBar = {
-            // Pause and the week-in-review cards are full screen.
-            if (currentDestination != Destination.PAUSE && currentRoute != WEEK_REVIEW_ROUTE) {
+            // The Pause preview and the week-in-review cards are full screen.
+            if (currentRoute != PAUSE_PREVIEW_ROUTE && currentRoute != WEEK_REVIEW_ROUTE) {
                 UnscrollBottomNav(current = currentDestination) { destination ->
                     val go = {
                         pendingLeave = null
@@ -80,7 +81,6 @@ fun UnscrollApp() {
                 ReadableWidth {
                     HomeScreen(
                         onEditLimits = { navController.navigate(Destination.LIMITS.route) },
-                        onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
                         onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
                     )
                 }
@@ -91,6 +91,7 @@ fun UnscrollApp() {
                         onBack = { navController.popBackStack() },
                         onAddApp = { navController.navigate(ADD_APP_ROUTE) },
                         onOpenBreaks = { navController.navigate(BREAKS_ROUTE) },
+                        onPreviewPause = { navController.navigate(PAUSE_PREVIEW_ROUTE) },
                         onSaved = { navController.popBackStack() },
                         onUnsavedChanges = { limitsUnsaved = it },
                         pendingLeave = pendingLeave,
@@ -98,7 +99,7 @@ fun UnscrollApp() {
                     )
                 }
             }
-            composable(SETTINGS_ROUTE) {
+            composable(Destination.SETTINGS.route) {
                 ReadableWidth {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
@@ -132,10 +133,10 @@ fun UnscrollApp() {
             composable(WEEK_REVIEW_ROUTE) {
                 WeekReviewScreen(onClose = { navController.popBackStack() })
             }
-            composable(Destination.PAUSE.route) {
+            composable(PAUSE_PREVIEW_ROUTE) {
                 PauseRoute(
-                    onDone = { navController.popBackStack(Destination.HOME.route, inclusive = false) },
-                    onGoToLimits = { navController.navigate(Destination.LIMITS.route) }
+                    onDone = { navController.popBackStack() }, // back to Limits
+                    onGoToLimits = { navController.popBackStack() }
                 )
             }
         }

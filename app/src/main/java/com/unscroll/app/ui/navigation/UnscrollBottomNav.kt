@@ -25,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.unscroll.app.ui.components.HomeNavIcon
 import com.unscroll.app.ui.components.LimitsNavIcon
-import com.unscroll.app.ui.components.PauseNavIcon
+import com.unscroll.app.ui.components.GearIcon
 import com.unscroll.app.ui.components.StatsNavIcon
 import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.Lime
@@ -69,7 +69,7 @@ private fun NavItem(destination: Destination, selected: Boolean, onClick: () -> 
                 Destination.HOME -> HomeNavIcon()
                 Destination.LIMITS -> LimitsNavIcon()
                 Destination.STATS -> StatsNavIcon()
-                Destination.PAUSE -> PauseNavIcon()
+                Destination.SETTINGS -> GearIcon()
             }
             Text(destination.label, fontWeight = FontWeight.Bold, fontSize = androidx.compose.ui.unit.TextUnit(12f, androidx.compose.ui.unit.TextUnitType.Sp))
         }
