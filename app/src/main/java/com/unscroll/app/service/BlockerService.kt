@@ -58,6 +58,9 @@ class BlockerService : Service() {
     private var webMinutes: Map<String, Int> = emptyMap() // package -> minutes on its website today
     private var lastUsageRefresh = 0L
     private val lastActionAt = mutableMapOf<String, Long>()
+    private var lastFloatingCheck = 0L
+    /** False right after pausing a floating player, until the sound stops (players keep a silent stream open for a few seconds). */
+    private var floatingArmed = true
 
     /** Is the screen on? Nobody can use an app with the screen off, so there's nothing to check then. */
     private val screenOn = MutableStateFlow(true)
@@ -258,6 +261,7 @@ class BlockerService : Service() {
         if (limited != null || (app != null && app in Websites.browserUrlBars)) widgetDirty = true
         // Break reminders look at every tick, so they also notice when the user leaves the app.
         checkBreak(now, limited)
+        checkFloatingPlayers(now, app)
         if (app == null || limited == null) return
 
         // 3a. Focus mode / bedtime pause limited apps regardless of usage.
@@ -310,6 +314,48 @@ class BlockerService : Service() {
             PauseTarget(app, limited.appName, app, limit, opens),
             strictness
         )
+    }
+
+    /**
+     * A blocked app can keep playing in a small floating (picture-in-picture) window, which
+     * Android doesn't count as "in front", so the checks above never see it. If something is
+     * playing and a blocked app is still on screen that way, pause the playback.
+     * Cheap when nothing plays: it only looks further when sound is on (every 2 s at most).
+     * After pausing, it waits for the sound to stop before checking again, so pressing play
+     * in the floating window is caught, but other music isn't paused over and over.
+     */
+    private fun checkFloatingPlayers(now: Long, inFront: String?) {
+        if (now - lastFloatingCheck < 2_000L) return
+        lastFloatingCheck = now
+        if (!MediaPauser.isPlaying(this)) {
+            floatingArmed = true
+            return
+        }
+        if (!floatingArmed) return
+        val blocked = trackedApps.filter { it.enabled && it.packageName != inFront && isBlockedNow(it) }
+        if (blocked.isEmpty()) return
+        val floating = container.usage.floatingApps(blocked.map { it.packageName }.toSet(), now)
+        if (floating.isEmpty()) return
+        debug("still playing in a floating window: $floating -> pausing playback")
+        MediaPauser.pausePlayback(this)
+        floatingArmed = false
+        // Tell the user, so it doesn't look like the video just froze.
+        val name = blocked.first { it.packageName in floating }.appName
+        LimitActions.showFloatingPaused(this, name, FocusRules.activeRule() ?: PauseReason.LIMIT)
+    }
+
+    /** Would ScrollNah stop this app if it were opened right now? (Chill only nudges, so never.) */
+    private fun isBlockedNow(app: TrackedApp): Boolean {
+        val pkg = app.packageName
+        val passOk = strictness != Strictness.BEAST && Allowances.isActive(pkg) // "+5 min" still running
+        return when (FocusRules.activeRule()) {
+            PauseReason.FOCUS -> true // focus pauses every limited app, even in Chill
+            PauseReason.BEDTIME -> strictness != Strictness.CHILL && !passOk
+            else -> {
+                val used = (usedMinutes[pkg] ?: 0) + (webMinutes[pkg] ?: 0)
+                strictness != Strictness.CHILL && used >= app.limitOn() && !passOk
+            }
+        }
     }
 
     /**

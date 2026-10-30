@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-10-30): v2.2.1 released on GitHub (Bloomy's growing bud + "Next flower" progress) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-10-30): v2.2.2 released on GitHub (floating-window fix, Settings tab, Pause preview saves nothing) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -381,8 +381,35 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 2.2.2 (2026-10-30)
+- `versionCode` 10, `versionName` "2.2.2": the floating-window fix below (+ "Blobby: YouTube is paused" message) and
+  the Settings tab / Pause preview change. README and store screenshots still show the old Pause tab.
+
+## Blocked apps can't keep playing in a floating window (2026-10-30, developer report)
+Released in 2.2.2. After pausing, `LimitActions.showFloatingPaused()` posts "<Mascot>: <App> is paused" (why: limit /
+focus / bedtime, "Swipe it away when you're ready", disappears after 2 min), because the window itself can't be closed
+by ScrollNah (only by the user or the app that owns it). Checked on the emulator (Focus + Chrome PiP). Report: YouTube got blocked but its small picture-in-picture window kept playing.
+- Why: a floating (PiP) window is paused, not resumed, so `latestForegroundApp` never sees it.
+- `data/FloatingWindows.kt`: an app whose activity is paused > 2 s with no "stopped" after it (and nothing of it in
+  front) is on screen in a floating window or split screen. Needs ACTIVITY_STOPPED events (Android 10+).
+  `UsageRepository.floatingApps()` reads 3 h of events, only when sound is playing and an app is blocked.
+  6 unit tests (`FloatingWindowsTest`, 38 total).
+- `service/MediaPauser.kt`: takes AUDIOFOCUS_GAIN (USAGE_MEDIA), lets go after 1.5 s; players pause on a full loss and
+  don't resume by themselves. No permission. Used by `BlockerService.checkFloatingPlayers` (every 2 s; after a pause
+  it waits until the sound stops before pausing again, because players keep a silent stream open ~10 s and other
+  music shouldn't be paused over and over) and by `LimitActions.onLimitReached` for YouTube / YouTube Music
+  (Premium background play). `isBlockedNow()` mirrors the blocking rules (focus, bedtime, over limit; Chill and
+  "+5 min" passes don't block).
+- Tested on the emulator with Chrome (the emulator's YouTube app needs an update + sign-in): Chrome limited, a
+  video in Chrome's PiP window, Focus started -> PAUSED within ~1 s; pressed play in the PiP window -> paused again
+  within ~1 s; Focus ended -> it keeps playing. Expanding the PiP window brings the app to front -> Pause screen.
+  Not tested with the real YouTube app or on a phone.
+- Known: PiP time isn't counted toward the daily limit (UsageStats only counts time in front); Android 8-9 have no
+  floating-window detection (only the block-time pause for YouTube). Edge: if a blocked app's paused floating window
+  stays on screen and other music starts, that music is paused once.
+
 ## Settings tab instead of the Pause tab (2026-10-30, developer request)
-Committed (not in a release yet). README/store screenshots still show the old Pause tab.
+Released in 2.2.2. README/store screenshots still show the old Pause tab.
 - Bottom nav: Home, Limits, Stats, **Settings** (gear icon). The gear button at the top of Home is gone (the
   light/dark button stays). `Destination.SETTINGS` replaced `Destination.PAUSE`; `PauseNavIcon` removed.
   Settings keeps its back arrow like Limits and Stats. Garden highlights the Settings tab.

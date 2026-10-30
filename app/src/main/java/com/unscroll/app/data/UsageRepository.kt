@@ -115,6 +115,26 @@ class UsageRepository(context: Context) {
     }
 
     /**
+     * Which of [packages] are on screen but not in front: a floating picture-in-picture
+     * window or the other half of split screen (see [FloatingWindows]). Needs Android 10+,
+     * which reports "stopped"; older phones return nothing.
+     */
+    fun floatingApps(packages: Set<String>, now: Long): Set<String> {
+        if (packages.isEmpty() || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return emptySet()
+        val list = mutableListOf<ActivityEvent>()
+        // Three hours back: a floating window makes no new events while it plays.
+        val events = usageStatsManager.queryEvents(now - 3 * 60 * 60_000L, now)
+        val event = UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.packageName in packages) {
+                list += ActivityEvent(event.packageName, event.className.orEmpty(), event.eventType, event.timeStamp)
+            }
+        }
+        return FloatingWindows.visibleNotInFront(list, now)
+    }
+
+    /**
      * Reads the events between [from] and [to] and works out which app is in
      * front now. [current] is the answer from last time (null = nothing / unknown).
      */

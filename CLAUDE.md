@@ -10,6 +10,7 @@ Always write the name as **ScrollNah** (capital N) in the UI and docs. The lower
 - minSdk 26, targetSdk latest stable.
 - Usage data: `UsageStatsManager` / `UsageEvents` (needs `PACKAGE_USAGE_STATS`, granted via Settings > Usage access).
 - Detecting launches and session length: one **foreground service** (`BlockerService`) that polls usage events about every 1 s and knows which app is in front.
+- **Floating windows (picture-in-picture, e.g. YouTube's small video window):** Android doesn't count them as "in front", so a blocked app could keep playing there. `BlockerService.checkFloatingPlayers` spots a blocked app that is paused-but-not-stopped (`data/FloatingWindows.kt`, Android 10+) while sound is playing, and `service/MediaPauser` pauses it by briefly taking audio focus (no permission). YouTube / YouTube Music are also paused when blocked, for background play. Floating-window time is not counted toward the daily limit (only time in front is).
 - Pause screen: a full-screen Activity launched over the app (needs `SYSTEM_ALERT_WINDOW` to open from the background).
 - Mascot bubble: an overlay window (`SYSTEM_ALERT_WINDOW`).
 - Notifications: `NotificationCompat` with action buttons. Ask for `POST_NOTIFICATIONS` on Android 13+.

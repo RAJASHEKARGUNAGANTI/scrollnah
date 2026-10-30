@@ -39,6 +39,8 @@ object LimitActions {
         val nudgeOnly = strictness == Strictness.CHILL && target.reason != PauseReason.FOCUS
         // The Pause screen is already on top: don't stack another one.
         if (!nudgeOnly && PauseActivity.isShowing) return
+        // YouTube Premium / YouTube Music can keep playing in the background: pause it too.
+        if (!nudgeOnly && target.packageName in MediaPauser.BACKGROUND_PLAYERS) MediaPauser.pausePlayback(context)
         when {
             nudgeOnly -> showNudge(context, target)
             target.reason == PauseReason.FOCUS || strictness == Strictness.BEAST ->
@@ -139,6 +141,36 @@ object LimitActions {
 
     private const val STREAK_NOTIFICATION_ID = 2
     const val PAYMENT_HELP_NOTIFICATION_ID = 3
+    private const val FLOATING_NOTIFICATION_ID = 5
+
+    /**
+     * Says why a floating (picture-in-picture) video just paused. The small window itself
+     * stays on screen: Android only lets the user (or the app that owns it) close it.
+     */
+    fun showFloatingPaused(context: Context, appName: String, reason: PauseReason) {
+        val notifications = NotificationManagerCompat.from(context)
+        if (!notifications.areNotificationsEnabled()) return
+        val text = when (reason) {
+            PauseReason.FOCUS -> "Focus mode is on, so I paused $appName's little window. Swipe it away when you're ready."
+            PauseReason.BEDTIME -> "It's bedtime, so I paused $appName's little window. Swipe it away when you're ready."
+            PauseReason.LIMIT -> "Your $appName time is up for today, so I paused the little window. Swipe it away when you're ready."
+        }
+        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+            .setSmallIcon(R.drawable.ic_stat_blobby)
+            .setContentTitle("${mascotName(context)}: $appName is paused")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setTimeoutAfter(2 * 60_000L) // old news after a couple of minutes
+            .setContentIntent(openAppIntent(context))
+            .build()
+        try {
+            notifications.notify(FLOATING_NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            // Permission revoked; skip.
+        }
+    }
 
     /**
      * A UPI/bank app was opened while the Reels & Shorts tracker (Accessibility) is on.
