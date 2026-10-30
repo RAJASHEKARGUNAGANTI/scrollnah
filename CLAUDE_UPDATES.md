@@ -388,7 +388,11 @@ debug gallery (below).
   bud + "Next flower"): home-blobby, stats, limits, break-reminders, home-bloomy, mascot-picker, garden, bloom.
   Same method as before (demo mode, System UI demo status bar 9:41, `sips -Z 1200`). Found while doing it: the
   Settings mascot card didn't show Bloomy's bud; fixed (`MascotChoice(budDays)`), not yet in a release.
-  **Play Store screenshots (`store/screenshots/`) still show the old Pause tab.**
+- Play Store screenshots (`store/screenshots/`, 8 x 1080x1920 JPEG) retaken the same day with the Play debug build
+  (`wm size 1080x1920`, demo mode, demo status bar): new bottom bar, per-app Stats list, Bloomy's bud + "Next flower",
+  Limits with a weekend limit, Pause screen from the Limits preview, and a real break reminder (Chrome with a 5 min
+  per-app break time, Wikipedia page, notification + bubble). `store/listing.md` text not updated for the 2.1-2.2
+  features yet (weekend limits, Focus tile, per-app stats, week in review).
 
 ## Blocked apps can't keep playing in a floating window (2026-10-30, developer report)
 Released in 2.2.2. After pausing, `LimitActions.showFloatingPaused()` posts "<Mascot>: <App> is paused" (why: limit /
