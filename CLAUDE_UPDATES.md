@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-10-27): v2.2.0 released on GitHub (Stats screen upgrade + "Turn off tracker" button) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-10-30): v2.2.1 released on GitHub (Bloomy's growing bud + "Next flower" progress) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -381,8 +381,12 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Version 2.2.1 (2026-10-30)
+- `versionCode` 9, `versionName` "2.2.1": Bloomy's growing bud below. Release APK not run on a device or emulator
+  (drawing-only change since 2.2.0, which was smoke-tested); version and signature checked.
+
 ## Bloomy's growing bud (2026-10-30, developer: the plant looked the same all week)
-Committed and pushed to main (not in a release yet).
+Released in 2.2.1.
 - `drawBloomy(..., budDays)`: with 1-6 good days toward the next flower, the plant is drawn with room for one more
   stem (stems for count + 1); that stem (`budStem`: the middle/newest one) starts at 55% height and reaches full height
   by day 7, with a bud (two sepals + a petal-coloured tip, 4.5 -> 9 units) that hangs with the stem in sad moods.
