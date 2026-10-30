@@ -383,7 +383,12 @@ debug gallery (below).
 
 ## Version 2.2.2 (2026-10-30)
 - `versionCode` 10, `versionName` "2.2.2": the floating-window fix below (+ "Blobby: YouTube is paused" message) and
-  the Settings tab / Pause preview change. README and store screenshots still show the old Pause tab.
+  the Settings tab / Pause preview change.
+- README screenshots retaken after the release (new bottom bar, Settings tab, Stats per-app list + verdict, Bloomy's
+  bud + "Next flower"): home-blobby, stats, limits, break-reminders, home-bloomy, mascot-picker, garden, bloom.
+  Same method as before (demo mode, System UI demo status bar 9:41, `sips -Z 1200`). Found while doing it: the
+  Settings mascot card didn't show Bloomy's bud; fixed (`MascotChoice(budDays)`), not yet in a release.
+  **Play Store screenshots (`store/screenshots/`) still show the old Pause tab.**
 
 ## Blocked apps can't keep playing in a floating window (2026-10-30, developer report)
 Released in 2.2.2. After pausing, `LimitActions.showFloatingPaused()` posts "<Mascot>: <App> is paused" (why: limit /

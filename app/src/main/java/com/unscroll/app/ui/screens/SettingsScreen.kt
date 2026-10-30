@@ -139,6 +139,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                         MascotChoice(
                             theme = theme,
                             flowers = pot.flowers,
+                            budDays = pot.daysTowardNext, // the growing bud, like on Home
                             selected = mascot.theme == theme,
                             onClick = {
                                 container.appScope.launch {
@@ -333,6 +334,7 @@ internal fun MascotChoice(
     flowers: Int,
     selected: Boolean,
     onClick: () -> Unit,
+    budDays: Int = 0,
     modifier: Modifier = Modifier,
     mascotSize: Dp = 84.dp,
     detail: String? = null
@@ -347,7 +349,7 @@ internal fun MascotChoice(
             .padding(horizontal = 8.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Mascot(mood = MoodLevel.HAPPY, look = MascotLook(theme, flowers), size = mascotSize, animated = selected)
+        Mascot(mood = MoodLevel.HAPPY, look = MascotLook(theme, flowers, budDays), size = mascotSize, animated = selected)
         Text(theme.mascotName, fontWeight = FontWeight.Bold, color = contentColorOn(background), modifier = Modifier.padding(top = 6.dp))
         Text(
             detail ?: if (selected) "Picked" else "Tap to pick",
