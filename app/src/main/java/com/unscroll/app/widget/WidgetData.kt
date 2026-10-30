@@ -18,6 +18,7 @@ data class WidgetState(
     val theme: MascotTheme,
     val flowers: Int,
     val mood: MoodLevel,
+    val budDays: Int = 0,          // good days toward Bloomy's next flower (a growing bud)
     val setupTitle: String? = null, // not set up yet: what to show instead of numbers
     val setupDetail: String? = null,
     val topApp: String? = null,    // the limited app closest to its limit
@@ -32,9 +33,9 @@ object WidgetData {
     suspend fun load(context: Context): WidgetState {
         val container = (context.applicationContext as UnscrollApplication).container
         val theme = container.settings.mascotTheme.first()
-        val flowers = container.settings.potProgress.first().flowers
+        val pot = container.settings.potProgress.first()
         val today = LocalDate.now()
-        val base = WidgetState(today.toString(), theme, flowers, MoodLevel.HAPPY)
+        val base = WidgetState(today.toString(), theme, pot.flowers, MoodLevel.HAPPY, budDays = pot.daysTowardNext)
 
         if (!container.usage.hasUsageAccess()) {
             return base.copy(setupTitle = "Hi, I'm ${theme.mascotName}", setupDetail = "Tap to finish setting up ScrollNah")

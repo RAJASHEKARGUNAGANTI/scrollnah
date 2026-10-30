@@ -381,6 +381,19 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Bloomy's growing bud (2026-10-30, developer: the plant looked the same all week)
+Committed and pushed to main (not in a release yet).
+- `drawBloomy(..., budDays)`: with 1-6 good days toward the next flower, the plant is drawn with room for one more
+  stem (stems for count + 1); that stem (`budStem`: the middle/newest one) starts at 55% height and reaches full height
+  by day 7, with a bud (two sepals + a petal-coloured tip, 4.5 -> 9 units) that hangs with the stem in sad moods.
+  Day 0 = no bud (sprout stays a sprout). Full pot = no bud.
+- `MascotLook.budDays` (from `pot.daysTowardNext` in `AppTheme`), `drawMascot`/`MascotBitmap.render/frame(budDays)`,
+  `WidgetState.budDays`, `AppContainer.budDays` (break reminder notification + bubble).
+- Home: Bloomy card gets "Next flower ●●●●●○○ 5 of 7 days" (FlowRow, wraps under the label on small phones;
+  TalkBack: "Next flower: 5 of 7 days under your limits"). Hidden for Blobby and for a full pot.
+- Debug gallery has a row per stage: days 0, 2, 4, 6 happy, then day 4 thirsty and wilting.
+- Checked on the emulator: gallery, Home (normal and 360x640dp at font 1.3), all three widgets.
+
 ## Version 2.2.0 (2026-10-27)
 - `versionCode` 8, `versionName` "2.2.0": the Stats screen upgrade below and the "Turn off tracker" button.
   Release APK smoke-tested on the emulator (Stats, review cards, Share). Not yet run on a real phone.

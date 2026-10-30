@@ -60,8 +60,11 @@ import com.unscroll.app.ui.theme.Lime
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
-/** Which mascot the app shows right now: the chosen theme and Bloomy's growth stage. */
-data class MascotLook(val theme: MascotTheme = MascotTheme.BLOBBY, val flowers: Int = 0)
+/**
+ * Which mascot the app shows right now: the chosen theme, Bloomy's growth stage, and
+ * [budDays] = good days toward Bloomy's next flower (0-6), drawn as a growing bud.
+ */
+data class MascotLook(val theme: MascotTheme = MascotTheme.BLOBBY, val flowers: Int = 0, val budDays: Int = 0)
 
 /** Provided by AppTheme from the user's settings, so any screen can draw the right mascot. */
 val LocalMascot = compositionLocalOf { MascotLook() }
@@ -75,14 +78,15 @@ fun DrawScope.drawMascot(
     mood: MoodLevel,
     flowers: Int = 0,
     onOrange: Boolean = false,
-    pose: MascotPose = MascotPose()
+    pose: MascotPose = MascotPose(),
+    budDays: Int = 0
 ) {
     // The art is designed on a 140x140 grid; centre it if the canvas isn't square.
     val s = size.minDimension / 140f
     translate(left = (size.width - 140f * s) / 2f, top = (size.height - 140f * s) / 2f) {
         when (theme) {
             MascotTheme.BLOBBY -> drawBlobby(s, mood, onOrange, pose)
-            MascotTheme.BLOOMY -> drawBloomy(s, mood, flowers, onOrange, pose)
+            MascotTheme.BLOOMY -> drawBloomy(s, mood, flowers, onOrange, pose, budDays)
         }
     }
 }
@@ -118,7 +122,7 @@ fun Mascot(
         AnimatedMascot(mood, described, size, onOrange, look, pokeable)
     } else {
         // Still picture: no animation clock running (cheaper in lists like the garden).
-        Canvas(described.size(size)) { drawMascot(look.theme, mood, look.flowers, onOrange) }
+        Canvas(described.size(size)) { drawMascot(look.theme, mood, look.flowers, onOrange, budDays = look.budDays) }
     }
 }
 
@@ -284,7 +288,7 @@ private fun AnimatedMascot(
                     }
                 }
         ) {
-            drawMascot(l.theme, m, l.flowers, orange, pose)
+            drawMascot(l.theme, m, l.flowers, orange, pose, l.budDays)
         }
     }
 }
@@ -302,7 +306,8 @@ object MascotBitmap {
         flowers: Int,
         sizePx: Int,
         badge: Boolean = false,
-        onOrange: Boolean = false
+        onOrange: Boolean = false,
+        budDays: Int = 0
     ): Bitmap {
         val image = ImageBitmap(sizePx, sizePx)
         val area = Size(sizePx.toFloat(), sizePx.toFloat())
@@ -323,10 +328,10 @@ object MascotBitmap {
                     right = size.width - (c.x + r - pad),
                     bottom = size.height - (c.y + r - pad)
                 ) {
-                    drawMascot(theme, mood, flowers, onOrange)
+                    drawMascot(theme, mood, flowers, onOrange, budDays = budDays)
                 }
             } else {
-                drawMascot(theme, mood, flowers, onOrange)
+                drawMascot(theme, mood, flowers, onOrange, budDays = budDays)
             }
         }
         return image.asAndroidBitmap()
@@ -337,7 +342,7 @@ object MascotBitmap {
      * [bob] -1..1: Blobby bobs up and down and squishes, Bloomy's stems sway.
      * A small margin keeps the mascot inside the picture while it moves.
      */
-    fun frame(theme: MascotTheme, mood: MoodLevel, flowers: Int, sizePx: Int, bob: Float, blink: Boolean): Bitmap {
+    fun frame(theme: MascotTheme, mood: MoodLevel, flowers: Int, sizePx: Int, bob: Float, blink: Boolean, budDays: Int = 0): Bitmap {
         val image = ImageBitmap(sizePx, sizePx)
         val area = Size(sizePx.toFloat(), sizePx.toFloat())
         val pose = MascotPose(eyeOpen = if (blink) 0.1f else 1f, sway = bob, twinkle = 0.85f + 0.15f * bob)
@@ -349,10 +354,10 @@ object MascotBitmap {
                         translate(top = bob * size.height * 0.03f)
                         scale(1f - bob * 0.025f, 1f + bob * 0.025f, pivot = Offset(size.width / 2f, size.height))
                     }) {
-                        drawMascot(theme, mood, flowers, pose = pose)
+                        drawMascot(theme, mood, flowers, pose = pose, budDays = budDays)
                     }
                 } else {
-                    drawMascot(theme, mood, flowers, pose = pose)
+                    drawMascot(theme, mood, flowers, pose = pose, budDays = budDays)
                 }
             }
         }

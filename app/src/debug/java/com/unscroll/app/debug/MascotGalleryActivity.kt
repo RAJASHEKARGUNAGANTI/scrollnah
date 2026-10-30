@@ -102,6 +102,20 @@ private fun Gallery() {
             item { Label("Bloomy, $flowers ${if (flowers == 1) "flower" else "flowers"}") }
             item { MoodRow(MascotLook(MascotTheme.BLOOMY, flowers), Lime) }
         }
+        // The bud that grows during the week (good days 0, 2, 4, 6 toward the next flower).
+        for (flowers in 0..3) {
+            item { Label("Bloomy, $flowers + a growing bud: days 0, 2, 4, 6 (happy), then 4 days thirsty and wilting") }
+            item {
+                Row(Modifier.fillMaxWidth().background(Lime), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    for (days in listOf(0, 2, 4, 6)) {
+                        Mascot(mood = MoodLevel.HAPPY, look = MascotLook(MascotTheme.BLOOMY, flowers, days), size = 64.dp, animated = false)
+                    }
+                    for (mood in listOf(MoodLevel.WORRIED, MoodLevel.OVER)) {
+                        Mascot(mood = mood, look = MascotLook(MascotTheme.BLOOMY, flowers, 4), size = 64.dp, animated = false)
+                    }
+                }
+            }
+        }
         item { Label("Bloomy on orange (Pause screen)") }
         item { MoodRow(MascotLook(MascotTheme.BLOOMY, 3), Orange, onOrange = true) }
         item { Label("Bitmaps: badge (notification / bubble) and widget") }

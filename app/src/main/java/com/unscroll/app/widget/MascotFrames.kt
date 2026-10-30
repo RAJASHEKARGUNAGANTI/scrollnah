@@ -36,7 +36,7 @@ internal object MascotFrames {
 
     fun remoteViews(context: Context, state: WidgetState, motion: Boolean): RemoteViews {
         val drawings = listOf(-1f to false, 0f to false, 1f to false, 0f to true).map { (bob, blink) ->
-            MascotBitmap.frame(state.theme, state.mood, state.flowers, FRAME_PX, bob, blink)
+            MascotBitmap.frame(state.theme, state.mood, state.flowers, FRAME_PX, bob, blink, state.budDays)
         }
         val views = RemoteViews(context.packageName, R.layout.widget_mascot_frames)
         SLOTS.forEachIndexed { i, id ->

@@ -62,7 +62,7 @@ fun AppTheme(content: @Composable () -> Unit) {
             bars.isAppearanceLightNavigationBars = !dark
         }
     }
-    CompositionLocalProvider(LocalMascot provides MascotLook(mascot, pot.flowers)) {
+    CompositionLocalProvider(LocalMascot provides MascotLook(mascot, pot.flowers, pot.daysTowardNext)) {
         UnscrollTheme(darkTheme = dark, content = content)
     }
 }

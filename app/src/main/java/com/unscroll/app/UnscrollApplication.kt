@@ -40,10 +40,18 @@ class AppContainer(context: Context) {
         private set
     @Volatile var flowers: Int = 0
         private set
+    /** Good days toward Bloomy's next flower (drawn as a growing bud). */
+    @Volatile var budDays: Int = 0
+        private set
 
     init {
         appScope.launch { settings.mascotTheme.collect { mascot = it } }
-        appScope.launch { settings.potProgress.collect { flowers = it.flowers } }
+        appScope.launch {
+            settings.potProgress.collect {
+                flowers = it.flowers
+                budDays = it.daysTowardNext
+            }
+        }
     }
 }
 

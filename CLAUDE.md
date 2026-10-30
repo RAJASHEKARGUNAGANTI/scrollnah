@@ -62,6 +62,7 @@ Based on the share of today's total limit used (summed across enabled limited ap
 - A **day counts** if the user stays under their limits that day (same rule as streaks, from `daily_summary`).
 - Every **full week (7 counted days in a row)** adds **one flower**, up to **4 flowers**.
 - Stages: Week 0 = sprout with two leaves, Week 1 = 1 flower, Week 2 = 2 flowers, Week 3 = 3 flowers, Week 4 = full pot (4 flowers).
+- **During the week the plant visibly grows** (developer, 2026-10-30): each counted day toward the next flower (`daysTowardNext`, 1-6) adds a new stem with a bud that gets taller and bigger, and on day 7 it opens into the flower. Shown everywhere Bloomy is drawn (app, widgets, reminders) via `MascotLook.budDays`. Home's Bloomy card shows "Next flower" with 7 dots ("5 of 7 days"). A full pot has no bud.
 - When a pot reaches 4 flowers, it is **saved to the user's garden** (a collection of completed pots, stored in Room) and a **new seed** pot starts at Week 0.
 - **Missing a day** (a recorded day over the limit): the newest flower falls off (drop one stage) and the 7-day count restarts. A day with no data only restarts the count. The pot is never lost entirely, and saved pots in the garden are permanent ("Clear history" keeps them).
 - Growth is tracked for every user, whichever theme is chosen, so switching to Bloomy shows a plant that matches their history.

@@ -56,7 +56,7 @@ object BreakReminders {
         val useBubble = bubbleAllowed && (settings.useBubble || !notificationsOn)
         if (!useNotification && !useBubble) return
 
-        val mascot = MascotBitmap.render(theme, mood, container.flowers, sizePx = 240, badge = true)
+        val mascot = MascotBitmap.render(theme, mood, container.flowers, sizePx = 240, badge = true, budDays = container.budDays)
         if (useNotification) {
             val id = notificationId(due.packageName)
             fun extras(intent: Intent) = intent

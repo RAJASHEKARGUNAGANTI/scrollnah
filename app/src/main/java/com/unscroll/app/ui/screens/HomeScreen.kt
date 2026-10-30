@@ -2,6 +2,7 @@
 
 package com.unscroll.app.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
 import com.unscroll.app.ui.components.AppTile
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.unscroll.app.ui.components.spokenDuration
@@ -437,6 +438,39 @@ private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?)
                 Text(text.headline, style = MaterialTheme.typography.headlineSmall, lineHeight = 24.sp)
                 Text(text.line, style = MaterialTheme.typography.bodyMedium)
             }
+        }
+        // Bloomy: how close the next flower is (the bud on the plant grows with these days).
+        val look = LocalMascot.current
+        if (look.theme == MascotTheme.BLOOMY && look.flowers < Growth.MAX_FLOWERS) {
+            NextFlowerProgress(look.budDays, Modifier.padding(top = 12.dp))
+        }
+    }
+}
+
+/** "Next flower" with 7 dots: one filled for each good day in a row so far. */
+@Composable
+private fun NextFlowerProgress(days: Int, modifier: Modifier = Modifier) {
+    val total = Growth.DAYS_PER_FLOWER
+    val done = days.coerceIn(0, total)
+    FlowRow(
+        modifier = modifier.clearAndSetSemantics {
+            contentDescription = "Next flower: $done of $total days under your limits"
+        },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text("Next flower", fontWeight = FontWeight.Bold)
+        // The dots and "4 of 7 days" stay together (they wrap below the label on narrow phones).
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(total) { i ->
+                Box(
+                    Modifier
+                        .size(14.dp)
+                        .background(if (i < done) Ink else Color.Transparent, CircleShape)
+                        .border(2.dp, Ink, CircleShape)
+                )
+            }
+            Text("$done of $total days", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 4.dp))
         }
     }
 }

@@ -84,7 +84,7 @@ object MascotWidgets {
             val ids = manager.getAppWidgetIds(ComponentName(context, provider))
             if (ids.isNotEmpty()) manager.updateAppWidget(ids, views())
         }
-        val mascot by lazy { MascotBitmap.render(state.theme, state.mood, state.flowers, MASCOT_PX) }
+        val mascot by lazy { MascotBitmap.render(state.theme, state.mood, state.flowers, MASCOT_PX, budDays = state.budDays) }
         update(BlobbyWidget::class.java) { mediumViews(context, state, mascot) }
         update(SmallMascotWidgetReceiver::class.java) { smallViews(context, state, mascot) }
         update(MascotOnlyWidgetReceiver::class.java) {

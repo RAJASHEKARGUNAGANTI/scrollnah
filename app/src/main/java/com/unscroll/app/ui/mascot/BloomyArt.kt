@@ -29,9 +29,11 @@ import kotlin.math.sin
 /**
  * Bloomy, a plant in a pot with a face, on the 140x140 grid.
  * [flowers] is the growth stage: 0 = sprout with two leaves, 1-4 = that many flowers.
+ * [budDays] = good days toward the next flower (0-6): a new stem grows taller with a bud that
+ * swells a little each day, so the plant visibly grows during the week. A full pot has no bud.
  * The mood changes how the plant stands (upright, leaning, bending, hanging) and its colours.
  */
-internal fun DrawScope.drawBloomy(s: Float, mood: MoodLevel, flowers: Int, onOrange: Boolean, pose: MascotPose) {
+internal fun DrawScope.drawBloomy(s: Float, mood: MoodLevel, flowers: Int, onOrange: Boolean, pose: MascotPose, budDays: Int = 0) {
     val potColor = if (onOrange) Lilac else Orange
     val plantColor = when (mood) {
         MoodLevel.WORRIED -> PaleLeaf
@@ -41,12 +43,21 @@ internal fun DrawScope.drawBloomy(s: Float, mood: MoodLevel, flowers: Int, onOra
     val shape = PlantShape.of(mood)
     val count = flowers.coerceIn(0, Growth.MAX_FLOWERS)
     val sway = pose.sway * 4f // degrees
+    // 0 = no bud, up to 6/7 = almost ready to open.
+    val budGrowth = if (count < Growth.MAX_FLOWERS) budDays.coerceIn(0, Growth.DAYS_PER_FLOWER - 1) / Growth.DAYS_PER_FLOWER.toFloat() else 0f
+    val hasBud = budGrowth > 0f
+    // With a bud the plant already has room for the next flower: stems laid out for count + 1.
+    val stemCount = if (hasBud) count + 1 else count
+    val budIndex = if (hasBud) budStem.getValue(stemCount) else -1
 
     // 1. Stems (their bottoms are hidden by the soil and pot, drawn later).
-    val stems = if (count == 0) {
+    val stems = if (stemCount == 0) {
         listOf(bend(70f, 52f, shape, sway, sprout = true))
     } else {
-        stemTips.getValue(count).map { (x, y) -> bend(x, y, shape, sway, sprout = false) }
+        stemTips.getValue(stemCount).mapIndexed { i, (x, y) ->
+            // The bud's stem starts short and reaches full height by the time it flowers.
+            bend(x, y, shape, sway, sprout = false, grow = if (i == budIndex) 0.55f + 0.45f * budGrowth else 1f)
+        }
     }
     stems.forEach { stem ->
         val path = Path().apply {
@@ -59,20 +70,23 @@ internal fun DrawScope.drawBloomy(s: Float, mood: MoodLevel, flowers: Int, onOra
 
     // 2. Two leaves: at the top of the sprout, or low on the middle stem.
     val (leftAngle, rightAngle) = shape.leafAngles
-    if (count == 0) {
+    if (stemCount == 0) {
         val tip = stems[0].tip
         // A wilting sprout's leaves hang sideways (pointing down they'd hide behind the pot).
         val (sproutLeft, sproutRight) = if (mood == MoodLevel.OVER) 165f to 15f else leftAngle to rightAngle
         leaf(tip, sproutLeft + sway, 22f, 9f, plantColor, s)
         leaf(tip, sproutRight + sway, 22f, 9f, plantColor, s)
     } else {
-        val at = stems[(count - 1) / 2].pointAt(0.35f)
+        val at = stems[(stemCount - 1) / 2].pointAt(0.35f)
         leaf(at, leftAngle + sway, 18f, 7f, plantColor, s)
         leaf(at, rightAngle + sway, 18f, 7f, plantColor, s)
     }
 
-    // 3. Flowers on the stem tips.
-    if (count > 0) stems.forEach { flower(it.tip, mood, s) }
+    // 3. Flowers on the stem tips, and the bud on its own stem.
+    stems.forEachIndexed { i, stem ->
+        if (i == budIndex) bud(stem, budGrowth, mood, plantColor, s)
+        else if (stemCount > 0) flower(stem.tip, mood, s)
+    }
 
     // 4. Pot: soil, body, rim, then the face on the pot.
     drawOval(Soil, topLeft = pt(36f, 78.5f, s), size = Size(68f * s, 9f * s))
@@ -107,6 +121,9 @@ internal fun DrawScope.drawBloomy(s: Float, mood: MoodLevel, flowers: Int, onOra
         else -> {}
     }
 }
+
+/** Which stem carries the bud when there are this many stems (the newest-looking one). */
+private val budStem = mapOf(1 to 0, 2 to 1, 3 to 1, 4 to 2)
 
 /** Where each stem would end on a healthy plant, for 1-4 flowers. */
 private val stemTips = mapOf(
@@ -148,12 +165,12 @@ private fun rad(degrees: Float) = Math.toRadians(degrees.toDouble()).toFloat()
  * Turns a healthy stem (from the soil up to (tipX, tipY)) into the stem for this mood.
  * Outer stems bend more than the middle ones so drooping flowers don't pile up.
  */
-private fun bend(tipX: Float, tipY: Float, shape: PlantShape, sway: Float, sprout: Boolean): Stem {
+private fun bend(tipX: Float, tipY: Float, shape: PlantShape, sway: Float, sprout: Boolean, grow: Float = 1f): Stem {
     val baseX = 70f + (tipX - 70f) * 0.15f
     val baseY = 86f
     val dx = tipX - baseX
     val dy = baseY - tipY
-    val length = hypot(dx, dy) * shape.height
+    val length = hypot(dx, dy) * shape.height * grow
     val upright = atan2(dx, dy) // 0 = straight up, positive = leaning right
 
     val outward = if (tipX >= 70f) 1f else -1f
@@ -209,6 +226,30 @@ private fun DrawScope.flower(center: Offset, mood: MoodLevel, s: Float) {
     val middle = if (mood == MoodLevel.THRIVING) 5.5f else 5f
     drawCircle(Orange, middle * s, center * s)
     drawCircle(Ink, middle * s, center * s, style = Stroke(2f * s))
+}
+
+/**
+ * A closed flower bud at the end of [stem]: two green sepals hugging a petal-coloured tip.
+ * [growth] (0-1) makes it bigger and shows more colour; it points the way the stem grows.
+ */
+private fun DrawScope.bud(stem: Stem, growth: Float, mood: MoodLevel, plantColor: Color, s: Float) {
+    val tip = stem.tip
+    // Direction the stem is growing at its tip (so a drooping stem's bud hangs).
+    val along = tip - stem.pointAt(0.9f)
+    val dir = along / along.getDistance().coerceAtLeast(0.01f)
+    val angle = Math.toDegrees(atan2(dir.y, dir.x).toDouble()).toFloat()
+    val size = 4.5f + 4.5f * growth
+    val petal = when (mood) {
+        MoodLevel.WORRIED -> PalePetal
+        MoodLevel.OVER -> DryPetal
+        else -> CheekPink
+    }
+    // The coloured tip peeks out more as the bud grows.
+    val center = tip + dir * (size * 0.9f)
+    drawCircle(petal, size * s, center * s)
+    drawCircle(Ink, size * s, center * s, style = Stroke(2f * s))
+    leaf(tip, angle - 38f, size * 1.7f, size * 0.55f, plantColor, s)
+    leaf(tip, angle + 38f, size * 1.7f, size * 0.55f, plantColor, s)
 }
 
 /** A dry petal lying on the ground (wilting). */
