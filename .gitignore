@@ -17,3 +17,9 @@ keystore.properties
 
 # Play Store demo video (large; kept locally, upload to YouTube as Unlisted)
 store/fgs-demo.mp4
+
+# Launch videos made by the /brag plugin (large, kept locally)
+brag-output*/
+
+# Release files kept locally for uploading (Play bundles, APK copies)
+release/

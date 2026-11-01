@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-10-30): v2.2.2 released on GitHub (floating-window fix, Settings tab, Pause preview saves nothing) (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-11-01): v2.2.3 released on GitHub; its Play bundle is ready in `release/` for the first Play upload (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -380,6 +380,11 @@ debug gallery (below).
   a full on-screen keyboard (the emulator shows a floating toolbar).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
+
+## Version 2.2.3 (2026-11-01)
+- `versionCode` 11, `versionName` "2.2.3": Bloomy's bud on the Settings mascot card, store prep (listing, reviewer
+  notes, logo-free screenshots), `store/tester-invite.md`, `.gitignore` for `brag-output*/` and `release/`.
+- Built for the first Play upload: `release/ScrollNah-2.2.3-play.aab` (local only). Same code as the GitHub APK.
 
 ## Play Store submission prep (2026-11-01)
 - Developer paid for and applied to Play Console; the account is in Google's review.

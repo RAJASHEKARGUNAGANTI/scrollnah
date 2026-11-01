@@ -6,6 +6,7 @@ Everything needed for the Google Play listing of the **Play version** (no Reels/
 |---|---|
 | `listing.md` | App name, short and full description, release notes, category, contact links |
 | `play-console-answers.md` | Draft answers for Play Console forms (data safety, content rating, foreground service, signing, closed testing) |
+| `tester-invite.md` | Messages to invite closed-test testers (WhatsApp and email) and what to check while the 14 days run |
 | `icon-512.png` | Store icon, 512x512 |
 | `feature-graphic.png` | Feature graphic, 1024x500 |
 | `screenshots/` | Phone screenshots, 1080x1920 (9:16), upload in file-name order |
@@ -19,7 +20,7 @@ Everything needed for the Google Play listing of the **Play version** (no Reels/
 ./gradlew bundlePlayRelease
 ```
 
-Output: `app/build/outputs/bundle/playRelease/app-play-release.aab`. Bump `versionCode` in `app/build.gradle.kts` for every upload.
+Output: `app/build/outputs/bundle/playRelease/app-play-release.aab`. Bump `versionCode` in `app/build.gradle.kts` for every upload. A copy of each uploaded bundle is kept in `release/` (not in git), e.g. `release/ScrollNah-2.2.3-play.aab`.
 
 ## Re-render the icon and feature graphic
 
