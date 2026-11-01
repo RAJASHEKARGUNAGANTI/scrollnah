@@ -381,6 +381,22 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
 
+## Play Store submission prep (2026-11-01)
+- Developer paid for and applied to Play Console; the account is in Google's review.
+- Readiness check of the Play bundle (versionCode 10, 2.2.2): targetSdk 36; the only native lib
+  (`libandroidx.graphics.path.so`) has 16 KB LOAD alignment on all ABIs and the APK passes `zipalign -c -P 16`;
+  no AccessibilityService and no INTERNET permission in the Play manifest; signed with the release key; debug log
+  is debug-only.
+- `store/listing.md`: full description rewritten for 2.1-2.2 (weekend limits, floating-video pause, growing bud,
+  per-app weekly report, week in review, Focus tile, TalkBack, size) = 2788/4000 chars; first-release notes now launch
+  wording (233/500); duplicated "Category/Contact" section removed.
+- `store/play-console-answers.md`: reviewer steps mention "See the Pause screen" and the Focus tile, a note on pausing a
+  limited app's picture-in-picture playback via audio focus, a Data safety line on user-initiated "Share this card",
+  and the FGS description mentions the floating-window pause.
+- `store/screenshots/04-week.jpg` and `08-limits.jpg` retaken without the YouTube logo (YouTube hidden on the emulator
+  with `pm uninstall -k --user 0`, restored with `cmd package install-existing`), so no third-party logos in the store
+  screenshots. 03-break-reminder still shows Chrome + a Wikipedia page.
+
 ## Version 2.2.2 (2026-10-30)
 - `versionCode` 10, `versionName` "2.2.2": the floating-window fix below (+ "Blobby: YouTube is paused" message) and
   the Settings tab / Pause preview change.

@@ -11,7 +11,9 @@ The Play version is built with `./gradlew bundlePlayRelease`. It has **no Access
 ### App access
 **All functionality is available without special access** (no login).
 Optional instructions for reviewers:
-> No account needed. To see ScrollNah in action: open ScrollNah, allow Usage access when asked, add an app (for example Chrome) in Limits with a 5-minute limit, choose "Firm", tap "Lock it in", then use that app for 5 minutes. The Pause screen appears over it. Break reminders (Limits > Break reminders) can be set to remind after a few minutes on one app.
+> No account needed. To see ScrollNah in action: open ScrollNah, allow Usage access when asked, add an app (for example Chrome) in Limits with a 5-minute limit, choose "Firm", tap "Lock it in", then use that app for 5 minutes. The Pause screen appears over it. To see it straight away, use Limits > "See the Pause screen" (a preview that saves nothing). Focus mode on Home (or the "Focus" Quick Settings tile) pauses limited apps at once. Break reminders (Limits > Break reminders) can be set to remind after a few minutes on one app.
+>
+> Note on other apps' media: if an app the user chose to limit keeps playing in a picture-in-picture window after it is blocked (over the limit, or during Focus or Bedtime), ScrollNah pauses that playback by briefly requesting audio focus (the standard Android media API, no special permission) and shows a notification explaining why. It never affects apps the user hasn't limited, and nothing happens in Chill mode.
 
 ### Ads
 **No, my app does not contain ads.**
@@ -35,6 +37,7 @@ Optional instructions for reviewers:
 - Does your app collect or share any of the required user data types? **No.**
   (ScrollNah reads app usage and the app list only on the device and never sends them anywhere. Play only counts data as "collected" when it leaves the device. The app has no INTERNET permission.)
 - Is all user data encrypted in transit? Not applicable (nothing is transmitted).
+- "Share this card" on the weekly report: only when the user taps it, ScrollNah saves a picture of that card and opens Android's share menu; the picture goes only to the app the user picks. Nothing goes to the developer, so it isn't "collected".
 - Do you provide a way for users to request that their data is deleted? Users can delete data in the app (**Settings > Data > Clear history**) or by uninstalling. If asked for a URL, use the privacy policy link.
 
 ### Advertising ID
@@ -47,7 +50,7 @@ Optional instructions for reviewers:
 Type: **Special use** (`FOREGROUND_SERVICE_SPECIAL_USE`). The manifest already declares the subtype: "Digital wellbeing: checks which app is open so it can pause apps the user chose to limit and remind them to take breaks."
 
 Description of the feature:
-> ScrollNah is a digital wellbeing app. The user chooses apps to limit and a daily time budget for each. A foreground service checks about once a second which app is in front, only while the screen is on, so that when the user opens a limited app over its budget, ScrollNah can show its Pause screen or a reminder straight away. It also times continuous sessions on one app for optional break reminders. The ongoing notification ("Blobby is keeping watch") tells the user it is running. The service stops checking while the screen is off.
+> ScrollNah is a digital wellbeing app. The user chooses apps to limit and a daily time budget for each. A foreground service checks about once a second which app is in front, only while the screen is on, so that when the user opens a limited app over its budget, ScrollNah can show its Pause screen or a reminder straight away (and pause a limited app's video that keeps playing in a floating window). It also times continuous sessions on one app for optional break reminders. The ongoing notification ("Blobby is keeping watch") tells the user it is running. The service stops checking while the screen is off.
 
 User impact if the task were deferred or interrupted:
 > The limits the user set would not be enforced: they could keep using an app after reaching their own daily limit, and break reminders would arrive late or not at all. The feature only works if it reacts the moment a limited app is opened.
