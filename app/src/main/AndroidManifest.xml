@@ -51,7 +51,7 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
-            android:taskAffinity="com.unscroll.app.pause"
+            android:taskAffinity="${applicationId}.pause"
             android:theme="@style/Theme.Unscroll" />
 
         <!-- "Take a break" on a break reminder: invisible, records the choice and goes home. -->
@@ -60,7 +60,7 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:taskAffinity="com.unscroll.app.breaks"
+            android:taskAffinity="${applicationId}.breaks"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- Checks every second which app is open (see BlockerService). -->

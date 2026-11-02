@@ -2,7 +2,7 @@
 
 **ScrollNah** (final name, chosen 2026-10-11; "Unscroll" was too crowded on the stores) helps people cut down excessive social media use. It should feel **funky, playful and easy to use**, never strict or preachy. A mascot reacts to the user's usage. There are two mascot themes: **Blobby** (default, an orange blob) and **Bloomy** (a plant in a pot that grows flowers).
 
-Always write the name as **ScrollNah** (capital N) in the UI and docs. The lowercase "scrollnah" wordmark on Home is the only exception. Internal package/class names stay `com.unscroll.app`, `UnscrollApplication` etc. (users never see them, and the package can't change after publishing).
+Always write the name as **ScrollNah** (capital N) in the UI and docs. The lowercase "scrollnah" wordmark on Home is the only exception. The app ID (Play package name) is **`com.scrollnah.app`** (changed from `com.unscroll.app` on 2026-11-02, before the first Play upload; it can never change again). The code's package/class names stay `com.unscroll.app`, `UnscrollApplication` etc. (`namespace`; users never see them). In adb, use the app ID with full class names: `adb shell am start -n com.scrollnah.app/com.unscroll.app.MainActivity`, `run-as com.scrollnah.app`.
 
 ## Tech stack
 

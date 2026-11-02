@@ -11,7 +11,7 @@ import java.util.Locale
 /**
  * Debug log for the blocker and tracker. Some phones (e.g. vivo/iQOO) hide app
  * logs from logcat, so lines also go to files/blocker.log, readable with:
- *   adb exec-out run-as com.unscroll.app cat files/blocker.log
+ *   adb exec-out run-as com.scrollnah.app cat files/blocker.log
  */
 object DebugLog {
     private val time = SimpleDateFormat("HH:mm:ss", Locale.US)

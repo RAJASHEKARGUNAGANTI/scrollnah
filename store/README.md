@@ -35,9 +35,9 @@ For the icon use `--window-size=512,512`, `icon.html` and `icon-512.png`. If the
 ## Export mascot art from the app (debug builds only)
 
 ```bash
-adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --ez export true
-adb shell run-as com.unscroll.app ls files/store
-adb exec-out run-as com.unscroll.app cat files/store/blobby_thriving.png > store/art/blobby_thriving.png
+adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --ez export true
+adb shell run-as com.scrollnah.app ls files/store
+adb exec-out run-as com.scrollnah.app cat files/store/blobby_thriving.png > store/art/blobby_thriving.png
 ```
 
 ## Retake the screenshots
@@ -45,6 +45,6 @@ adb exec-out run-as com.unscroll.app cat files/store/blobby_thriving.png > store
 On the emulator, with the Play debug build (`./gradlew assemblePlayDebug`):
 
 1. `adb shell wm size 1080x1920` (Play allows at most 2:1; reset afterwards with `adb shell wm size reset`).
-2. Clear the app data, turn on demo mode (`adb shell run-as com.unscroll.app touch files/demo_mode`, then start the app twice) and grant Usage access, Display over other apps and notifications.
+2. Clear the app data, turn on demo mode (`adb shell run-as com.scrollnah.app touch files/demo_mode`, then start the app twice) and grant Usage access, Display over other apps and notifications.
 3. Clean status bar: `adb shell settings put global sysui_demo_allowed 1`, then `adb shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941` (and battery/network/notifications, see `CLAUDE_UPDATES.md`).
 4. `adb exec-out screencap -p > store/screenshots/NN-name.png` for each screen.

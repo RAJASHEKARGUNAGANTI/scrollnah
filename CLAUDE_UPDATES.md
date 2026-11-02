@@ -145,7 +145,7 @@ Actions only fire when OVER the limit, not on every open.
   `PauseActivity.isShowing`, checked in `LimitActions.onLimitReached`.
 - **Invisible logs:** vivo hides app logcat lines (`log.tag=I` and more). `BlockerService.debug()` also
   writes to `files/blocker.log`, which you can read with
-  `adb exec-out run-as com.unscroll.app cat files/blocker.log`.
+  `adb exec-out run-as com.scrollnah.app cat files/blocker.log`.
 - **Beast honoured old +5 passes:** a pass taken in Firm still let the app through after switching to
   Beast. Fix: Beast ignores `Allowances` (BlockerService + FeatureWatchService), and "Lock it in"
   with Beast calls `Allowances.clear()`.
@@ -277,7 +277,7 @@ Actions only fire when OVER the limit, not on every open.
   `./gradlew clean assembleRelease`, then
   `gh release create vX.Y.Z app/build/outputs/apk/release/app-release.apk#ScrollNah-X.Y.Z.apk --notes-file ...`.
   Always sign with the same keystore so updates install over the old version.
-- **Demo mode (debug builds only):** `adb shell run-as com.unscroll.app touch files/demo_mode`, then restart
+- **Demo mode (debug builds only):** `adb shell run-as com.scrollnah.app touch files/demo_mode`, then restart
   the app. It fills a sample week (Alex; Instagram/YouTube/Snapchat; 5-day streak; Pause reasons) for
   screenshots. `DemoMode.kt`; stripped from release builds (verified).
 
@@ -303,7 +303,7 @@ debug gallery (below).
 - `MascotLines` replaces `BlobbyLines`: Home card text for all 5 levels in both voices, Pause subtitles,
   widget title, break reminder texts. Hard-coded "Blobby" strings now use the chosen mascot's name.
 - Home card: lime for levels 1–4, orange for OVER (mascot drawn `onOrange`). Pause screen: level 4.
-- **Debug gallery:** `adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity` shows every
+- **Debug gallery:** `adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity` shows every
   mood x growth stage + the bitmaps (`src/debug/`, not in release builds).
 
 ### Bloomy growth + garden (`data/Growth.kt`)
@@ -379,7 +379,20 @@ debug gallery (below).
 - Not checked yet: the iQOO/Nothing phones (vivo background rules, late usage events), BHIM itself,
   a full on-screen keyboard (the emulator shows a floating toolbar).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
-  `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
+  `adb shell run-as com.scrollnah.app rm files/demo_mode`, then clear app data).
+
+## App ID is now `com.scrollnah.app` (2026-11-02, developer request in the Play Console "Create app" form)
+- `applicationId` changed from `com.unscroll.app` to `com.scrollnah.app` before the first Play upload (it can
+  never change once the app is on Play). `namespace` and all code packages stay `com.unscroll.app`.
+- Pause/break `taskAffinity` now use `${applicationId}` (like the FileProvider), so the old and new app
+  can sit side by side on one phone without sharing tasks.
+- adb commands: `run-as com.scrollnah.app`, and full class names with `am start -n`
+  (`com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity`; the `/.debug...` shorthand no longer works).
+- GitHub releases up to v2.2.3 are `com.unscroll.app`: the new ID installs as a separate app (it can't
+  update the old one), and 2.2.3 has no Backup yet, so those users start fresh and should uninstall the
+  old app (two copies would both show pause screens).
+- Play bundle rebuilt from the v2.2.3 code with only the new ID: `release/ScrollNah-2.2.3-play.aab`
+  (the old-ID bundle moved to `release/old-id/`).
 
 ## Open limits, shared budgets, work hours, ideas, Sunday note, rewards (2026-11-02, developer request, not released yet)
 All tested on the emulator (Firm mode unless said); 48 unit tests; release APK 1,544,702 bytes (2.2.3: 1,495,550).
@@ -387,7 +400,7 @@ All tested on the emulator (Firm mode unless said); 48 unit tests; release APK 1
   only if a finished day this week has data. "Blobby: your week in review is ready" / "I put your week together: 7h 34m,
   38 min less than last week. Come have a look!" (`MascotLines.weekReadyText`). Tapping opens Stats > week review
   (`MainActivity.EXTRA_OPEN`, CLEAR_TOP|SINGLE_TOP so an open app gets `onNewIntent`). Settings > Reminders switch
-  (default on). Debug trigger: `am start -n com.unscroll.app/.debug.MascotGalleryActivity --ez weekready true`.
+  (default on). Debug trigger: `am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --ez weekready true`.
 - **"Do this instead"** (`ui/screens/InsteadIdeas.kt`): white "Try this instead?" card on the Pause screen (also when locked)
   with one idea, random each time, "Another idea" cycles. Settings > "Do this instead": remove ideas, add your own
   (max 8, 60 chars). Starter list in `SettingsRepository.STARTER_IDEAS`; an empty list hides the card.
@@ -562,8 +575,8 @@ Released in 2.2.0. All nine ideas from the Stats list, built on the phone only (
   away and a toast says "Tracker off. You can pay now. Turn it back on in ScrollNah > Limits." Android only lets
   the user switch it back on (Limits shows the "Limit Reels, Shorts & websites" card again).
 - Tested on the emulator: tracker switched on with `adb shell settings put secure enabled_accessibility_services
-  com.unscroll.app/com.unscroll.app.service.FeatureWatchService` (+ `accessibility_enabled 1`), notification shown
-  with the debug trigger `adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --es paymenthelp BHIM`,
+  com.scrollnah.app/com.unscroll.app.service.FeatureWatchService` (+ `accessibility_enabled 1`), notification shown
+  with the debug trigger `adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --es paymenthelp BHIM`,
   tapped the button: no enabled/bound services afterwards, notification gone, no crash. Not tested with BHIM itself.
 
 ## Version 2.1.1 (2026-10-27)
@@ -589,12 +602,12 @@ Committed as d5bf426 and released in 2.1.0. Built both flavors, 21 unit tests pa
 - **Quick Settings "Focus" tile:** `service/FocusTileService.kt` (+ `ic_tile_focus.xml`, manifest entry with
   `TOGGLEABLE_TILE`). Tap = focus for 30 min, tap again = end early (not in Beast: toast). No Usage access =
   opens the app. Home's Focus card calls `FocusTileService.refresh()`. Tested on the emulator via
-  `adb shell cmd statusbar add-tile com.unscroll.app/.service.FocusTileService`. The emulator still drew a ">"
+  `adb shell cmd statusbar add-tile com.scrollnah.app/com.unscroll.app.service.FocusTileService`. The emulator still drew a ">"
   arrow on the tile after the toggle flag was added (not re-checked; likely cached by System UI).
 - **Bloomy celebrates growth:** `Growth.Result.newFlowers`; `GrowthRepository.update()` stores a `BloomEvent`
   (FLOWER or POT, only when Bloomy is the mascot; a pending POT is never downgraded) in DataStore
   (`bloom_event`). Home shows `BloomDialog` once ("New flower!" / "Full pot!" + "See garden"), after any
-  streak celebration. Debug trigger: `adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --es bloom FLOWER`.
+  streak celebration. Debug trigger: `adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --es bloom FLOWER`.
 - **Weekday / weekend limits:** `TrackedApp.weekendLimitMinutes` (null = same every day), Room v4
   (`MIGRATION_3_4`), `limitOn(date)` / `totalLimitOn(date)` used by the blocker, website tracker, Pause screen,
   Home, widgets, streaks and the weekly chart (dashed limit line drawn per day). Limits screen: "+ Different on
@@ -848,9 +861,9 @@ leaderboard and invite links. Stats currently shows a "coming soon" card.
    `~/Downloads/unscroll-debug.apk`.
 3. Test phone: iQOO I2221 (Android 16), USB debugging, serial `10BF5319GU002R3`. The developer is happy
    for Claude to drive it over adb but often uses it at the same time, so ask before long test runs.
-   Read the debug log with `adb exec-out run-as com.unscroll.app cat files/blocker.log`.
+   Read the debug log with `adb exec-out run-as com.scrollnah.app cat files/blocker.log`.
    Second test phone: Nothing A142 (Android 16), serial `00069349C000377`. Fresh install, not set up yet.
    With 2+ devices connected, set `ANDROID_SERIAL` or use `adb -s <serial>`.
 4. First build is fully on-device: no AI insights or friend challenges (both need a server). Pick the next on-device feature from the list the developer chose.
 5. Run the unit tests with `./gradlew testDebugUnitTest`. Check mascot art with the debug gallery
-   (`adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity`).
+   (`adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity`).

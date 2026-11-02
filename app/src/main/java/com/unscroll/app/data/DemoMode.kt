@@ -20,8 +20,8 @@ import java.time.LocalDate
  * week instead of real usage. Never active in release builds (BuildConfig.DEBUG
  * is false there, so R8 removes it).
  *
- * Turn on:  adb shell run-as com.unscroll.app touch files/demo_mode   (then restart the app)
- * Turn off: adb shell run-as com.unscroll.app rm files/demo_mode      (and clear app data)
+ * Turn on:  adb shell run-as com.scrollnah.app touch files/demo_mode   (then restart the app)
+ * Turn off: adb shell run-as com.scrollnah.app rm files/demo_mode      (and clear app data)
  */
 object DemoMode {
 

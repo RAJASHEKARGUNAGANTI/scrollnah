@@ -3,7 +3,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <!-- Every mascot mood on one screen:
-             adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity -->
+             adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity -->
         <activity
             android:name=".debug.MascotGalleryActivity"
             android:exported="true"

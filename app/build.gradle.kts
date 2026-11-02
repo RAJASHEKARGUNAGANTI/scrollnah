@@ -12,7 +12,9 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.unscroll.app"
+        // The app's ID on the phone and on Google Play. It can never change once the app is on Play.
+        // The code itself stays in the com.unscroll.app package (namespace above); users never see that.
+        applicationId = "com.scrollnah.app"
         minSdk = 26
         targetSdk = 36
         versionCode = 11
