@@ -9,6 +9,7 @@ import java.time.LocalDate
  * An app the user picked in Limits, with its daily budget.
  * [weekendLimitMinutes] = a different budget on Saturday and Sunday (null = same every day).
  * [breakMinutes] = its own break reminder time (null = use the general one).
+ * [maxOpens] = how many times a day it may be opened (null = no open limit).
  */
 @Entity(tableName = "tracked_apps")
 data class TrackedApp(
@@ -18,7 +19,8 @@ data class TrackedApp(
     val enabled: Boolean = true,
     val addedAt: Long = System.currentTimeMillis(),
     val breakMinutes: Int? = null,
-    val weekendLimitMinutes: Int? = null
+    val weekendLimitMinutes: Int? = null,
+    val maxOpens: Int? = null
 ) {
     /** The budget for [date]: the weekend one on Saturday and Sunday (if set), else the normal one. */
     fun limitOn(date: LocalDate = LocalDate.now()): Int =
@@ -31,6 +33,27 @@ fun isWeekend(date: LocalDate): Boolean =
 /** Sum of the enabled apps' budgets for [date]. */
 fun List<TrackedApp>.totalLimitOn(date: LocalDate = LocalDate.now()): Int =
     filter { it.enabled }.sumOf { it.limitOn(date) }
+
+/**
+ * A shared budget: apps that get one daily limit together, e.g. "Social" = Instagram + Snapchat, 60 min.
+ * Each app keeps its own limit too. [packages] = the member apps' package names, comma-separated.
+ */
+@Entity(tableName = "app_groups")
+data class AppGroup(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val limitMinutes: Int,
+    val enabled: Boolean = true,
+    val packages: String = ""
+) {
+    fun members(): Set<String> = packages.split(',').filter { it.isNotBlank() }.toSet()
+
+    fun withMembers(members: Collection<String>): AppGroup = copy(packages = members.sorted().joinToString(","))
+
+    /** Today's minutes for the group: its members whose own limit is switched on ([enabledApps]). */
+    fun usedMinutes(usedByApp: Map<String, Int>, enabledApps: Set<String>): Int =
+        members().filter { it in enabledApps }.sumOf { usedByApp[it] ?: 0 }
+}
 
 /** Daily budget for an in-app feature like Instagram Reels or YouTube Shorts. */
 @Entity(tableName = "feature_limits")

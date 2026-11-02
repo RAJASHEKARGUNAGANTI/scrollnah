@@ -2,6 +2,8 @@
 
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.data.MascotReward
+
 import androidx.compose.foundation.shape.CircleShape
 import com.unscroll.app.ui.components.AppTile
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -121,7 +123,10 @@ private data class LimitProgress(
     val letter: String,
     val tileColor: Color,
     val usedMinutes: Int,
-    val limitMinutes: Int
+    val limitMinutes: Int,
+    val opens: Int? = null,   // times opened today, for apps with an open limit
+    val maxOpens: Int? = null,
+    val detail: String? = null // a shared budget's apps, e.g. "Instagram + Snapchat"
 )
 
 @Composable
@@ -134,11 +139,13 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val userName by container.settings.userName.collectAsStateWithLifecycle("")
     val trackedApps by container.database.trackedAppDao().observeAll().collectAsStateWithLifecycle(emptyList())
     val featureLimits by container.database.featureDao().observeLimits().collectAsStateWithLifecycle(emptyList())
+    val groups by container.database.appGroupDao().observeAll().collectAsStateWithLifecycle(emptyList())
     val featureUsage by remember { container.database.featureDao().observeUsage(LocalDate.now().toString()) }
         .collectAsStateWithLifecycle(emptyList())
 
     var hasAccess by remember { mutableStateOf(container.usage.hasUsageAccess()) }
     var usedMinutes by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var openCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) } // only apps with an open limit
     var refreshCount by remember { mutableIntStateOf(0) }
     var showNameDialog by remember { mutableStateOf(false) }
     var setup by remember { mutableStateOf(SetupState.read(context)) }
@@ -178,9 +185,12 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             val packages = trackedApps.map { it.packageName }.toSet()
             // Reading usage events can take a moment, so do it off the main thread.
             usedMinutes = withContext(Dispatchers.IO) { container.usage.todayUsageMinutes(packages) }
+            val withOpenLimit = trackedApps.filter { it.maxOpens != null }.map { it.packageName }.toSet()
+            openCounts = if (withOpenLimit.isEmpty()) emptyMap()
+            else withContext(Dispatchers.IO) { container.usage.todayOpenCounts(withOpenLimit) }
             streak = withContext(Dispatchers.IO) {
                 container.streaks.recordFinishedDays()
-                container.streaks.currentInfo()
+                container.streaks.currentInfo().also { container.settings.noteStreak(it.best) } // unlocks rewards
             }
         }
     }
@@ -202,7 +212,9 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             // App time + time on its website in a browser.
             usedMinutes = (usedMinutes[app.packageName] ?: 0) +
                 ((featureUsage.find { it.featureId == Websites.usageKey(app.packageName) }?.millis ?: 0L) / 60_000L).toInt(),
-            limitMinutes = app.limitOn() // today's budget (weekend one on Sat/Sun if set)
+            limitMinutes = app.limitOn(), // today's budget (weekend one on Sat/Sun if set)
+            opens = app.maxOpens?.let { openCounts[app.packageName] ?: 0 },
+            maxOpens = app.maxOpens
         )
     }
     val featureRows = featureLimits.filter { it.enabled && FeatureWatchService.available }.mapNotNull { limit ->
@@ -218,12 +230,28 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             limitMinutes = limit.limitMinutes
         )
     }
-    val rows = appRows + featureRows
+    // Shared budgets: one row each, counting the minutes of its apps whose own limit is on.
+    val enabledApps = appRows.map { it.key }.toSet()
+    val usedByApp = appRows.associate { it.key to it.usedMinutes }
+    val groupRows = groups.filter { g -> g.enabled && g.members().any { it in enabledApps } }.map { g ->
+        LimitProgress(
+            key = "group:${g.id}",
+            packageName = "group:${g.id}", // not an app, so it gets a letter tile
+            name = g.name,
+            letter = letterFor(g.name),
+            tileColor = tileColorFor("group:${g.id}"),
+            usedMinutes = g.usedMinutes(usedByApp, enabledApps),
+            limitMinutes = g.limitMinutes,
+            detail = appRows.filter { it.key in g.members() }.joinToString(" + ") { it.name }
+        )
+    }
+    val rows = appRows + groupRows + featureRows
 
     // The mood only looks at whole apps (Reels/Shorts time is already inside the app's time).
+    // A used-up shared budget counts like an app at its limit.
     val totalUsed = appRows.sumOf { it.usedMinutes }
     val totalLimit = appRows.sumOf { it.limitMinutes }
-    val appAtLimit = appRows.firstOrNull { it.usedMinutes >= it.limitMinutes }?.name
+    val appAtLimit = (appRows + groupRows).firstOrNull { it.usedMinutes >= it.limitMinutes }?.name
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -711,8 +739,12 @@ private fun CelebrationDialog(days: Int, onDone: () -> Unit) {
             Text("$days-day streak!", style = MaterialTheme.typography.headlineMedium, color = Ink)
         },
         text = {
+            // A streak milestone can also unlock a hat (Blobby) or a pot colour (Bloomy).
+            val reward = MascotReward.unlockedAt(days).find { it.theme == LocalMascot.current.theme }
             Text(
-                "$days days in a row under your limits. I'm doing a very wobbly happy dance! – $name",
+                "$days days in a row under your limits. I'm doing a very wobbly happy dance!" +
+                    (reward?.let { " And I earned a ${it.title.lowercase()}: put it on me in Settings." } ?: "") +
+                    " – $name",
                 color = Ink
             )
         },
@@ -735,7 +767,7 @@ private fun BloomDialog(event: BloomEvent, onDone: () -> Unit, onOpenGarden: () 
         icon = {
             Mascot(
                 mood = MoodLevel.THRIVING,
-                look = MascotLook(MascotTheme.BLOOMY, flowers),
+                look = LocalMascot.current.copy(theme = MascotTheme.BLOOMY, flowers = flowers), // keeps a pot colour
                 size = 112.dp,
                 modifier = Modifier.graphicsLayer {
                     scaleX = pop.value
@@ -807,7 +839,9 @@ private fun LimitRow(limit: LimitProgress) {
     // One TalkBack stop per app: "YouTube, 20 of 30 minutes used".
     NeoCard(
         modifier = Modifier.clearAndSetSemantics {
-            contentDescription = "${limit.name}, ${spokenDuration(limit.usedMinutes)} used of ${spokenDuration(limit.limitMinutes)}"
+            contentDescription = "${limit.name}, ${spokenDuration(limit.usedMinutes)} used of ${spokenDuration(limit.limitMinutes)}" +
+                (if (limit.maxOpens != null) ", opened ${limit.opens} of ${limit.maxOpens} times" else "") +
+                (limit.detail?.let { ", shared by $it" } ?: "")
         },
         shadow = true,
         contentPadding = PaddingValues(14.dp)
@@ -825,6 +859,10 @@ private fun LimitRow(limit: LimitProgress) {
                     Text(durationPair(limit.usedMinutes, limit.limitMinutes, " / "), style = MaterialTheme.typography.bodyMedium)
                 }
                 NeoProgressBar(progress = progress, color = barColor)
+                if (limit.maxOpens != null) {
+                    Text("${limit.opens} / ${limit.maxOpens} opens", style = MaterialTheme.typography.bodyMedium)
+                }
+                limit.detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
         }
     }

@@ -52,6 +52,7 @@ fun AppTheme(content: @Composable () -> Unit) {
     val dark = saved ?: isSystemInDarkTheme()
     val mascot by container.settings.mascotTheme.collectAsStateWithLifecycle(initialValue = container.mascot)
     val pot by container.settings.potProgress.collectAsStateWithLifecycle(initialValue = PotProgress(container.flowers))
+    val reward by container.settings.activeReward.collectAsStateWithLifecycle(initialValue = container.reward)
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -62,7 +63,7 @@ fun AppTheme(content: @Composable () -> Unit) {
             bars.isAppearanceLightNavigationBars = !dark
         }
     }
-    CompositionLocalProvider(LocalMascot provides MascotLook(mascot, pot.flowers, pot.daysTowardNext)) {
+    CompositionLocalProvider(LocalMascot provides MascotLook(mascot, pot.flowers, pot.daysTowardNext, reward)) {
         UnscrollTheme(darkTheme = dark, content = content)
     }
 }

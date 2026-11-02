@@ -2,6 +2,7 @@
 
 package com.unscroll.app.ui.screens
 
+import androidx.compose.foundation.layout.wrapContentHeight
 import com.unscroll.app.ui.components.AppTile
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
@@ -190,6 +191,19 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                             }
                         )
                     }
+                }
+                // New phone? Bring everything over from a backup instead of setting up again.
+                RestoreBackupAction { start ->
+                    Text(
+                        "Moving from another phone? Restore a backup",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(role = Role.Button, onClick = start)
+                            .heightIn(min = 44.dp)
+                            .wrapContentHeight()
+                    )
                 }
             }
 

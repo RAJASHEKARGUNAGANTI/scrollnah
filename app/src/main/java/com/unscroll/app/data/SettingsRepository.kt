@@ -1,5 +1,10 @@
 package com.unscroll.app.data
 
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
+import kotlinx.coroutines.flow.first
+import org.json.JSONObject
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -26,6 +31,9 @@ class SettingsRepository(context: Context) {
     private val potDaysKey = intPreferencesKey("pot_days")
     private val potLastDateKey = stringPreferencesKey("pot_last_date")
     private val bloomEventKey = stringPreferencesKey("bloom_event")
+    private val timeLeftBubbleKey = booleanPreferencesKey("time_left_bubble")
+    private val weekReadyNoteKey = booleanPreferencesKey("week_ready_note")
+    private val insteadIdeasKey = stringPreferencesKey("instead_ideas")
     private val breakEnabledKey = booleanPreferencesKey("break_enabled")
     private val breakMinutesKey = intPreferencesKey("break_minutes")
     private val breakStyleKey = stringPreferencesKey("break_style")
@@ -72,6 +80,28 @@ class SettingsRepository(context: Context) {
         store.edit { it[mascotKey] = theme.name }
     }
 
+    // ---- Rewards (hats and pot colours earned with streaks) ----
+
+    private val bestStreakEverKey = intPreferencesKey("best_streak_ever")
+    private fun rewardKey(theme: MascotTheme) = stringPreferencesKey("reward_${theme.name.lowercase()}")
+
+    /** The longest streak ever seen. Only goes up, so "Clear history" doesn't take rewards away. */
+    val bestStreakEver: Flow<Int> = store.data.map { it[bestStreakEverKey] ?: 0 }
+
+    suspend fun noteStreak(best: Int) {
+        store.edit { if (best > (it[bestStreakEverKey] ?: 0)) it[bestStreakEverKey] = best }
+    }
+
+    /** What the current mascot wears (null = nothing), if it's still unlocked. */
+    val activeReward: Flow<MascotReward?> = store.data.map { prefs ->
+        val theme = MascotTheme.entries.find { it.name == prefs[mascotKey] } ?: MascotTheme.BLOBBY
+        MascotReward.entries.find { it.name == prefs[rewardKey(theme)] && it.theme == theme }
+    }
+
+    suspend fun setReward(theme: MascotTheme, reward: MascotReward?) {
+        store.edit { if (reward == null) it.remove(rewardKey(theme)) else it[rewardKey(theme)] = reward.name }
+    }
+
     /** Bloomy's current pot (see Growth). Finished pots are in the garden table instead. */
     val potProgress: Flow<PotProgress> = store.data.map { prefs ->
         PotProgress(prefs[potFlowersKey] ?: 0, prefs[potDaysKey] ?: 0, prefs[potLastDateKey])
@@ -83,6 +113,29 @@ class SettingsRepository(context: Context) {
             prefs[potDaysKey] = progress.daysTowardNext
             if (progress.lastDate == null) prefs.remove(potLastDateKey) else prefs[potLastDateKey] = progress.lastDate
         }
+    }
+
+    /** Show "12 min of Instagram left today" when a limited app is opened (default on). */
+    val timeLeftBubble: Flow<Boolean> = store.data.map { it[timeLeftBubbleKey] ?: true }
+
+    suspend fun setTimeLeftBubble(on: Boolean) {
+        store.edit { it[timeLeftBubbleKey] = on }
+    }
+
+    /** Sunday evening note that the week in review is ready. On by default. */
+    val weekReadyNote: Flow<Boolean> = store.data.map { it[weekReadyNoteKey] ?: true }
+
+    suspend fun setWeekReadyNote(on: Boolean) {
+        store.edit { it[weekReadyNoteKey] = on }
+    }
+
+    /** "Do this instead" ideas for the Pause screen (saved one per line). Never edited = a starter list. */
+    val insteadIdeas: Flow<List<String>> = store.data.map { prefs ->
+        prefs[insteadIdeasKey]?.split('\n')?.filter { it.isNotBlank() } ?: STARTER_IDEAS
+    }
+
+    suspend fun setInsteadIdeas(ideas: List<String>) {
+        store.edit { it[insteadIdeasKey] = ideas.joinToString("\n") }
     }
 
     /** A new flower or full pot Bloomy hasn't celebrated yet (null = nothing to show). */
@@ -120,11 +173,61 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    /**
+     * Every setting as JSON, for Backup: {"key": {"t": "s|i|l|b|f|d", "v": value}}.
+     * Generic, so settings added later are backed up too.
+     */
+    suspend fun exportJson(): JSONObject {
+        val json = JSONObject()
+        store.data.first().asMap().forEach { (key, value) ->
+            val (type, v) = when (value) {
+                is String -> "s" to value
+                is Int -> "i" to value
+                is Long -> "l" to value
+                is Boolean -> "b" to value
+                is Float -> "f" to value.toDouble()
+                is Double -> "d" to value
+                else -> return@forEach // (string sets aren't used)
+            }
+            json.put(key.name, JSONObject().put("t", type).put("v", v))
+        }
+        return json
+    }
+
+    /** Replaces every setting with the ones from [json] (see [exportJson]). */
+    suspend fun importJson(json: JSONObject) {
+        store.edit { prefs ->
+            prefs.clear()
+            json.keys().forEach { name ->
+                val entry = json.getJSONObject(name)
+                when (entry.getString("t")) {
+                    "s" -> prefs[stringPreferencesKey(name)] = entry.getString("v")
+                    "i" -> prefs[intPreferencesKey(name)] = entry.getInt("v")
+                    "l" -> prefs[longPreferencesKey(name)] = entry.getLong("v")
+                    "b" -> prefs[booleanPreferencesKey(name)] = entry.getBoolean("v")
+                    "f" -> prefs[floatPreferencesKey(name)] = entry.getDouble("v").toFloat()
+                    "d" -> prefs[doublePreferencesKey(name)] = entry.getDouble("v")
+                }
+            }
+        }
+    }
+
     suspend fun setUserName(name: String) {
         store.edit { it[nameKey] = name.trim() }
     }
 
     suspend fun setStrictness(strictness: Strictness) {
         store.edit { it[strictnessKey] = strictness.name }
+    }
+
+    companion object {
+        /** What the Pause screen suggests until the user writes their own ideas. */
+        val STARTER_IDEAS = listOf(
+            "Drink a glass of water",
+            "Stretch for one minute",
+            "Step outside for some air",
+            "Read a few pages of a book",
+            "Call someone you like"
+        )
     }
 }

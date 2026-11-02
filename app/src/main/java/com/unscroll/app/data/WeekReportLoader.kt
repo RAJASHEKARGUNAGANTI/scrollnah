@@ -45,7 +45,14 @@ class WeekReport(
 suspend fun loadWeekReport(container: AppContainer, apps: List<TrackedApp>): WeekReport {
     val packages = apps.map { it.packageName }.toSet()
     container.streaks.recordFinishedDays() // saves finished days (totals + Stats details) first
-    val days = container.streaks.dailyTotalsWithWeb(packages, days = 14) // app + website time
+    val summaries = container.database.dailySummaryDao().all()
+    // Finished days come from ScrollNah's saved totals when there are some: Android forgets
+    // usage after about a week, and a restored backup has history this phone never saw.
+    val savedTotals = summaries.associate { it.date to it.usedMinutes }
+    val days = container.streaks.dailyTotalsWithWeb(packages, days = 14).map { day -> // app + website time
+        val saved = savedTotals[StreakRepository.dateOf(day.dayStart).toString()]
+        if (saved != null && day.dayStart < UsageRepository.startOfDay(0)) day.copy(minutes = saved, hasData = true) else day
+    }
     val streak = container.streaks.currentInfo()
     val today = LocalDate.now()
     val thisWeek = days.takeLast(7)
@@ -76,7 +83,6 @@ suspend fun loadWeekReport(container: AppContainer, apps: List<TrackedApp>): Wee
     val hourDays = stats.hoursBetween(start.toString(), yesterday.toString()).map { it.minutesByHour() } + todayDetail.minutesByHour
     val hours = WeekStats.hourTotals(hourDays)
 
-    val summaries = container.database.dailySummaryDao().all()
     val todayLimit = apps.totalLimitOn(today)
 
     // For the mascot's verdict: finished days of this week, and weekday/weekend averages over two weeks.

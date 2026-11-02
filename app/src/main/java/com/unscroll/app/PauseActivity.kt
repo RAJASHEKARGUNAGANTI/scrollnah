@@ -35,6 +35,8 @@ class PauseActivity : ComponentActivity() {
         val locked = intent.getBooleanExtra(EXTRA_LOCKED, false)
         val limit = intent.getIntExtra(EXTRA_LIMIT, 0)
         val opens = intent.getIntExtra(EXTRA_OPENS, -1).takeIf { it >= 0 }
+        val maxOpens = intent.getIntExtra(EXTRA_MAX_OPENS, -1).takeIf { it >= 0 }
+        val groupName = intent.getStringExtra(EXTRA_GROUP)
         val reason = PauseReason.entries.getOrElse(intent.getIntExtra(EXTRA_REASON, 0)) { PauseReason.LIMIT }
 
         // Back must not sneak the user into the app; treat it like "Nah, I'm good".
@@ -46,6 +48,8 @@ class PauseActivity : ComponentActivity() {
                     appName = name,
                     openCount = opens,
                     limitMinutes = limit,
+                    maxOpens = maxOpens,
+                    groupName = groupName,
                     locked = locked,
                     reason = reason,
                     onDecline = { reason ->
@@ -102,6 +106,8 @@ class PauseActivity : ComponentActivity() {
         private const val EXTRA_LIMIT = "limit"
         private const val EXTRA_OPENS = "opens"
         private const val EXTRA_REASON = "reason"
+        private const val EXTRA_MAX_OPENS = "max_opens"
+        private const val EXTRA_GROUP = "group"
 
         fun launch(context: Context, target: PauseTarget, locked: Boolean) {
             lastLaunchAt = System.currentTimeMillis()
@@ -113,6 +119,8 @@ class PauseActivity : ComponentActivity() {
                 .putExtra(EXTRA_LIMIT, target.limitMinutes)
                 .putExtra(EXTRA_OPENS, target.openCount ?: -1)
                 .putExtra(EXTRA_REASON, target.reason.ordinal)
+                .putExtra(EXTRA_MAX_OPENS, target.maxOpens ?: -1)
+                .putExtra(EXTRA_GROUP, target.groupName)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             context.startActivity(intent)
         }

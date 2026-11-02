@@ -32,6 +32,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.unscroll.app.appContainer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -64,6 +66,8 @@ import kotlinx.coroutines.delay
 /**
  * The full-orange pause screen.
  *
+ * @param maxOpens the app's daily open limit, for [PauseReason.OPENS].
+ * @param groupName the shared budget that ran out ([limitMinutes] is then the group's), or null.
  * @param locked Beast mode: no reason chips and no "+5 minutes", only "Take me home".
  * @param onAllowFiveMinutes null hides the button (also used for Beast mode).
  */
@@ -72,6 +76,8 @@ fun PauseScreen(
     appName: String,
     openCount: Int?,
     limitMinutes: Int?,
+    maxOpens: Int? = null,
+    groupName: String? = null,
     locked: Boolean = false,
     reason: PauseReason = PauseReason.LIMIT,
     isPreview: Boolean = false,
@@ -91,10 +97,12 @@ fun PauseScreen(
     }
 
     var selectedReason by remember { mutableStateOf<String?>(null) }
+    val insteadIdeas by appContainer().settings.insteadIdeas.collectAsStateWithLifecycle(emptyList())
 
     val pillText = when {
         reason == PauseReason.FOCUS -> "Focus mode"
         reason == PauseReason.BEDTIME -> "Bedtime"
+        reason == PauseReason.WORK -> "Work hours"
         locked -> "Locked till tomorrow"
         openCount == null -> "Limit reached"
         openCount <= 1 -> "1st time today"
@@ -103,6 +111,7 @@ fun PauseScreen(
     val title = when {
         reason == PauseReason.FOCUS -> "Focus mode is on."
         reason == PauseReason.BEDTIME -> "It's bedtime. $appName can wait."
+        reason == PauseReason.WORK -> "Work time. $appName can wait."
         locked -> "That's it for $appName today."
         else -> "Woah. $appName again?"
     }
@@ -111,10 +120,17 @@ fun PauseScreen(
             val left = ((FocusRules.focusRemainingMs() + 59_999L) / 60_000L).toInt()
             "$appName is paused for $left more ${if (left == 1) "minute" else "minutes"}. I'm guarding the door."
         }
+        PauseReason.WORK ->
+            "I'm keeping $appName paused until ${FocusRules.formatTime(FocusRules.workHours().endMinutes)}. You've got this."
         PauseReason.BEDTIME ->
             "I'm sleepy. $appName is paused until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}."
-        PauseReason.LIMIT ->
-            if (locked) MascotLines.lockedSubtitle(appName) else MascotLines.pauseSubtitle(limitMinutes)
+        PauseReason.LIMIT -> when {
+            locked -> MascotLines.lockedSubtitle(appName)
+            groupName != null && limitMinutes != null -> MascotLines.groupSubtitle(groupName, limitMinutes)
+            else -> MascotLines.pauseSubtitle(limitMinutes)
+        }
+        PauseReason.OPENS ->
+            if (locked) MascotLines.lockedSubtitle(appName) else MascotLines.opensSubtitle(maxOpens)
     }
 
     // Layout depends on the screen: sideways phones get two columns; shorter phones
@@ -263,6 +279,7 @@ fun PauseScreen(
                     ) {
                         titleAndSubtitle()
                         reasonChips()
+                        DoThisInsteadCard(insteadIdeas)
                     }
                     buttons()
                 }
@@ -302,6 +319,7 @@ fun PauseScreen(
                     }
                     if (!compact) breathingCircle(Modifier.align(Alignment.CenterHorizontally))
                     reasonChips()
+                    DoThisInsteadCard(insteadIdeas)
                 }
                 buttons()
             }

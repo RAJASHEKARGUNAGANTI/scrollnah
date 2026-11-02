@@ -22,7 +22,9 @@ data class PauseTarget(
     val packageName: String,  // the app it lives in
     val limitMinutes: Int,
     val openCount: Int?,      // times opened today (null for Reels/Shorts)
-    val reason: PauseReason = PauseReason.LIMIT
+    val reason: PauseReason = PauseReason.LIMIT,
+    val maxOpens: Int? = null, // the app's open limit (for PauseReason.OPENS)
+    val groupName: String? = null // set when a shared budget ran out (limitMinutes is then the group's)
 )
 
 /** Decides what happens at the limit, based on the strictness the user picked. */
@@ -97,14 +99,26 @@ object LimitActions {
         val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle(
-                if (target.reason == PauseReason.BEDTIME) "${mascotName(context)}: it's bedtime"
-                else "${mascotName(context)}: ${target.name} time's up"
+                when (target.reason) {
+                    PauseReason.BEDTIME -> "${mascotName(context)}: it's bedtime"
+                    PauseReason.WORK -> "${mascotName(context)}: it's work time"
+                    PauseReason.OPENS -> "${mascotName(context)}: ${target.name} again?"
+                    else -> "${mascotName(context)}: ${target.groupName ?: target.name} time's up"
+                }
             )
             .setContentText(
-                if (target.reason == PauseReason.BEDTIME) {
-                    "I'm sleepy. Maybe put ${target.name} down until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}?"
-                } else {
-                    "That's your ${duration(target.limitMinutes)} of ${target.name} for today. I think it's a good moment to stop."
+                when (target.reason) {
+                    PauseReason.BEDTIME ->
+                        "I'm sleepy. Maybe put ${target.name} down until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}?"
+                    PauseReason.WORK ->
+                        "Maybe put ${target.name} down until ${FocusRules.formatTime(FocusRules.workHours().endMinutes)}? I'll keep it warm."
+                    PauseReason.OPENS ->
+                        "That's ${target.openCount ?: "a lot of"} opens today, and you said ${target.maxOpens} was plenty. Maybe leave it for now?"
+                    else -> if (target.groupName != null) {
+                        "${target.groupName} had ${duration(target.limitMinutes)} together today, and ${target.name} is part of it. I think it's a good moment to stop."
+                    } else {
+                        "That's your ${duration(target.limitMinutes)} of ${target.name} for today. I think it's a good moment to stop."
+                    }
                 }
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -139,7 +153,36 @@ object LimitActions {
         }
     }
 
+    /** Sunday evening: "your week in review is ready". Tapping opens the review cards. */
+    fun showWeekReady(context: Context, title: String, text: String) {
+        val notifications = NotificationManagerCompat.from(context)
+        if (!notifications.areNotificationsEnabled()) return
+        val open = PendingIntent.getActivity(
+            context,
+            WEEK_READY_NOTIFICATION_ID,
+            Intent(context, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_OPEN, MainActivity.OPEN_WEEK_REVIEW)
+                // Reuse the open app (onNewIntent) instead of stacking a second copy.
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+            .setSmallIcon(R.drawable.ic_stat_blobby)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        try {
+            notifications.notify(WEEK_READY_NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            // Permission revoked; skip.
+        }
+    }
+
     private const val STREAK_NOTIFICATION_ID = 2
+    private const val WEEK_READY_NOTIFICATION_ID = 6
     const val PAYMENT_HELP_NOTIFICATION_ID = 3
     private const val FLOATING_NOTIFICATION_ID = 5
 
@@ -153,7 +196,9 @@ object LimitActions {
         val text = when (reason) {
             PauseReason.FOCUS -> "Focus mode is on, so I paused $appName's little window. Swipe it away when you're ready."
             PauseReason.BEDTIME -> "It's bedtime, so I paused $appName's little window. Swipe it away when you're ready."
+            PauseReason.WORK -> "It's work time, so I paused $appName's little window. Swipe it away when you're ready."
             PauseReason.LIMIT -> "Your $appName time is up for today, so I paused the little window. Swipe it away when you're ready."
+            PauseReason.OPENS -> "That's enough $appName opens for today, so I paused the little window. Swipe it away when you're ready."
         }
         val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
             .setSmallIcon(R.drawable.ic_stat_blobby)

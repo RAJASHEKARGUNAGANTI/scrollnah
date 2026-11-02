@@ -144,6 +144,15 @@ object MascotLines {
         }
 
     /** Pause screen subtitle in Beast mode. */
+    /** Pause screen when a shared budget ran out, e.g. "Social had 1h together today...". */
+    fun groupSubtitle(groupName: String, limitMinutes: Int): String =
+        "$groupName had ${duration(limitMinutes)} together today, and it's all used. Breathe with me, then choose."
+
+    /** Pause screen when an app was opened more times than the user allows. */
+    fun opensSubtitle(maxOpens: Int?): String =
+        if (maxOpens == null) "Take one slow breath with me before you decide."
+        else "You said $maxOpens ${if (maxOpens == 1) "open" else "opens"} a day was plenty. Breathe with me, then choose."
+
     fun lockedSubtitle(appName: String): String = listOf(
         "You picked Beast mode, so $appName is locked until midnight. I believe in you.",
         "Beast mode says no. $appName unlocks at midnight. You've got this.",
@@ -224,6 +233,25 @@ object MascotLines {
 
     private fun dayName(date: LocalDate): String =
         date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+
+    /**
+     * The Sunday note: "I put your week together: 7h 34m, 38 min less than last week. Come have a look!"
+     * [vsLastWeek] is minutes more (+) or less (-) than last week, null if last week isn't known.
+     */
+    fun weekReadyText(totalMinutes: Int, vsLastWeek: Int?): String {
+        val change = when {
+            vsLastWeek == null -> ""
+            vsLastWeek < 0 -> ", ${duration(-vsLastWeek)} less than last week"
+            vsLastWeek > 0 -> ", ${duration(vsLastWeek)} more than last week"
+            else -> ", the same as last week"
+        }
+        return "I put your week together: ${duration(totalMinutes)}$change. Come have a look!"
+    }
+
+    /** The bubble when a limited app opens: "18 min of YouTube left today." (less than 5: "Only 3 min..."). */
+    fun timeLeftText(appName: String, minutesLeft: Int): String =
+        if (minutesLeft <= 5) "Only ${duration(minutesLeft)} of $appName left today!"
+        else "${duration(minutesLeft)} of $appName left today."
 
     /** The bubble's speech text, e.g. "20 min straight! My eyes hurt." */
     fun bubbleText(theme: MascotTheme, mood: MoodLevel, minutes: Int): String = when {

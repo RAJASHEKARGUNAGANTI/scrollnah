@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.navigation
 
+import com.unscroll.app.MainActivity
 import com.unscroll.app.ui.screens.WeekReviewScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,7 +32,7 @@ import com.unscroll.app.ui.screens.SettingsScreen
 import com.unscroll.app.ui.screens.WeeklyReportScreen
 
 @Composable
-fun UnscrollApp() {
+fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -140,6 +142,19 @@ fun UnscrollApp() {
                 )
             }
         }
+    }
+
+    // A notification asked for a screen (the Sunday "week in review is ready" note).
+    LaunchedEffect(openRequest) {
+        if (openRequest == MainActivity.OPEN_WEEK_REVIEW) {
+            // Stats first, so Back from the cards lands on Stats.
+            navController.navigate(Destination.STATS.route) {
+                popUpTo(Destination.HOME.route) { saveState = true }
+                launchSingleTop = true
+            }
+            navController.navigate(WEEK_REVIEW_ROUTE) { launchSingleTop = true }
+        }
+        if (openRequest != null) onOpened()
     }
 }
 

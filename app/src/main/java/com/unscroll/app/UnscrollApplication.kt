@@ -1,5 +1,8 @@
 package com.unscroll.app
 
+import com.unscroll.app.data.MascotReward
+
+import com.unscroll.app.data.BeastGuard
 import android.app.Application
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -43,9 +46,13 @@ class AppContainer(context: Context) {
     /** Good days toward Bloomy's next flower (drawn as a growing bud). */
     @Volatile var budDays: Int = 0
         private set
+    /** The hat or pot colour the mascot wears (earned with streaks), or null. */
+    @Volatile var reward: MascotReward? = null
+        private set
 
     init {
         appScope.launch { settings.mascotTheme.collect { mascot = it } }
+        appScope.launch { settings.activeReward.collect { reward = it } }
         appScope.launch {
             settings.potProgress.collect {
                 flowers = it.flowers
@@ -64,6 +71,7 @@ class UnscrollApplication : Application() {
         if (DemoMode.active) container.appScope.launch { DemoMode.seed(container.database, container.settings) }
         Allowances.init(this)
         FocusRules.init(this)
+        BeastGuard.init(this)
     }
 }
 

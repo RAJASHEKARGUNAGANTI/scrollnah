@@ -2,15 +2,17 @@ package com.unscroll.app.service
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.time.DayOfWeek
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Why an app is being paused. */
-enum class PauseReason { LIMIT, BEDTIME, FOCUS }
+/** Why a limited app is paused. OPENS = opened more times today than the user allows. */
+enum class PauseReason { LIMIT, BEDTIME, FOCUS, OPENS, WORK }
 
 /**
- * Focus sessions ("lock my apps for 1 hour") and the bedtime schedule.
+ * Focus sessions ("lock my apps for 1 hour"), the bedtime schedule and work hours.
  *
  * Stored in SharedPreferences (like [Allowances]) because the blocker checks
  * them every second and needs a quick, synchronous read.
@@ -21,6 +23,23 @@ object FocusRules {
     data class Bedtime(val enabled: Boolean, val startMinutes: Int, val endMinutes: Int) {
         companion object {
             val DEFAULT = Bedtime(enabled = false, startMinutes = 22 * 60, endMinutes = 7 * 60)
+        }
+    }
+
+    /** Work hours on some days of the week; times are minutes after midnight (may cross it, for night shifts). */
+    data class WorkHours(val enabled: Boolean, val startMinutes: Int, val endMinutes: Int, val days: Set<DayOfWeek>) {
+        companion object {
+            val WEEKDAYS = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+            val DEFAULT = WorkHours(enabled = false, startMinutes = 9 * 60, endMinutes = 17 * 60, days = WEEKDAYS)
+        }
+
+        /** True if [at] is inside these work hours. A shift past midnight belongs to the day it started. */
+        fun covers(at: LocalDateTime): Boolean {
+            if (!enabled || startMinutes == endMinutes) return false
+            val m = at.hour * 60 + at.minute
+            val day = at.dayOfWeek
+            return if (startMinutes < endMinutes) day in days && m in startMinutes until endMinutes
+            else (day in days && m >= startMinutes) || (day.minus(1) in days && m < endMinutes)
         }
     }
 
@@ -69,10 +88,34 @@ object FocusRules {
         else m >= b.startMinutes || m < b.endMinutes
     }
 
-    /** The rule pausing limited apps right now, or null. Focus wins over bedtime. */
+    // ---- Work hours ----
+
+    fun workHours(): WorkHours = WorkHours(
+        enabled = prefs.getBoolean("work_enabled", WorkHours.DEFAULT.enabled),
+        startMinutes = prefs.getInt("work_start", WorkHours.DEFAULT.startMinutes),
+        endMinutes = prefs.getInt("work_end", WorkHours.DEFAULT.endMinutes),
+        // Saved as day numbers, e.g. "12345" = Monday to Friday.
+        days = prefs.getString("work_days", null)
+            ?.mapNotNull { it.digitToIntOrNull()?.takeIf { n -> n in 1..7 }?.let(DayOfWeek::of) }?.toSet()
+            ?: WorkHours.DEFAULT.days
+    )
+
+    fun setWorkHours(w: WorkHours) {
+        prefs.edit()
+            .putBoolean("work_enabled", w.enabled)
+            .putInt("work_start", w.startMinutes)
+            .putInt("work_end", w.endMinutes)
+            .putString("work_days", w.days.sorted().joinToString("") { it.value.toString() })
+            .apply()
+    }
+
+    fun workHoursActive(now: LocalDateTime = LocalDateTime.now()): Boolean = workHours().covers(now)
+
+    /** The rule pausing limited apps right now, or null. Focus wins over bedtime, bedtime over work hours. */
     fun activeRule(): PauseReason? = when {
         focusActive() -> PauseReason.FOCUS
         bedtimeActive() -> PauseReason.BEDTIME
+        workHoursActive() -> PauseReason.WORK
         else -> null
     }
 

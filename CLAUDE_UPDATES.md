@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-11-01): v2.2.3 released on GitHub; its Play bundle is ready in `release/` for the first Play upload (enhancements batch + compact app, see below). APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-11-02): v2.2.3 released on GitHub; its Play bundle is ready in `release/` for the first Play upload. Since then (not released): backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards (see below). Release APK 1.47 MB. APK 2.60 MB -> 1.43 MB. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -380,6 +380,61 @@ debug gallery (below).
   a full on-screen keyboard (the emulator shows a floating toolbar).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as com.unscroll.app rm files/demo_mode`, then clear app data).
+
+## Open limits, shared budgets, work hours, ideas, Sunday note, rewards (2026-11-02, developer request, not released yet)
+All tested on the emulator (Firm mode unless said); 48 unit tests; release APK 1,544,702 bytes (2.2.3: 1,495,550).
+- **Sunday "week in review is ready"** (`BlockerService.weekReadyWork`, in the 30-min streak loop): Sunday from 6 PM, once,
+  only if a finished day this week has data. "Blobby: your week in review is ready" / "I put your week together: 7h 34m,
+  38 min less than last week. Come have a look!" (`MascotLines.weekReadyText`). Tapping opens Stats > week review
+  (`MainActivity.EXTRA_OPEN`, CLEAR_TOP|SINGLE_TOP so an open app gets `onNewIntent`). Settings > Reminders switch
+  (default on). Debug trigger: `am start -n com.unscroll.app/.debug.MascotGalleryActivity --ez weekready true`.
+- **"Do this instead"** (`ui/screens/InsteadIdeas.kt`): white "Try this instead?" card on the Pause screen (also when locked)
+  with one idea, random each time, "Another idea" cycles. Settings > "Do this instead": remove ideas, add your own
+  (max 8, 60 chars). Starter list in `SettingsRepository.STARTER_IDEAS`; an empty list hides the card.
+- **Open limits** (`TrackedApp.maxOpens`, DB v6): Limits row "+ Limit opens" -> "Opens a day" stepper (1-10 by 1, then by 5
+  to 50). The service counts today's opens when a limited app is opened (`opensOverLimit`); past the limit it acts like the
+  time limit with `PauseReason.OPENS` ("Woah. YouTube again?" / "You said 1 open a day was plenty."). Beast locks till
+  midnight. Home shows "3 / 10 opens". More opens or removing it = loosening for the Beast cool-down.
+  Note: Android counts every resume as a visit, so killing/reinstalling ScrollNah while it's in front briefly resumes the
+  app underneath (seen on the emulator: 10 "opens" of YouTube from test reinstalls). Normal use doesn't do that.
+- **Work hours** (`FocusRules.WorkHours`, prefs "focus": work_enabled/start/end/days): Limits card under Bedtime with
+  times and M-S day chips (default off, Mon-Fri 9-5). A shift past midnight belongs to the day it started (tested).
+  `PauseReason.WORK`, "Work time. YouTube can wait." Behaves like bedtime: Chill nudges, Firm allows +5, Beast locks.
+  Shortening it is loosening (`BeastGuard.workHoursLoosened`). Included in backups.
+- **Shared budgets** (`AppGroup` table `app_groups`, DB v7): Limits "Shared budgets" section (shown with 2+ apps):
+  "Make a shared budget" asks a name, then tick apps, set minutes (5-300), switch, rename, remove. Each app keeps its own
+  limit; the group counts the minutes of its apps whose own limit is on. The service pauses a member when the group is
+  used up ("Social had 5 min together today, and it's all used."), the time-left bubble uses the group if it has less
+  left ("Only 4 min of Social left today!"). Home shows a row per group with its apps; a used-up group counts as "an app
+  at its limit" for the mood (Home and widgets). Removing an app also takes it out of groups.
+- **Streak rewards** (`data/Rewards.kt`, `ui/mascot/RewardArt.kt`): Blobby: Cap, Party hat, Beanie, Crown; Bloomy: lilac,
+  sky, pink, white pot; unlocked at a best streak of 3, 7, 14, 30 days (`SettingsRepository.bestStreakEver`, only goes
+  up, so Clear history keeps them; recorded by Home and the service). Settings > Mascot shows the picker (locked ones
+  show the days needed). Blobby is drawn at 86% when wearing a hat so it fits the same square; everything that draws the
+  mascot gets it (app, Pause screen, bubble, notifications, widgets via `MascotLook.reward` / `MascotBitmap`). The
+  30-day crown and pot are white so they show on the lime card. The milestone celebration mentions a newly earned one.
+  Widgets weren't on the emulator's home screen, so the widget hat is not seen yet.
+
+## Backup, time-left bubble, Beast cool-down (2026-11-02, developer request, not released yet)
+- **Backup & restore** (`data/Backup.kt`, `ui/screens/BackupUi.kt`): Settings > Data > "Save a backup" writes one
+  JSON file where the user picks (Storage Access Framework, no permission, nothing uploaded); "Restore a backup" is in
+  Settings and on the first setup screen ("Moving from another phone? Restore a backup"). Every Room table is copied
+  generically (sqlite_master + PRAGMA table_info, so new tables/columns need no change here), plus all DataStore
+  settings (`SettingsRepository.exportJson/importJson`, typed values) and the bedtime (FocusRules prefs). Restore asks
+  first (date, app version, apps / days / pots), replaces everything in one transaction, then restarts the app.
+  A backup from a newer app (format or DB version) is refused. Tested on the emulator: backup, `pm clear`, restore
+  from setup -> name, limits, streak (5 days), Stats history and garden back.
+- Found while testing restore: the Stats chart read only Android's own usage events, so restored days (and days older
+  than Android's ~7-10 day memory) showed empty bars while "Where the time went" had them. `loadWeekReport` now uses
+  the saved `daily_summary` total for finished days and falls back to live events only for days never saved.
+- **Time-left bubble**: when a limited app opens under its limit, the mascot badge says "27 min of YouTube left
+  today." ("Only 4 min ..." at 5 or less; `MascotLines.timeLeftText`). Needs "Display over other apps", never over
+  payment apps, at most once per app per 10 min. Settings > Reminders > "Show time left" (default on).
+- **Beast cool-down** (`data/BeastGuard.kt`, tested): in Beast mode, any change that gives more time (higher limit,
+  limit off, bigger/removed weekend limit, removing an app, lower strictness, shorter or no bedtime) asks for a
+  10-minute cool-down; after it there are 15 minutes to save one loosening change, then it locks again. Stricter
+  changes save straight away. Status line under "Lock it in". "Keep it strict" discards the unsaved changes.
+  Tested on the emulator (raise blocked -> cool-down -> saved 35 min; lowering instant; removing an app asks).
 
 ## Version 2.2.3 (2026-11-01)
 - `versionCode` 11, `versionName` "2.2.3": Bloomy's bud on the Settings mascot card, store prep (listing, reviewer

@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import com.unscroll.app.data.MascotReward
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.Lime
@@ -12,8 +13,9 @@ import com.unscroll.app.ui.theme.Orange
 /**
  * Blobby, the orange blob, in one of the five moods (140x140 grid).
  * On orange pages ([onOrange]) Blobby turns lime so it stays visible.
+ * [hat] = a hat earned with streaks (see RewardArt), sitting on top of the head.
  */
-internal fun DrawScope.drawBlobby(s: Float, mood: MoodLevel, onOrange: Boolean, pose: MascotPose) {
+internal fun DrawScope.drawBlobby(s: Float, mood: MoodLevel, onOrange: Boolean, pose: MascotPose, hat: MascotReward? = null) {
     val color = if (onOrange) Lime else Orange
     when (mood) {
         MoodLevel.THRIVING -> {
@@ -55,6 +57,16 @@ internal fun DrawScope.drawBlobby(s: Float, mood: MoodLevel, onOrange: Boolean, 
             outlined(puddle, color, s)
             face(mood, 70f, 88f, 0.8f, s, pose)
         }
+    }
+    if (hat != null) {
+        // Where the top of the head is in each mood, and how wide the head is there.
+        val (top, k) = when (mood) {
+            MoodLevel.THRIVING -> 30f to 0.8f
+            MoodLevel.OKAY -> 30f to 1.05f
+            MoodLevel.OVER -> 54f to 0.75f
+            else -> 14f to 1f
+        }
+        drawHat(hat, 70f, top + 8f * k, k, s)
     }
 }
 

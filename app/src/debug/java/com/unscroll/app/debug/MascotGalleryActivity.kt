@@ -1,6 +1,7 @@
 package com.unscroll.app.debug
 
 import com.unscroll.app.service.LimitActions
+import kotlinx.coroutines.launch
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.BloomEvent
 import android.os.Bundle
@@ -63,6 +64,21 @@ class MascotGalleryActivity : ComponentActivity() {
             finish()
             return
         }
+        // Test the Sunday "week in review is ready" note on any day:
+        //   adb shell am start -n com.unscroll.app/.debug.MascotGalleryActivity --ez weekready true
+        if (intent.getBooleanExtra("weekready", false)) {
+            val container = (application as UnscrollApplication).container
+            container.appScope.launch {
+                val report = com.unscroll.app.data.loadWeekReport(container, container.database.trackedAppDao().getAll())
+                LimitActions.showWeekReady(
+                    this@MascotGalleryActivity,
+                    "${container.mascot.mascotName}: your week in review is ready",
+                    com.unscroll.app.ui.mascot.MascotLines.weekReadyText(report.totalMinutes, report.vsLastWeekMinutes)
+                )
+            }
+            finish()
+            return
+        }
         setContent { AppTheme { Gallery() } }
     }
 
@@ -98,6 +114,15 @@ private fun Gallery() {
         item { Label("Blobby: thriving, happy, okay, worried, melting") }
         item { MoodRow(MascotLook(MascotTheme.BLOBBY), Lime) }
         item { MoodRow(MascotLook(MascotTheme.BLOBBY), Orange, onOrange = true) }
+        // Rewards earned with streaks: hats for Blobby, pot colours for Bloomy.
+        for (reward in com.unscroll.app.data.MascotReward.entries) {
+            item { Label(reward.title) }
+            val flowers = if (reward.theme == MascotTheme.BLOOMY) 3 else 0
+            item { MoodRow(MascotLook(reward.theme, flowers, reward = reward), Lime) }
+            if (reward == com.unscroll.app.data.MascotReward.CROWN || reward == com.unscroll.app.data.MascotReward.WHITE_POT) {
+                item { MoodRow(MascotLook(reward.theme, flowers, reward = reward), Orange, onOrange = true) }
+            }
+        }
         for (flowers in 0..4) {
             item { Label("Bloomy, $flowers ${if (flowers == 1) "flower" else "flowers"}") }
             item { MoodRow(MascotLook(MascotTheme.BLOOMY, flowers), Lime) }

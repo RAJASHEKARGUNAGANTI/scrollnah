@@ -1,5 +1,6 @@
 package com.unscroll.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,15 +29,35 @@ class MainActivity : ComponentActivity() {
     /** True once we know whether to show onboarding or the app; the opening screen stays until then. */
     @Volatile private var ready = false
 
+    /** A screen a notification asked to open (e.g. [OPEN_WEEK_REVIEW]); cleared once shown. */
+    private val openRequest = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // The opening screen (Blobby on lilac). Must come before super.onCreate.
         installSplashScreen().setKeepOnScreenCondition { !ready }
         super.onCreate(savedInstanceState)
+        // Not after a rotation: the screen it asked for is already open.
+        if (savedInstanceState == null) openRequest.value = intent.getStringExtra(EXTRA_OPEN)
         setContent {
             AppTheme {
-                AppRoot(onReady = { ready = true })
+                AppRoot(
+                    onReady = { ready = true },
+                    openRequest = openRequest.value,
+                    onOpened = { openRequest.value = null }
+                )
             }
         }
+    }
+
+    // A notification tapped while ScrollNah is already open.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(EXTRA_OPEN)?.let { openRequest.value = it }
+    }
+
+    companion object {
+        const val EXTRA_OPEN = "open"
+        const val OPEN_WEEK_REVIEW = "week_review"
     }
 
     override fun onResume() {
@@ -51,7 +72,7 @@ class MainActivity : ComponentActivity() {
 
 /** Shows the first-run walkthrough once, then the normal app. */
 @Composable
-private fun AppRoot(onReady: () -> Unit) {
+private fun AppRoot(onReady: () -> Unit, openRequest: String?, onOpened: () -> Unit) {
     val container = appContainer()
     // null = still checking, true = show onboarding, false = show the app
     val needsOnboarding by produceState<Boolean?>(initialValue = null) {
@@ -73,6 +94,6 @@ private fun AppRoot(onReady: () -> Unit) {
     when {
         needsOnboarding == null -> Box(Modifier.fillMaxSize().background(Neo.colors.background)) // hidden by the opening screen
         needsOnboarding == true && !showApp -> OnboardingScreen(onFinished = { showApp = true })
-        else -> UnscrollApp()
+        else -> UnscrollApp(openRequest = openRequest, onOpened = onOpened)
     }
 }

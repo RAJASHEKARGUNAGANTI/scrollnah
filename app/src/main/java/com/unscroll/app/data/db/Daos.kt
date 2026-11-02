@@ -33,6 +33,24 @@ interface TrackedAppDao {
 }
 
 @Dao
+interface AppGroupDao {
+    @Query("SELECT * FROM app_groups ORDER BY id")
+    fun observeAll(): Flow<List<AppGroup>>
+
+    @Query("SELECT * FROM app_groups ORDER BY id")
+    suspend fun getAll(): List<AppGroup>
+
+    @Insert
+    suspend fun insert(group: AppGroup): Long
+
+    @Upsert
+    suspend fun upsertAll(groups: List<AppGroup>)
+
+    @Query("DELETE FROM app_groups WHERE id = :id")
+    suspend fun delete(id: Long)
+}
+
+@Dao
 interface FeatureDao {
     @Query("SELECT * FROM feature_limits")
     fun observeLimits(): Flow<List<FeatureLimit>>

@@ -1,5 +1,8 @@
 package com.unscroll.app.service
 
+import com.unscroll.app.data.MoodLevel
+import com.unscroll.app.ui.mascot.MascotBitmap
+import com.unscroll.app.ui.mascot.MascotLines
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -17,6 +20,8 @@ import com.unscroll.app.data.BreakSettings
 import com.unscroll.app.data.PaymentApps
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.Websites
+import com.unscroll.app.data.loadWeekReport
+import com.unscroll.app.data.db.AppGroup
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.widget.MascotWidgets
 import com.unscroll.app.ui.components.duration
@@ -49,8 +54,10 @@ class BlockerService : Service() {
 
     // Kept up to date from Room / DataStore.
     @Volatile private var trackedApps: List<TrackedApp> = emptyList()
+    @Volatile private var groups: List<AppGroup> = emptyList() // shared budgets
     @Volatile private var strictness = Strictness.FIRM
     @Volatile private var breakSettings = BreakSettings()
+    @Volatile private var timeLeftBubble = true
 
     private var currentApp: String? = null
     private var firstTick = true
@@ -59,6 +66,12 @@ class BlockerService : Service() {
     private var lastUsageRefresh = 0L
     private val lastActionAt = mutableMapOf<String, Long>()
     private var lastFloatingCheck = 0L
+    /** When the "time left" bubble was last shown per app, so quick app switches don't repeat it. */
+    private val lastTimeLeftAt = mutableMapOf<String, Long>()
+    // Apps opened more often today than their open limit allows: package -> opens today.
+    // Counted when the app is opened (opens can't change while it stays in front).
+    private val overOpens = mutableMapOf<String, Int>()
+    private var overOpensDay = ""
     /** False right after pausing a floating player, until the sound stops (players keep a silent stream open for a few seconds). */
     private var floatingArmed = true
 
@@ -109,8 +122,15 @@ class BlockerService : Service() {
                 widgetDirty = true // limits changed
             }
         }
+        scope.launch {
+            container.database.appGroupDao().observeAll().collect {
+                groups = it
+                widgetDirty = true
+            }
+        }
         scope.launch { container.settings.strictness.collect { strictness = it } }
         scope.launch { container.settings.breakSettings.collect { breakSettings = it } }
+        scope.launch { container.settings.timeLeftBubble.collect { timeLeftBubble = it } }
         // Keep the "... is keeping watch" notification in step with the chosen mascot.
         scope.launch {
             container.settings.mascotTheme.collect { theme ->
@@ -151,6 +171,7 @@ class BlockerService : Service() {
                 screenOn.first { it }
                 try {
                     streakWork()
+                    weekReadyWork()
                 } catch (e: Exception) {
                     debug("streak work failed: $e")
                 }
@@ -202,6 +223,7 @@ class BlockerService : Service() {
      */
     private suspend fun streakWork() {
         container.streaks.recordFinishedDays()
+        container.settings.noteStreak(container.streaks.currentInfo().best) // unlocks rewards
 
         val now = java.time.LocalTime.now()
         val today = LocalDate.now().toString()
@@ -227,6 +249,26 @@ class BlockerService : Service() {
             )
         }
         debug("streak nudge sent (streak=${info.current}, ${info.todayUsed}/${info.todayLimit})")
+    }
+
+    /** Sunday from 6 PM, once: "your week in review is ready" (if the user wants it and there's a week to show). */
+    private suspend fun weekReadyWork() {
+        val today = LocalDate.now()
+        if (today.dayOfWeek != java.time.DayOfWeek.SUNDAY || java.time.LocalTime.now().hour < 18) return
+        val prefs = getSharedPreferences("streak", MODE_PRIVATE)
+        if (prefs.getString("last_week_note", null) == today.toString()) return
+        if (!container.settings.weekReadyNote.first() || !container.usage.hasUsageAccess()) return
+        val apps = container.database.trackedAppDao().getAll()
+        if (apps.isEmpty()) return
+        val report = loadWeekReport(container, apps)
+        if (report.thisWeek.dropLast(1).none { it.hasData }) return // nothing to look back on yet
+        prefs.edit().putString("last_week_note", today.toString()).apply()
+        LimitActions.showWeekReady(
+            this,
+            "${container.mascot.mascotName}: your week in review is ready",
+            MascotLines.weekReadyText(report.totalMinutes, report.vsLastWeekMinutes)
+        )
+        debug("week ready note sent (${report.totalMinutes} min)")
     }
 
     private suspend fun tick() {
@@ -267,9 +309,9 @@ class BlockerService : Service() {
         // 3a. Focus mode / bedtime pause limited apps regardless of usage.
         val rule = FocusRules.activeRule()
         if (rule != null) {
-            // Bedtime honours +5 passes (not in Beast); focus never does.
-            if (rule == PauseReason.BEDTIME && strictness != Strictness.BEAST && Allowances.isActive(app)) return
-            val gap = if (strictness == Strictness.CHILL && rule == PauseReason.BEDTIME) chillGap(justOpened) else 3_000L
+            // Bedtime and work hours honour +5 passes (not in Beast); focus never does.
+            if (rule != PauseReason.FOCUS && strictness != Strictness.BEAST && Allowances.isActive(app)) return
+            val gap = if (strictness == Strictness.CHILL && rule != PauseReason.FOCUS) chillGap(justOpened) else 3_000L
             if (now - (lastActionAt[app] ?: 0L) < gap) return
             lastActionAt[app] = now
             debug("$app paused by $rule, strictness=$strictness -> acting")
@@ -296,8 +338,20 @@ class BlockerService : Service() {
         // App time + website time.
         val used = (usedMinutes[app] ?: 0) + (webMinutes[app] ?: 0)
         val limit = limited.limitOn() // today's budget (weekend one on Sat/Sun if set)
-        if (justOpened) debug("$app used $used of $limit min, allowance=${Allowances.isActive(app)}")
-        if (used < limit) return
+        val opensOver = opensOverLimit(limited, justOpened)
+        // The shared budget with the least time left that this app is in (if any).
+        val group = tightestGroup(app)
+        val groupLeft = group?.let { it.limitMinutes - groupUsed(it) }
+        if (justOpened) debug("$app used $used of $limit min, group left=$groupLeft, opens over limit=$opensOver, allowance=${Allowances.isActive(app)}")
+        val groupUsedUp = groupLeft != null && groupLeft <= 0
+        if (used < limit && opensOver == null && !groupUsedUp) {
+            if (justOpened) {
+                // "12 min of Social left": the group's time if that runs out first.
+                if (group != null && groupLeft!! < limit - used) showTimeLeft(now, limited, group.name, groupUsed(group), group.limitMinutes)
+                else showTimeLeft(now, limited, limited.appName, used, limit)
+            }
+            return
+        }
         // Beast mode never honours "+5 min" passes, even ones taken before switching to it.
         if (strictness != Strictness.BEAST && Allowances.isActive(app)) return
 
@@ -307,13 +361,58 @@ class BlockerService : Service() {
         if (now - (lastActionAt[app] ?: 0L) < minGap) return
         lastActionAt[app] = now
 
-        debug("$app over limit ($used/$limit min), strictness=$strictness -> acting")
-        val opens = container.usage.todayOpenCounts(setOf(app))[app]
+        // Out of the app's own minutes first, then the shared budget, then the open limit.
+        val reason = if (used >= limit || groupUsedUp) PauseReason.LIMIT else PauseReason.OPENS
+        val byGroup = used < limit && groupUsedUp
+        debug("$app over limit ($used/$limit min, reason $reason, group ${if (byGroup) group?.name else "-"}), strictness=$strictness -> acting")
+        val opens = opensOver ?: container.usage.todayOpenCounts(setOf(app))[app]
         LimitActions.onLimitReached(
             this,
-            PauseTarget(app, limited.appName, app, limit, opens),
+            PauseTarget(
+                app, limited.appName, app,
+                limitMinutes = if (byGroup) group!!.limitMinutes else limit,
+                openCount = opens,
+                reason = reason,
+                maxOpens = limited.maxOpens,
+                groupName = if (byGroup) group!!.name else null
+            ),
             strictness
         )
+    }
+
+    /** Minutes used today by a shared budget's apps (app time + website time, only apps whose own limit is on). */
+    private fun groupUsed(group: AppGroup): Int {
+        val enabled = trackedApps.filter { it.enabled }.map { it.packageName }.toSet()
+        val used = enabled.associateWith { (usedMinutes[it] ?: 0) + (webMinutes[it] ?: 0) }
+        return group.usedMinutes(used, enabled)
+    }
+
+    /** Of the switched-on shared budgets [pkg] is in, the one with the least time left (null if none). */
+    private fun tightestGroup(pkg: String): AppGroup? =
+        groups.filter { it.enabled && pkg in it.members() }.minByOrNull { it.limitMinutes - groupUsed(it) }
+
+    /** Opens today if [app] has been opened more times than its open limit, else null. */
+    private fun opensOverLimit(app: TrackedApp, justOpened: Boolean): Int? {
+        forgetOpensIfNewDay()
+        val max = app.maxOpens
+        if (max == null) {
+            overOpens.remove(app.packageName)
+            return null
+        }
+        if (justOpened) {
+            val opens = container.usage.todayOpenCounts(setOf(app.packageName))[app.packageName] ?: 0
+            if (opens > max) overOpens[app.packageName] = opens else overOpens.remove(app.packageName)
+        }
+        return overOpens[app.packageName]
+    }
+
+    /** A new day: everyone starts at 0 opens. */
+    private fun forgetOpensIfNewDay() {
+        val today = LocalDate.now().toString()
+        if (today != overOpensDay) {
+            overOpens.clear()
+            overOpensDay = today
+        }
     }
 
     /**
@@ -340,8 +439,25 @@ class BlockerService : Service() {
         MediaPauser.pausePlayback(this)
         floatingArmed = false
         // Tell the user, so it doesn't look like the video just froze.
-        val name = blocked.first { it.packageName in floating }.appName
-        LimitActions.showFloatingPaused(this, name, FocusRules.activeRule() ?: PauseReason.LIMIT)
+        val app = blocked.first { it.packageName in floating }
+        val used = (usedMinutes[app.packageName] ?: 0) + (webMinutes[app.packageName] ?: 0)
+        val reason = FocusRules.activeRule() ?: if (used >= app.limitOn()) PauseReason.LIMIT else PauseReason.OPENS
+        LimitActions.showFloatingPaused(this, app.appName, reason)
+    }
+
+    /**
+     * "18 min of YouTube left today": a quick mascot bubble when a limited app is opened,
+     * at most once every 10 minutes per app. Needs "Display over other apps".
+     */
+    private fun showTimeLeft(now: Long, app: TrackedApp, name: String, used: Int, limit: Int) {
+        if (!timeLeftBubble || !android.provider.Settings.canDrawOverlays(this)) return
+        if (PaymentApps.contains(app.packageName)) return // never draw over payment apps
+        if (now - (lastTimeLeftAt[app.packageName] ?: 0L) < 10 * 60_000L) return
+        lastTimeLeftAt[app.packageName] = now
+        val mood = MoodLevel.from(used, limit)
+        val mascot = MascotBitmap.render(container.mascot, mood, container.flowers, sizePx = 240, badge = true, budDays = container.budDays, reward = container.reward)
+        BubbleOverlay.show(this, mascot, MascotLines.timeLeftText(name, limit - used))
+        debug("time left bubble for ${app.packageName}: ${limit - used} min")
     }
 
     /** Would ScrollNah stop this app if it were opened right now? (Chill only nudges, so never.) */
@@ -350,10 +466,13 @@ class BlockerService : Service() {
         val passOk = strictness != Strictness.BEAST && Allowances.isActive(pkg) // "+5 min" still running
         return when (FocusRules.activeRule()) {
             PauseReason.FOCUS -> true // focus pauses every limited app, even in Chill
-            PauseReason.BEDTIME -> strictness != Strictness.CHILL && !passOk
+            PauseReason.BEDTIME, PauseReason.WORK -> strictness != Strictness.CHILL && !passOk
             else -> {
                 val used = (usedMinutes[pkg] ?: 0) + (webMinutes[pkg] ?: 0)
-                strictness != Strictness.CHILL && used >= app.limitOn() && !passOk
+                forgetOpensIfNewDay()
+                val groupUsedUp = tightestGroup(pkg)?.let { groupUsed(it) >= it.limitMinutes } == true
+                val over = used >= app.limitOn() || (app.maxOpens != null && pkg in overOpens) || groupUsedUp
+                strictness != Strictness.CHILL && over && !passOk
             }
         }
     }

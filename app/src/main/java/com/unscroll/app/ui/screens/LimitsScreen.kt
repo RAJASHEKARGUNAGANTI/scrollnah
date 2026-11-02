@@ -1,5 +1,20 @@
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.ui.theme.PillShape
+
+import com.unscroll.app.ui.components.PencilIcon
+
+import com.unscroll.app.data.db.AppGroup
+
+import androidx.compose.foundation.shape.CircleShape
+
+import java.time.DayOfWeek
+
+import androidx.compose.foundation.layout.FlowRow
+
+import com.unscroll.app.data.BeastGuard
+import androidx.compose.runtime.mutableIntStateOf
+import kotlinx.coroutines.delay
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.ui.components.AppTile
 import androidx.compose.ui.semantics.heading
@@ -102,8 +117,16 @@ import com.unscroll.app.ui.theme.Orange
 import com.unscroll.app.ui.theme.White
 import kotlinx.coroutines.launch
 
-/** Unsaved edits for one row. [weekendMinutes] = a different limit on Sat & Sun (null = same every day). */
-private data class Draft(val minutes: Int, val enabled: Boolean, val weekendMinutes: Int? = null)
+/**
+ * Unsaved edits for one row. [weekendMinutes] = a different limit on Sat & Sun (null = same every day),
+ * [maxOpens] = opens allowed a day (null = no open limit).
+ */
+private data class Draft(val minutes: Int, val enabled: Boolean, val weekendMinutes: Int? = null, val maxOpens: Int? = null)
+
+/** Unsaved edits for one shared budget. */
+private data class GroupDraft(val name: String, val minutes: Int, val enabled: Boolean, val members: Set<String>)
+
+private fun AppGroup.toDraft() = GroupDraft(name, limitMinutes, enabled, members())
 
 @Composable
 fun LimitsScreen(
@@ -126,17 +149,24 @@ fun LimitsScreen(
     val loadedApps by appDao.observeAll().collectAsStateWithLifecycle<List<TrackedApp>?>(null)
     val apps = loadedApps.orEmpty()
     val featureLimits by featureDao.observeLimits().collectAsStateWithLifecycle(emptyList())
+    val groupDao = container.database.appGroupDao()
+    val groups by groupDao.observeAll().collectAsStateWithLifecycle(emptyList())
     val savedStrictness by container.settings.strictness.collectAsStateWithLifecycle(Strictness.FIRM)
     val breakSettings by container.settings.breakSettings.collectAsStateWithLifecycle(BreakSettings())
 
     // Edits are kept here until "Lock it in". Adding/removing an app saves right away.
     val appDrafts = remember { mutableStateMapOf<String, Draft>() }
     val featureDrafts = remember { mutableStateMapOf<String, Draft>() }
+    val groupDrafts = remember { mutableStateMapOf<Long, GroupDraft>() }
+    var namingGroup by remember { mutableStateOf<Long?>(null) } // NEW_GROUP, an id to rename, or null
     var strictnessDraft by remember { mutableStateOf<Strictness?>(null) }
     val strictness = strictnessDraft ?: savedStrictness
     var savedBedtime by remember { mutableStateOf(FocusRules.bedtime()) }
     var bedtimeDraft by remember { mutableStateOf<FocusRules.Bedtime?>(null) }
     val bedtime = bedtimeDraft ?: savedBedtime
+    var savedWork by remember { mutableStateOf(FocusRules.workHours()) }
+    var workDraft by remember { mutableStateOf<FocusRules.WorkHours?>(null) }
+    val workHours = workDraft ?: savedWork
 
     // Only offer Reels/Shorts for apps that are actually installed (and never in the Play version).
     val features = remember {
@@ -151,7 +181,8 @@ fun LimitsScreen(
     // Is anything different from what's saved? (Changing a value and changing it back counts as no change.)
     val hasChanges = apps.any { app ->
         appDrafts[app.packageName]?.let {
-            it.minutes != app.limitMinutes || it.enabled != app.enabled || it.weekendMinutes != app.weekendLimitMinutes
+            it.minutes != app.limitMinutes || it.enabled != app.enabled || it.weekendMinutes != app.weekendLimitMinutes ||
+                it.maxOpens != app.maxOpens
         } == true
     } || features.any { f ->
         val saved = featureLimits.find { it.featureId == f.id }
@@ -159,10 +190,57 @@ fun LimitsScreen(
             it.minutes != (saved?.limitMinutes ?: DEFAULT_FEATURE_LIMIT_MINUTES) || it.enabled != (saved?.enabled ?: false)
         } == true
     } || (strictnessDraft != null && strictnessDraft != savedStrictness) ||
-        (bedtimeDraft != null && bedtimeDraft != savedBedtime)
+        (bedtimeDraft != null && bedtimeDraft != savedBedtime) ||
+        (workDraft != null && workDraft != savedWork) ||
+        groups.any { g -> groupDrafts[g.id]?.let { it != g.toDraft() } == true }
 
     LaunchedEffect(hasChanges) { onUnsavedChanges(hasChanges) }
     DisposableEffect(Unit) { onDispose { onUnsavedChanges(false) } }
+
+    // Beast mode: giving yourself more time needs a 10-minute cool-down first (see BeastGuard).
+    val loosens = savedStrictness == Strictness.BEAST && (
+        apps.any { app ->
+            appDrafts[app.packageName]?.let {
+                BeastGuard.limitLoosened(app.limitMinutes, app.enabled, app.weekendLimitMinutes, it.minutes, it.enabled, it.weekendMinutes) ||
+                    (it.enabled && BeastGuard.opensLoosened(app.maxOpens, it.maxOpens))
+            } == true
+        } || features.any { f ->
+            val saved = featureLimits.find { it.featureId == f.id }
+            featureDrafts[f.id]?.let {
+                BeastGuard.limitLoosened(saved?.limitMinutes ?: DEFAULT_FEATURE_LIMIT_MINUTES, saved?.enabled ?: false, null, it.minutes, it.enabled, null)
+            } == true
+        } || (strictnessDraft?.let { BeastGuard.strictnessLoosened(savedStrictness, it) } == true) ||
+            (bedtimeDraft?.let { BeastGuard.bedtimeLoosened(savedBedtime, it) } == true) ||
+            (workDraft?.let { BeastGuard.workHoursLoosened(savedWork, it) } == true) ||
+            groups.any { g ->
+                groupDrafts[g.id]?.let {
+                    BeastGuard.groupLoosened(g.limitMinutes, g.enabled, g.members(), it.minutes, it.enabled, it.members)
+                } == true
+            }
+        )
+    // The cool-down clock, re-read every 10 s so the countdown stays current.
+    var guardTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(savedStrictness) {
+        while (savedStrictness == Strictness.BEAST) {
+            delay(10_000)
+            guardTick++
+        }
+    }
+    val guardState = remember(guardTick, savedStrictness) { BeastGuard.state() }
+    var showGuard by remember { mutableStateOf(false) }
+
+    /** Runs [save] now, unless it gives more time in Beast mode without a finished cool-down. */
+    fun guarded(isLoosening: Boolean = loosens, save: () -> Unit) {
+        if (!isLoosening) return save()
+        when (BeastGuard.state()) {
+            is BeastGuard.State.Open -> {
+                save()
+                BeastGuard.used() // the next loosening needs a new cool-down
+                guardTick++
+            }
+            else -> showGuard = true
+        }
+    }
 
     // Phone back button / gesture: ask first if there are unsaved changes.
     var askBeforeLeaving by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -173,15 +251,22 @@ fun LimitsScreen(
     suspend fun saveDrafts() {
         val changedApps = apps.mapNotNull { app ->
             appDrafts[app.packageName]?.let {
-                app.copy(limitMinutes = it.minutes, enabled = it.enabled, weekendLimitMinutes = it.weekendMinutes)
+                app.copy(limitMinutes = it.minutes, enabled = it.enabled, weekendLimitMinutes = it.weekendMinutes, maxOpens = it.maxOpens)
             }
         }
         appDao.upsertAll(changedApps)
         featureDao.upsertLimits(featureDrafts.map { (id, d) -> FeatureLimit(id, d.minutes, d.enabled) })
+        groupDao.upsertAll(groups.mapNotNull { g ->
+            groupDrafts[g.id]?.let { g.copy(name = it.name, limitMinutes = it.minutes, enabled = it.enabled).withMembers(it.members) }
+        })
+        groupDrafts.clear()
         container.settings.setStrictness(strictness)
         FocusRules.setBedtime(bedtime)
         savedBedtime = bedtime
         bedtimeDraft = null
+        FocusRules.setWorkHours(workHours)
+        savedWork = workHours
+        workDraft = null
         if (strictness == Strictness.BEAST) Allowances.clear() // Beast = no extra minutes left over
         appDrafts.clear()
         featureDrafts.clear()
@@ -204,7 +289,7 @@ fun LimitsScreen(
         }
 
         items(apps, key = { it.packageName }) { app ->
-            val draft = appDrafts[app.packageName] ?: Draft(app.limitMinutes, app.enabled, app.weekendLimitMinutes)
+            val draft = appDrafts[app.packageName] ?: Draft(app.limitMinutes, app.enabled, app.weekendLimitMinutes, app.maxOpens)
             LimitEditRow(
                 name = app.appName,
                 packageName = app.packageName,
@@ -214,14 +299,52 @@ fun LimitsScreen(
                 onChange = { appDrafts[app.packageName] = it },
                 allowWeekend = true,
                 onRemove = {
-                    appDrafts.remove(app.packageName)
-                    scope.launch { appDao.delete(app.packageName) }
+                    // Removing an app is a looser limit too, so Beast mode asks for the cool-down.
+                    guarded(isLoosening = savedStrictness == Strictness.BEAST) {
+                        appDrafts.remove(app.packageName)
+                        scope.launch {
+                            appDao.delete(app.packageName)
+                            groupDao.upsertAll(groups.filter { app.packageName in it.members() }.map { it.withMembers(it.members() - app.packageName) })
+                        }
+                    }
                 }
             )
         }
         item {
             // Save pending edits first, otherwise they'd be lost while the picker is open.
-            AddAppButton(onClick = { scope.launch { saveDrafts(); onAddApp() } })
+            AddAppButton(onClick = { guarded { scope.launch { saveDrafts(); onAddApp() } } })
+        }
+
+        // Shared budgets: a few apps with one limit together.
+        if (apps.size >= 2 || groups.isNotEmpty()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 8.dp)) {
+                    Text("Shared budgets", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+                    Text(
+                        "Give a few apps one budget together, like 1 hour for all your social apps. Each app keeps its own limit too.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            items(groups, key = { "group-${it.id}" }) { group ->
+                val draft = groupDrafts[group.id] ?: group.toDraft()
+                GroupEditRow(
+                    id = group.id,
+                    draft = draft,
+                    apps = apps,
+                    onChange = { groupDrafts[group.id] = it },
+                    onRename = { namingGroup = group.id },
+                    onRemove = {
+                        guarded(isLoosening = savedStrictness == Strictness.BEAST && group.enabled && group.members().isNotEmpty()) {
+                            groupDrafts.remove(group.id)
+                            scope.launch { groupDao.delete(group.id) }
+                        }
+                    }
+                )
+            }
+            item {
+                OutlineActionButton("Make a shared budget", onClick = { namingGroup = NEW_GROUP })
+            }
         }
 
         if (features.isNotEmpty()) {
@@ -255,6 +378,9 @@ fun LimitsScreen(
 
         item {
             BedtimeCard(bedtime = bedtime, onChange = { bedtimeDraft = it })
+        }
+        item {
+            WorkHoursCard(work = workHours, onChange = { workDraft = it })
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
@@ -301,29 +427,84 @@ fun LimitsScreen(
                 backgroundColor = Orange,
                 enabled = hasChanges,
                 onClick = {
-                scope.launch {
-                    saveDrafts()
-                    BlockerService.startIfNeeded(context)
-                    Toast.makeText(context, "Locked in!", Toast.LENGTH_SHORT).show()
-                    onSaved()
+                guarded {
+                    scope.launch {
+                        saveDrafts()
+                        BlockerService.startIfNeeded(context)
+                        Toast.makeText(context, "Locked in!", Toast.LENGTH_SHORT).show()
+                        onSaved()
+                    }
                 }
             }
             )
+            // Beast mode: show where the cool-down is.
+            if (savedStrictness == Strictness.BEAST) {
+                val status = when (val s = guardState) {
+                    is BeastGuard.State.Waiting -> "Cool-down: ${minutesUp(s.msLeft)} min left before you can give yourself more time."
+                    is BeastGuard.State.Open -> "Cool-down done: you can loosen limits for the next ${minutesUp(s.msLeft)} min."
+                    BeastGuard.State.Locked -> "Beast mode: giving yourself more time needs a 10-minute cool-down."
+                }
+                Text(status, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 10.dp))
+            }
         }
+    }
+
+    if (showGuard) {
+        BeastGuardDialog(
+            state = guardState,
+            onStart = {
+                BeastGuard.startCooldown()
+                guardTick++
+                showGuard = false
+            },
+            onKeepStrict = {
+                // Undo the edits that gave more time; Beast stays as it was.
+                appDrafts.clear()
+                featureDrafts.clear()
+                strictnessDraft = null
+                bedtimeDraft = null
+                workDraft = null
+                groupDrafts.clear()
+                showGuard = false
+            },
+            onClose = { showGuard = false }
+        )
+    }
+
+    namingGroup?.let { id ->
+        val existing = groups.find { it.id == id }
+        GroupNameDialog(
+            current = existing?.let { groupDrafts[id]?.name ?: it.name }.orEmpty(),
+            onDismiss = { namingGroup = null },
+            onSave = { name ->
+                if (existing == null) {
+                    // New budgets start empty (they limit nothing until apps are ticked).
+                    scope.launch { groupDao.insert(AppGroup(name = name, limitMinutes = DEFAULT_GROUP_MINUTES)) }
+                } else {
+                    groupDrafts[id] = (groupDrafts[id] ?: existing.toDraft()).copy(name = name)
+                }
+                namingGroup = null
+            }
+        )
     }
 
     leaveAction?.let { leave ->
         UnsavedChangesDialog(
             onLockIn = {
-                scope.launch {
-                    saveDrafts()
-                    Toast.makeText(context, "Locked in!", Toast.LENGTH_SHORT).show()
-                    askBeforeLeaving = null
-                    leave()
+                askBeforeLeaving = null
+                guarded {
+                    scope.launch {
+                        saveDrafts()
+                        Toast.makeText(context, "Locked in!", Toast.LENGTH_SHORT).show()
+                        leave()
+                    }
                 }
+                if (showGuard) onLeaveCancelled() // Beast cool-down needed: stay on this screen
             },
             onDiscard = {
                 bedtimeDraft = null
+                workDraft = null
+                groupDrafts.clear()
                 appDrafts.clear()
                 featureDrafts.clear()
                 strictnessDraft = null
@@ -338,19 +519,43 @@ fun LimitsScreen(
     }
 }
 
+/** 61_000 ms -> 2 ("2 min left"): rounds up, so it never says 0 while time is left. */
+private fun minutesUp(ms: Long): Int = ((ms + 59_999L) / 60_000L).toInt()
+
+/** Beast mode's "not so fast" question when an edit gives more time. */
+@Composable
+private fun BeastGuardDialog(state: BeastGuard.State, onStart: () -> Unit, onKeepStrict: () -> Unit, onClose: () -> Unit) {
+    val name = com.unscroll.app.ui.mascot.LocalMascot.current.theme.mascotName
+    AlertDialog(
+        onDismissRequest = onClose,
+        containerColor = Neo.colors.surface,
+        title = { Text("Beast mode is on", style = MaterialTheme.typography.headlineSmall) },
+        text = {
+            Text(
+                when (state) {
+                    is BeastGuard.State.Waiting ->
+                        "The cool-down is running: ${minutesUp(state.msLeft)} more min. After that you have 15 minutes to make this change. – $name"
+                    else ->
+                        "This gives you more time, so I ask for a 10-minute cool-down first. If you still want it then, you have 15 minutes to make the change. – $name"
+                }
+            )
+        },
+        confirmButton = {
+            if (state is BeastGuard.State.Waiting) {
+                TextButton(onClick = onClose) { Text("OK", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
+            } else {
+                TextButton(onClick = onStart) { Text("Start cool-down", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
+            }
+        },
+        dismissButton = { TextButton(onClick = onKeepStrict) { Text("Keep it strict", color = Neo.colors.content) } }
+    )
+}
+
 /** Bedtime schedule: switch + start/end times (tap a time to change it). */
 @Composable
 private fun BedtimeCard(bedtime: FocusRules.Bedtime, onChange: (FocusRules.Bedtime) -> Unit) {
     val context = LocalContext.current
-    fun pickTime(current: Int, onPicked: (Int) -> Unit) {
-        android.app.TimePickerDialog(
-            context,
-            { _, hour, minute -> onPicked(hour * 60 + minute) },
-            current / 60,
-            current % 60,
-            android.text.format.DateFormat.is24HourFormat(context)
-        ).show()
-    }
+    fun pickTime(current: Int, onPicked: (Int) -> Unit) = showTimePicker(context, current, onPicked)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
         Text("Bedtime", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
         NeoCard(
@@ -382,6 +587,91 @@ private fun BedtimeCard(bedtime: FocusRules.Bedtime, onChange: (FocusRules.Bedti
                 }
             }
         }
+    }
+}
+
+/** The phone's own clock picker; [current] and the result are minutes after midnight. */
+private fun showTimePicker(context: android.content.Context, current: Int, onPicked: (Int) -> Unit) {
+    android.app.TimePickerDialog(
+        context,
+        { _, hour, minute -> onPicked(hour * 60 + minute) },
+        current / 60,
+        current % 60,
+        android.text.format.DateFormat.is24HourFormat(context)
+    ).show()
+}
+
+/** "Work hours": pause time-sinks during work on the chosen days (like bedtime, but per weekday). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun WorkHoursCard(work: FocusRules.WorkHours, onChange: (FocusRules.WorkHours) -> Unit) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+        Text("Work hours", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+        NeoCard(
+            modifier = Modifier.alpha(if (work.enabled) 1f else 0.7f),
+            contentPadding = PaddingValues(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Pause my time-sinks at work", fontWeight = FontWeight.Bold)
+                    Text("Follows your strictness below.", style = MaterialTheme.typography.bodyMedium)
+                }
+                NeoSwitch(
+                    checked = work.enabled,
+                    onToggle = { onChange(work.copy(enabled = !work.enabled)) },
+                    label = "Work hours pause"
+                )
+            }
+            Row(
+                Modifier.padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TimeChip(FocusRules.formatTime(work.startMinutes), "Work starts") {
+                    showTimePicker(context, work.startMinutes) { onChange(work.copy(startMinutes = it)) }
+                }
+                Text("to", fontWeight = FontWeight.Bold)
+                TimeChip(FocusRules.formatTime(work.endMinutes), "Work ends") {
+                    showTimePicker(context, work.endMinutes) { onChange(work.copy(endMinutes = it)) }
+                }
+            }
+            FlowRow(
+                modifier = Modifier.padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp), // all 7 fit on one line on most phones
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                DayOfWeek.entries.forEach { day ->
+                    DayChip(day, selected = day in work.days) {
+                        onChange(work.copy(days = if (day in work.days) work.days - day else work.days + day))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One weekday toggle: "M", "T", ... (TalkBack reads the full name). */
+@Composable
+private fun DayChip(day: DayOfWeek, selected: Boolean, onToggle: () -> Unit) {
+    Box(
+        Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(if (selected) Lime else Neo.colors.background, CircleShape)
+            .border(BorderWidth, Neo.colors.outline, CircleShape)
+            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle() })
+            .clearAndSetSemantics {
+                contentDescription = day.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
+                stateDescription = if (selected) "work day" else "day off"
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            day.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()),
+            fontWeight = FontWeight.Bold,
+            color = if (selected) Ink else Neo.colors.content
+        )
     }
 }
 
@@ -527,6 +817,7 @@ private fun LimitEditRow(
                             ) { CloseIcon() }
                         }
                     }
+                    OpensLimit(name, draft.maxOpens, onChange = { onChange(draft.copy(maxOpens = it)) })
                 }
             }
             Box(Modifier.padding(top = 6.dp)) {
@@ -538,6 +829,197 @@ private fun LimitEditRow(
             }
         }
     }
+}
+
+/** "+ Limit opens" link, or the "Opens a day" stepper once there is an open limit ([maxOpens] null = none). */
+@Composable
+private fun OpensLimit(name: String, maxOpens: Int?, onChange: (Int?) -> Unit) {
+    // 1 to 10 in ones, then fives up to 50.
+    fun down(n: Int) = (if (n > 10) n - 5 else n - 1).coerceAtLeast(1)
+    fun up(n: Int) = (if (n >= 10) n + 5 else n + 1).coerceAtMost(MAX_OPENS)
+    fun opens(n: Int) = if (n == 1) "1 open" else "$n opens"
+
+    if (maxOpens == null) {
+        Text(
+            "+ Limit opens",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(role = Role.Button) { onChange(DEFAULT_MAX_OPENS) }
+                .heightIn(min = 44.dp)
+                .wrapContentHeight()
+                .padding(end = 8.dp)
+        )
+    } else {
+        Text("Opens a day", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Stepper(
+                minutes = maxOpens,
+                onDecrease = { onChange(down(maxOpens)) },
+                onIncrease = { onChange(up(maxOpens)) },
+                what = "$name opens a day",
+                text = ::opens,
+                spoken = ::opens
+            )
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(role = Role.Button) { onChange(null) }
+                    .semantics { contentDescription = "No open limit for $name" },
+                contentAlignment = Alignment.Center
+            ) { CloseIcon() }
+        }
+    }
+}
+
+private const val DEFAULT_MAX_OPENS = 10
+private const val MAX_OPENS = 50
+
+private const val NEW_GROUP = -1L
+private const val DEFAULT_GROUP_MINUTES = 60
+private const val MAX_GROUP_MINUTES = 300
+
+/** One shared budget: name (tap to rename), minutes for all its apps together, and which apps are in it. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun GroupEditRow(
+    id: Long,
+    draft: GroupDraft,
+    apps: List<TrackedApp>,
+    onChange: (GroupDraft) -> Unit,
+    onRename: () -> Unit,
+    onRemove: () -> Unit
+) {
+    fun down(m: Int) = (m - LIMIT_STEP_MINUTES).coerceAtLeast(MIN_LIMIT_MINUTES)
+    fun up(m: Int) = (m + LIMIT_STEP_MINUTES).coerceAtMost(MAX_GROUP_MINUTES)
+
+    NeoCard(
+        modifier = Modifier.alpha(if (draft.enabled) 1f else 0.55f),
+        contentPadding = PaddingValues(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            LetterTile(letterFor(draft.name), tileColorFor("group:$id"), Modifier.padding(top = 2.dp))
+            Column(
+                modifier = Modifier
+                    .padding(start = 10.dp)
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(role = Role.Button, onClickLabel = "rename", onClick = onRename)
+                            .heightIn(min = 44.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(draft.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f, fill = false))
+                        PencilIcon(Modifier.padding(start = 6.dp), size = 16.dp)
+                    }
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(role = Role.Button, onClick = onRemove)
+                            .semantics { contentDescription = "Remove ${draft.name}" },
+                        contentAlignment = Alignment.Center
+                    ) { CloseIcon() }
+                }
+                Text("Together, every day", style = MaterialTheme.typography.labelSmall)
+                Stepper(
+                    minutes = draft.minutes,
+                    onDecrease = { onChange(draft.copy(minutes = down(draft.minutes))) },
+                    onIncrease = { onChange(draft.copy(minutes = up(draft.minutes))) },
+                    what = "${draft.name} shared limit"
+                )
+                Text("Apps in it", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    apps.forEach { app ->
+                        val inIt = app.packageName in draft.members
+                        MemberChip(app.appName, selected = inIt) {
+                            onChange(draft.copy(members = if (inIt) draft.members - app.packageName else draft.members + app.packageName))
+                        }
+                    }
+                }
+                if (draft.members.isEmpty()) {
+                    Text("Tick the apps that share this budget.", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Box(Modifier.padding(top = 6.dp)) {
+                NeoSwitch(
+                    checked = draft.enabled,
+                    onToggle = { onChange(draft.copy(enabled = !draft.enabled)) },
+                    label = "${draft.name} shared budget"
+                )
+            }
+        }
+    }
+}
+
+/** An app that can be in a shared budget or not (a pill that toggles). */
+@Composable
+private fun MemberChip(name: String, selected: Boolean, onToggle: () -> Unit) {
+    Box(
+        Modifier
+            .heightIn(min = 44.dp)
+            .clip(PillShape)
+            .background(if (selected) Lime else Neo.colors.background, PillShape)
+            .border(BorderWidth, Neo.colors.outline, PillShape)
+            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle() })
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(name, fontWeight = FontWeight.Bold, color = if (selected) Ink else Neo.colors.content)
+    }
+}
+
+/** "Make a shared budget": an outlined full-width button (like "Add an app"). */
+@Composable
+private fun OutlineActionButton(text: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clip(ButtonShape)
+            .border(BorderWidth, Neo.colors.outline, ButtonShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PlusIcon()
+        Text(text, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** Asks for a shared budget's name (new, or renaming one). */
+@Composable
+private fun GroupNameDialog(current: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Neo.colors.surface,
+        title = { Text("Name this budget", style = MaterialTheme.typography.headlineSmall) },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = text,
+                onValueChange = { text = it.replace('\n', ' ').take(20) },
+                singleLine = true,
+                placeholder = { Text("e.g. Social") }
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(text.trim()) }, enabled = text.isNotBlank()) {
+                Text("Save", fontWeight = FontWeight.Bold, color = Neo.colors.content)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Neo.colors.content) }
+        }
+    )
 }
 
 /** "Break reminders" row: shows the current setting and opens the Break reminders screen. */
@@ -609,18 +1091,28 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit) {
     }
 }
 
-/** Minus / value / plus. [what] names the value for screen readers, e.g. "YouTube limit". */
+/**
+ * Minus / value / plus. [what] names the value for screen readers, e.g. "YouTube limit".
+ * Shows minutes unless [text] / [spoken] say otherwise (e.g. "10 opens").
+ */
 @Composable
-internal fun Stepper(minutes: Int, onDecrease: () -> Unit, onIncrease: () -> Unit, what: String = "Limit") {
+internal fun Stepper(
+    minutes: Int,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    what: String = "Limit",
+    text: (Int) -> String = ::duration,
+    spoken: (Int) -> String = ::spokenDuration
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         StepperButton("−", "Lower $what", onDecrease)
         Text(
-            duration(minutes),
+            text(minutes),
             // At least 66dp, wider if big text needs it ("1h 30m").
             modifier = Modifier
                 .widthIn(min = 66.dp)
                 .padding(horizontal = 4.dp)
-                .semantics { contentDescription = "$what: ${spokenDuration(minutes)}" },
+                .semantics { contentDescription = "$what: ${spoken(minutes)}" },
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyMedium

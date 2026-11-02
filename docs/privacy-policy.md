@@ -4,7 +4,7 @@ title: ScrollNah privacy policy
 
 # ScrollNah privacy policy
 
-_Last updated: 27 October 2026_
+_Last updated: 2 November 2026_
 
 ScrollNah is an Android app that helps you spend less time on the apps you choose, with a friendly mascot (Blobby or Bloomy). This policy explains what the app looks at, what it keeps, and where it keeps it.
 
@@ -26,7 +26,8 @@ The version of ScrollNah downloaded from GitHub includes an optional tracker tha
 
 All of this is stored only on your phone, inside the app's private storage:
 
-- The apps you limit, your daily limits, strictness, bedtime and break reminder settings
+- The apps you limit, your daily limits and open limits, shared budgets, strictness, bedtime, work hours and break reminder settings
+- Your "Do this instead" ideas for the Pause screen, and which hat or pot colour your mascot wears
 - Daily minute totals, your streak and Bloomy's garden
 - For the weekly report: per day, the minutes and number of visits for each app you limit, the time of your first use, and how many minutes fell in each hour of the day
 - Your answers on the Pause screen (for example "Bored") and whether you took a break, used for your weekly report
@@ -39,12 +40,14 @@ All of this is stored only on your phone, inside the app's private storage:
 
 If you tap **Share** on a "week in review" card, ScrollNah makes a picture of that card and opens Android's share menu. The picture goes only to the app you pick there, and only because you chose to share it.
 
+If you tap **Settings > Data > Save a backup**, ScrollNah writes one file with your limits, settings, history, streak and garden to the place you choose (for example your Downloads folder or a cloud drive app you pick). ScrollNah does not upload it anywhere itself. Anyone who has that file can read your usage history, so keep it somewhere private. **Restore a backup** only reads a file you pick.
+
 The only link out of the app is **Settings > Feedback**, which opens a GitHub Discussions page in your browser with your message filled in, plus your app version, Android version and phone model to help with bugs. Nothing is sent unless you choose to post it on GitHub yourself, where GitHub's own privacy policy applies.
 
 ## Deleting your data
 
 - **Settings > Data > Clear history** deletes your saved minutes, weekly report history, streak days, Pause answers and break history (your limits and garden stay).
-- **Uninstalling ScrollNah** deletes everything it stored.
+- **Uninstalling ScrollNah** deletes everything it stored on the phone. Backup files you saved stay where you put them; delete them like any other file.
 
 ## Children
 

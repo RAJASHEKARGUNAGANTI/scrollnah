@@ -38,6 +38,7 @@ Optional instructions for reviewers:
   (ScrollNah reads app usage and the app list only on the device and never sends them anywhere. Play only counts data as "collected" when it leaves the device. The app has no INTERNET permission.)
 - Is all user data encrypted in transit? Not applicable (nothing is transmitted).
 - "Share this card" on the weekly report: only when the user taps it, ScrollNah saves a picture of that card and opens Android's share menu; the picture goes only to the app the user picks. Nothing goes to the developer, so it isn't "collected".
+- "Save a backup" in Settings: only when the user taps it, ScrollNah writes a JSON file to a place the user picks with Android's file picker. ScrollNah never uploads it, so it isn't "collected" or "shared" either.
 - Do you provide a way for users to request that their data is deleted? Users can delete data in the app (**Settings > Data > Clear history**) or by uninstalling. If asked for a URL, use the privacy policy link.
 
 ### Advertising ID

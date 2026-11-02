@@ -2,6 +2,11 @@
 
 package com.unscroll.app.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.unscroll.app.data.Backup
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -87,9 +92,13 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
 
     val userName by container.settings.userName.collectAsStateWithLifecycle("")
     val darkMode by container.settings.darkMode.collectAsStateWithLifecycle(null)
+    val timeLeftBubble by container.settings.timeLeftBubble.collectAsStateWithLifecycle(true)
+    val weekReadyNote by container.settings.weekReadyNote.collectAsStateWithLifecycle(true)
+    val insteadIdeas by container.settings.insteadIdeas.collectAsStateWithLifecycle(emptyList())
     val mascot = LocalMascot.current
     val pot by container.settings.potProgress.collectAsStateWithLifecycle(PotProgress())
     val gardenPots by container.database.gardenDao().observeAll().collectAsStateWithLifecycle(emptyList())
+    val bestStreakEver by container.settings.bestStreakEver.collectAsStateWithLifecycle(0)
 
     // Permission states are re-read whenever the screen comes back (e.g. from Android Settings).
     var refresh by remember { mutableIntStateOf(0) }
@@ -110,6 +119,19 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
 
     var editingName by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+
+    // Android's own "save as" and "open" screens: the user picks where the file goes (no permission needed).
+    val saveBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) container.appScope.launch {
+            val message = try {
+                Backup.write(context, container, uri)
+                "Backup saved"
+            } catch (e: Exception) {
+                (e as? Backup.BackupException)?.message ?: "Couldn't save the backup. Try another place?"
+            }
+            withContext(Dispatchers.Main) { Toast.makeText(context, message, Toast.LENGTH_SHORT).show() }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -151,6 +173,17 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                         )
                     }
                 }
+                RewardsPicker(
+                    theme = mascot.theme,
+                    best = bestStreakEver,
+                    selected = mascot.reward,
+                    onPick = { reward ->
+                        container.appScope.launch {
+                            container.settings.setReward(mascot.theme, reward)
+                            MascotWidgets.refresh(context) // the home-screen mascot wears it too
+                        }
+                    }
+                )
                 if (mascot.theme == MascotTheme.BLOOMY) {
                     Text("Your pot", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
                     Text(potDescription(pot), style = MaterialTheme.typography.bodyMedium)
@@ -175,6 +208,33 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                     ChoicePill("Dark", selected = darkMode == true) { scope.launch { container.settings.setDarkMode(true) } }
                     ChoicePill("Follow phone", selected = darkMode == null) { scope.launch { container.settings.followSystemTheme() } }
                 }
+            }
+        }
+
+        item {
+            Section("Reminders") {
+                SwitchRow(
+                    "Show time left",
+                    "When you open a limited app, ${LocalMascot.current.theme.mascotName} pops up for a moment: \"18 min of YouTube left today.\"",
+                    checked = timeLeftBubble,
+                    onToggle = { scope.launch { container.settings.setTimeLeftBubble(!timeLeftBubble) } }
+                )
+                SwitchRow(
+                    "Week in review on Sundays",
+                    "A note on Sunday evening when your week's cards are ready.",
+                    checked = weekReadyNote,
+                    onToggle = { scope.launch { container.settings.setWeekReadyNote(!weekReadyNote) } }
+                )
+            }
+        }
+
+        item {
+            Section("Do this instead") {
+                InsteadIdeasEditor(
+                    mascotName = LocalMascot.current.theme.mascotName,
+                    ideas = insteadIdeas,
+                    onChange = { scope.launch { container.settings.setInsteadIdeas(it) } }
+                )
             }
         }
 
@@ -227,6 +287,20 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
 
         item {
             Section("Data") {
+                SettingRow(
+                    "Save a backup",
+                    "Limits, history, streaks, garden and settings, in one file you choose. Nothing is uploaded.",
+                    "Save",
+                    onClick = { saveBackup.launch(Backup.fileName()) }
+                )
+                RestoreBackupAction { start ->
+                    SettingRow(
+                        "Restore a backup",
+                        "From a ScrollNah backup file, for example on a new phone.",
+                        "Open",
+                        onClick = start
+                    )
+                }
                 SettingRow(
                     "Clear history",
                     "Stats, streaks and Pause answers. Your limits stay.",
@@ -349,7 +423,9 @@ internal fun MascotChoice(
             .padding(horizontal = 8.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Mascot(mood = MoodLevel.HAPPY, look = MascotLook(theme, flowers, budDays), size = mascotSize, animated = selected)
+        // The current mascot shows what it wears; the other one is shown plain.
+        val look = LocalMascot.current.let { if (it.theme == theme) it.copy(flowers = flowers, budDays = budDays) else MascotLook(theme, flowers, budDays) }
+        Mascot(mood = MoodLevel.HAPPY, look = look, size = mascotSize, animated = selected)
         Text(theme.mascotName, fontWeight = FontWeight.Bold, color = contentColorOn(background), modifier = Modifier.padding(top = 6.dp))
         Text(
             detail ?: if (selected) "Picked" else "Tap to pick",
@@ -445,6 +521,18 @@ private fun Section(title: String, content: @Composable () -> Unit) {
         NeoCard(contentPadding = PaddingValues(14.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
         }
+    }
+}
+
+/** A title, a short explanation and a switch. */
+@Composable
+private fun SwitchRow(title: String, detail: String, checked: Boolean, onToggle: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(detail, style = MaterialTheme.typography.bodyMedium)
+        }
+        NeoSwitch(checked = checked, onToggle = onToggle, label = title)
     }
 }
 

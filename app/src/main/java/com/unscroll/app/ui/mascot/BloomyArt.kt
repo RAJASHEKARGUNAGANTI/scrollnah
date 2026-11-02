@@ -33,8 +33,11 @@ import kotlin.math.sin
  * swells a little each day, so the plant visibly grows during the week. A full pot has no bud.
  * The mood changes how the plant stands (upright, leaning, bending, hanging) and its colours.
  */
-internal fun DrawScope.drawBloomy(s: Float, mood: MoodLevel, flowers: Int, onOrange: Boolean, pose: MascotPose, budDays: Int = 0) {
-    val potColor = if (onOrange) Lilac else Orange
+internal fun DrawScope.drawBloomy(
+    s: Float, mood: MoodLevel, flowers: Int, onOrange: Boolean, pose: MascotPose, budDays: Int = 0,
+    potOverride: Color? = null // a pot colour earned with streaks
+) {
+    val potColor = potOverride ?: if (onOrange) Lilac else Orange
     val plantColor = when (mood) {
         MoodLevel.WORRIED -> PaleLeaf
         MoodLevel.OVER -> Brown

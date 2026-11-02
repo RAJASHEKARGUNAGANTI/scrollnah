@@ -147,4 +147,14 @@ class WeekStatsTest {
         assertTrue(lines[2].contains("10–11 PM"))
         assertEquals(1, MascotLines.weekVerdict(MascotTheme.BLOOMY, MascotLines.WeekFacts()).size) // "not much to report yet"
     }
+
+    @Test
+    fun sundayNoteSaysTheChange() {
+        assertEquals(
+            "I put your week together: 7h 34m, 38 min less than last week. Come have a look!",
+            MascotLines.weekReadyText(454, -38)
+        )
+        assertTrue(MascotLines.weekReadyText(90, 15).contains("1h 30m, 15 min more than last week"))
+        assertEquals("I put your week together: 45 min. Come have a look!", MascotLines.weekReadyText(45, null))
+    }
 }

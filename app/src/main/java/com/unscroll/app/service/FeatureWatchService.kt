@@ -157,7 +157,7 @@ class FeatureWatchService : AccessibilityService() {
                 val totalMs = featureDao.addAndGet(today, feature.id, deltaMs)
                 val limit = featureLimits[feature.id]
                 val overLimit = limit != null && limit.enabled && totalMs >= limit.limitMinutes * 60_000L
-                val ruleApplies = limit != null && limit.enabled && rule != null && !(rule == PauseReason.BEDTIME && passActive(feature.id))
+                val ruleApplies = limit != null && limit.enabled && rule != null && !(rule != PauseReason.FOCUS && passActive(feature.id))
                 if (ruleApplies || (overLimit && !passActive(feature.id))) {
                     val target = PauseTarget(
                         feature.id, feature.title, feature.packageName, limit!!.limitMinutes,
@@ -174,7 +174,7 @@ class FeatureWatchService : AccessibilityService() {
                 val webMs = featureDao.addAndGet(today, Websites.usageKey(pkg), deltaMs)
                 val app = trackedApps[pkg]?.takeIf { it.enabled } ?: return@launch
                 val usedMinutes = appMinutes(pkg) + (webMs / 60_000L).toInt()
-                val ruleApplies = rule != null && !(rule == PauseReason.BEDTIME && passActive(pkg))
+                val ruleApplies = rule != null && !(rule != PauseReason.FOCUS && passActive(pkg))
                 if (ruleApplies || (usedMinutes >= app.limitOn() && !passActive(pkg))) {
                     val target = PauseTarget(
                         pkg, app.appName, pkg, app.limitOn(),
