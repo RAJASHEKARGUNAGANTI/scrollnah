@@ -39,7 +39,8 @@ android {
     // Two versions of the app, from the same code:
     //  - github: everything, including the optional Reels/Shorts & website tracker (an Accessibility service).
     //  - play:   for the Play Store, without the tracker (Google reviews Accessibility use very strictly).
-    // Same applicationId and signing key, so people can switch between them.
+    // Same applicationId. Play signs its installs with Google's own key, though, so a GitHub
+    // APK can't update a Play install (or the other way round): switching means uninstalling first.
     flavorDimensions += "store"
     productFlavors {
         create("github") {

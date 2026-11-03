@@ -32,6 +32,7 @@ class SettingsRepository(context: Context) {
     private val potLastDateKey = stringPreferencesKey("pot_last_date")
     private val bloomEventKey = stringPreferencesKey("bloom_event")
     private val timeLeftBubbleKey = booleanPreferencesKey("time_left_bubble")
+    private val popupsConfirmedKey = booleanPreferencesKey("popups_confirmed")
     private val weekReadyNoteKey = booleanPreferencesKey("week_ready_note")
     private val insteadIdeasKey = stringPreferencesKey("instead_ideas")
     private val breakEnabledKey = booleanPreferencesKey("break_enabled")
@@ -122,6 +123,13 @@ class SettingsRepository(context: Context) {
         store.edit { it[timeLeftBubbleKey] = on }
     }
 
+    /** vivo/iQOO: the user told us they allowed pop-ups in the background (the phone can't be asked). */
+    val popupsConfirmed: Flow<Boolean> = store.data.map { it[popupsConfirmedKey] ?: false }
+
+    suspend fun setPopupsConfirmed() {
+        store.edit { it[popupsConfirmedKey] = true }
+    }
+
     /** Sunday evening note that the week in review is ready. On by default. */
     val weekReadyNote: Flow<Boolean> = store.data.map { it[weekReadyNoteKey] ?: true }
 
@@ -180,6 +188,7 @@ class SettingsRepository(context: Context) {
     suspend fun exportJson(): JSONObject {
         val json = JSONObject()
         store.data.first().asMap().forEach { (key, value) ->
+            if (key == popupsConfirmedKey) return@forEach // about this phone, not something to restore on a new one
             val (type, v) = when (value) {
                 is String -> "s" to value
                 is Int -> "i" to value
@@ -197,7 +206,9 @@ class SettingsRepository(context: Context) {
     /** Replaces every setting with the ones from [json] (see [exportJson]). */
     suspend fun importJson(json: JSONObject) {
         store.edit { prefs ->
+            val popupsConfirmed = prefs[popupsConfirmedKey] // stays with this phone
             prefs.clear()
+            popupsConfirmed?.let { prefs[popupsConfirmedKey] = it }
             json.keys().forEach { name ->
                 val entry = json.getJSONObject(name)
                 when (entry.getString("t")) {

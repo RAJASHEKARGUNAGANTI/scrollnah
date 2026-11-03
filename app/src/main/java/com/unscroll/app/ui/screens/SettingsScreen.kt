@@ -63,11 +63,13 @@ import com.unscroll.app.data.PotProgress
 import com.unscroll.app.data.FeedbackType
 import com.unscroll.app.data.REPO_URL
 import com.unscroll.app.data.feedbackUrl
-import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.service.Allowances
 import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
+import com.unscroll.app.data.SetupFacts
+import com.unscroll.app.data.SetupStep
+import com.unscroll.app.ui.components.ConfirmPopupsLink
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.mascot.LocalMascot
@@ -106,12 +108,11 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
         refresh++
         onPauseOrDispose { }
     }
-    val perms = remember(refresh) {
+    val popupsConfirmed by container.settings.popupsConfirmed.collectAsStateWithLifecycle(false)
+    val perms = remember(refresh, popupsConfirmed) {
         Perms(
             usage = container.usage.hasUsageAccess(),
-            notifications = SetupChecks.notificationsAllowed(context),
-            overlay = SetupChecks.canShowPauseScreen(context),
-            battery = SetupChecks.ignoresBatteryOptimizations(context),
+            switches = SetupChecks.facts(context, popupsConfirmed),
             tracker = FeatureWatchService.isEnabled(context),
             focusOn = FocusRules.focusActive()
         )
@@ -241,16 +242,27 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
         item {
             Section("Permissions") {
                 PermissionRow("Usage access", "Counts your minutes", perms.usage) {
-                    UsageRepository.openUsageAccessSettings(context)
+                    SetupChecks.openUsageAccess(context)
                 }
-                PermissionRow("Notifications", "For reminders", perms.notifications) {
-                    SetupChecks.openNotificationSettings(context)
+                PermissionRow("Notifications", "For reminders", perms.switches.notifications) {
+                    SetupChecks.openStep(context, SetupStep.NOTIFICATIONS)
                 }
-                PermissionRow("Display over other apps", "To show the pause screen", perms.overlay) {
-                    SetupChecks.openOverlaySettings(context)
+                PermissionRow("Display over other apps", "To show the pause screen", perms.switches.overlay) {
+                    SetupChecks.openStep(context, SetupStep.OVERLAY)
                 }
-                PermissionRow("Run in background", "Keeps reminders on time", perms.battery) {
-                    SetupChecks.openBatterySettings(context)
+                // Only the switches this phone has (see SetupChecks.facts).
+                perms.switches.battery?.let { on ->
+                    PermissionRow("Run in background", "Keeps reminders on time", on) {
+                        SetupChecks.openStep(context, SetupStep.BATTERY)
+                    }
+                }
+                perms.switches.popups?.let { on ->
+                    PermissionRow("Pop-ups in the background", "So the pause screen can open", on) {
+                        SetupChecks.openStep(context, SetupStep.POPUPS)
+                    }
+                    if (!on && SetupChecks.popupsNeedConfirming) {
+                        ConfirmPopupsLink(onConfirm = { scope.launch { container.settings.setPopupsConfirmed() } })
+                    }
                 }
                 if (FeatureWatchService.available) {
                     PermissionRow("Reels, Shorts & website tracker", "Optional, for Reels, Shorts & websites", perms.tracker) {
@@ -507,9 +519,7 @@ private fun FeedbackForm(onSend: (FeedbackType, String) -> Unit) {
 /** Snapshot of permission switches, re-read each time the screen resumes. */
 private data class Perms(
     val usage: Boolean,
-    val notifications: Boolean,
-    val overlay: Boolean,
-    val battery: Boolean,
+    val switches: SetupFacts, // null inside = this phone doesn't have that switch
     val tracker: Boolean,
     val focusOn: Boolean
 )

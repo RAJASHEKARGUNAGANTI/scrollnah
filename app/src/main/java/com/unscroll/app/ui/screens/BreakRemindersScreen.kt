@@ -52,6 +52,7 @@ import com.unscroll.app.data.LIMIT_STEP_MINUTES
 import com.unscroll.app.data.MAX_LIMIT_MINUTES
 import com.unscroll.app.data.MIN_LIMIT_MINUTES
 import com.unscroll.app.data.ReminderStyle
+import com.unscroll.app.data.SetupStep
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.ui.components.CloseIcon
@@ -197,7 +198,7 @@ fun BreakRemindersScreen(onBack: () -> Unit = {}) {
             if (settings.useBubble && !canBubble) {
                 item {
                     PermissionHint("Display over other apps", "To show the bubble over other apps") {
-                        SetupChecks.openOverlaySettings(context)
+                        SetupChecks.openStep(context, SetupStep.OVERLAY) // comes back by itself once it's on
                     }
                 }
             }

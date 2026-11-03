@@ -381,6 +381,69 @@ debug gallery (below).
 - The emulator was left in demo mode with both widgets on its home screen (turn demo off:
   `adb shell run-as app.scrollnah rm files/demo_mode`, then clear app data).
 
+## Xiaomi pop-up permission check (2026-11-03, found on a Redmi Note 9 Pro Max)
+- On Xiaomi, Redmi and POCO phones (MIUI/HyperOS) the Pause screen silently fails ("MIUILOG- Permission
+  Denied Activity" in logcat) until the user allows App info > Other permissions > "Display pop-up windows
+  while running in the background", even with "Display over other apps" on. Home's setup card was hidden
+  because the three Android checks passed, so the old hint was never seen.
+- `SetupChecks.backgroundPopupsAllowed` reads Xiaomi's own app-op 10021 (hidden `checkOpNoThrow`, by
+  reflection); null on other phones or if it can't tell (then nothing is shown). `openPopupSettings` opens
+  Xiaomi's permission page for ScrollNah (`miui.intent.action.APP_PERM_EDITOR`), falling back to App info.
+- Checked on the Redmi with the Play 2.2.3 build: after "Always allow", the Pause screen opened over YouTube
+  within ~1 s, and a floating YouTube window was paused with the "YouTube is paused" note. A test copy
+  (`app.scrollnah.test`, built with a temporary `applicationIdSuffix`, installed from Downloads because
+  MIUI's "Install via USB" wouldn't stay on) showed the pop-up row, its button opened the right page, and
+  it turned to done after "Always allow".
+
+## Guided setup: one switch at a time, only what's needed (2026-11-03, developer request)
+- Developer: a list of every permission on every phone is overwhelming. Android can't grant these at
+  once, so the setup now asks for **one switch at a time** ("Last step · 1 of 2" in onboarding, Home's
+  "Almost ready" card with "Step 1 of 3" and one button), and **skips what the phone or the user's choices
+  don't need**. Rules in `data/SetupPlan.kt` (tested in `SetupPlanTest`):
+  - Notifications: always. Display over other apps: Firm/Beast/focus mode (Pause screen) or any bubble
+    ("X min left" bubble, break-reminder bubble). Pop-ups in the background: only Xiaomi/Redmi/POCO
+    (read from app-op 10021) and vivo/iQOO (can't be read: the user taps "I've done it", saved as
+    `popups_confirmed`, not included in backups), and only when the Pause screen is used.
+    Run in background: every phone except Google Pixels (they don't stop apps).
+- **Comes back by itself:** `service/SetupReturn.kt` watches the switch twice a second for up to 2 min after
+  a Settings page opens (usage access too) and brings ScrollNah back once it's on; `MainActivity.onResume`
+  stops it. Some phones may refuse the jump back; Back still works.
+- Settings > Permissions lists only the switches this phone has. Break reminders' overlay hint also comes back.
+- Tested on the Pixel emulator (API 35): onboarding with Firm asked 2 steps (notifications, overlay), usage
+  access and overlay both returned to ScrollNah by themselves, "You're all set" at the end; Home's card
+  showed the one missing step; Settings had no battery/pop-up rows; card fits at 360x640 dp, font 1.3.
+- Tested on the Redmi Note 9 Pro Max (MIUI 14, Android 12, test copy with demo data): Home showed "Step 1 of
+  3" (overlay, pop-ups, battery; notifications already on), all three switched on and the card went away.
+  Pop-ups and battery came back by themselves within ~1 s; overlay did NOT ("MIUILOG- Permission Denied":
+  MIUI blocks any background start until the pop-up switch is on), so on Xiaomi the first step needs Back.
+  Asking pop-ups first might fix that but Android may then block the jump back instead (untested).
+  Not tried on vivo/iQOO yet.
+- **Feedback while setting up** (developer: "it's like nothing was happening while giving permissions"):
+  step dots next to the pill (`SetupDots`: done = lime with a tick, current = wider orange pill, to do =
+  empty) and a lime "Display over other apps is on" note for 4 s after each switch (`SetupDoneNote`; the
+  seconds start only once ScrollNah is resumed). After the last switch Home's card says "All set" for those
+  4 s instead of vanishing. Steps finished earlier keep their tick (the guide remembers every step it saw).
+- Fixes found while testing: (1) Xiaomi's battery page saves "No restrictions" a moment after you return,
+  so the guide re-checks 1, 2 and 3 s after each return (the Redmi got stuck on "3 of 3" before);
+  (2) `SetupReturn.stop()` moved from `onResume` to `onRestart`: a denied notification popup resumes the
+  activity right after the fallback Settings page opens, which cancelled the watch.
+- Tested on the Pixel emulator only (developer's request): dots and ticks in onboarding and on Home, the
+  "Notifications are on" note between steps (denied popup -> Settings -> switch -> came back by itself),
+  "All set" + note after the last step. The emulator was very slow (permission popup froze once), so some
+  screenshots lagged; a temporary log confirmed the 4-second note each time.
+- **Known Xiaomi limit (left as is, developer's choice 2026-11-03):** with Xiaomi's "Background autostart"
+  off (the default), MIUI blocks `MY_PACKAGE_REPLACED`/boot restarts ("not permitted to auto start"), so after
+  an update or reboot the blocker stays off until ScrollNah is opened. The switch is only in Security >
+  Background autostart (`com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity`),
+  not in App info on MIUI 14. App-op 10008 stayed "ignore", but Autostart was never actually turned on, so
+  whether 10008 is that switch is unverified.
+- **Play signing:** the Play-installed app is signed by Google's app signing key (CN=Android, O=Google Inc.,
+  SHA-256 40:0F:DE:87:8D:F2:7E:9E...), not ours (AC:58:24:BA...). GitHub APKs and Play installs can't update
+  each other. (`apksigner verify` needs `--max-sdk-version 36` on Play APKs: they carry a v3.2 post-quantum
+  signer it can't read.)
+- The developer's Redmi now runs the test build `app.scrollnah.test` (github debug, built with a temporary
+  `applicationIdSuffix = ".test"`, installed from Downloads) instead of the Play version.
+
 ## App ID is now `app.scrollnah` (2026-11-02, developer request in the Play Console "Create app" form)
 - `applicationId` changed from `com.unscroll.app` to `app.scrollnah` before the first Play upload (it can
   never change once the app is on Play). `namespace` and all code packages stay `com.unscroll.app`.

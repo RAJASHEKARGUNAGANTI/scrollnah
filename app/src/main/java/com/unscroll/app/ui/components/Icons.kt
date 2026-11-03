@@ -175,6 +175,17 @@ fun CloseIcon(modifier: Modifier = Modifier, size: Dp = 18.dp) {
     }
 }
 
+/** Tick, e.g. for a finished setup step. */
+@Composable
+fun CheckIcon(modifier: Modifier = Modifier, size: Dp = 16.dp, tint: Color = LocalContentColor.current) {
+    StrokeIcon(modifier, size, tint) { s, stroke, color ->
+        val path = Path().apply {
+            moveTo(5f * s, 12.5f * s); lineTo(10f * s, 17.5f * s); lineTo(19f * s, 7f * s)
+        }
+        drawPath(path, color, style = Stroke(width = stroke.width * 1.3f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
 /** Magnifying glass for search fields. */
 @Composable
 fun SearchIcon(modifier: Modifier = Modifier, size: Dp = 20.dp) {

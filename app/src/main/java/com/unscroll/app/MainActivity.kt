@@ -16,6 +16,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.unscroll.app.service.BlockerService
+import com.unscroll.app.service.SetupReturn
 import com.unscroll.app.ui.navigation.UnscrollApp
 import com.unscroll.app.ui.screens.OnboardingScreen
 import com.unscroll.app.ui.theme.AppTheme
@@ -58,6 +59,13 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN = "open"
         const val OPEN_WEEK_REVIEW = "week_review"
+    }
+
+    // Back in ScrollNah from another screen: no need to keep waiting on a Settings switch.
+    // (Not in onResume: a permission popup closing also resumes us, right as a watch starts.)
+    override fun onRestart() {
+        super.onRestart()
+        SetupReturn.stop()
     }
 
     override fun onResume() {

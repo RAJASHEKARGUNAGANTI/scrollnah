@@ -12,12 +12,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.FlowRow
-import android.Manifest
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -71,10 +67,12 @@ import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.FocusTileService
 import com.unscroll.app.data.StreakRepository
-import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.data.Websites
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.ui.components.FireIcon
+import com.unscroll.app.ui.components.SetupStepCard
+import com.unscroll.app.ui.components.rememberSetupGuide
+import com.unscroll.app.ui.components.rememberSetupOpener
 import com.unscroll.app.ui.components.FunStat
 import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoButtonPrimary
@@ -148,7 +146,6 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     var openCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) } // only apps with an open limit
     var refreshCount by remember { mutableIntStateOf(0) }
     var showNameDialog by remember { mutableStateOf(false) }
-    var setup by remember { mutableStateOf(SetupState.read(context)) }
     var streak by remember { mutableStateOf<StreakInfo?>(null) } // null until loaded
     val strictness by container.settings.strictness.collectAsStateWithLifecycle(Strictness.FIRM)
 
@@ -164,18 +161,16 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val bloomEvent by container.settings.bloomEvent.collectAsStateWithLifecycle(initialValue = null)
     val mascotTheme = LocalMascot.current.theme
 
-    // Android 13+ asks for notifications with a popup. If the user said no before,
-    // the popup won't show again, so send them to Settings instead.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) SetupChecks.openNotificationSettings(context)
-        setup = SetupState.read(context)
-    }
+    // Setup guide: only the switches this phone and these settings need, one at a time.
+    val savedStrictness by container.settings.strictness.collectAsStateWithLifecycle<Strictness?>(initialValue = null)
+    var setupAnswered by remember { mutableIntStateOf(0) }
+    val setupGuide = rememberSetupGuide(savedStrictness, focusOn = focusLeftMs > 0, refresh = refreshCount + setupAnswered)
+    val openSetupStep = rememberSetupOpener(onAnswered = { setupAnswered++ })
 
     // Every time the screen comes back into view (e.g. returning from Settings),
     // re-check the permission and reload today's numbers.
     LifecycleResumeEffect(Unit) {
         hasAccess = container.usage.hasUsageAccess()
-        setup = SetupState.read(context)
         refreshCount++
         onPauseOrDispose { }
     }
@@ -268,25 +263,17 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
         }
         item {
             when {
-                !hasAccess -> UsageAccessCard(onGrant = { UsageRepository.openUsageAccessSettings(context) })
+                !hasAccess -> UsageAccessCard(onGrant = { SetupChecks.openUsageAccess(context) })
                 appRows.isEmpty() -> NoLimitsCard(onAdd = onEditLimits)
                 else -> MascotMoodCard(totalUsed, totalLimit, appAtLimit)
             }
         }
-        if (hasAccess && trackedApps.isNotEmpty() && !setup.allDone) {
+        if (hasAccess && trackedApps.isNotEmpty() && setupGuide != null && (setupGuide.next != null || setupGuide.justDone != null)) {
             item {
-                BlockingSetupCard(
-                    setup = setup,
-                    onNotifications = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            SetupChecks.openNotificationSettings(context)
-                        }
-                    },
-                    onOverlay = { SetupChecks.openOverlaySettings(context) },
-                    onBattery = { SetupChecks.openBatterySettings(context) },
-                    onAppInfo = { SetupChecks.openAppInfo(context) }
+                SetupStepCard(
+                    guide = setupGuide,
+                    onOpen = openSetupStep,
+                    onConfirm = { scope.launch { container.settings.setPopupsConfirmed() } }
                 )
             }
         }
@@ -552,85 +539,6 @@ private fun NoLimitsCard(onAdd: () -> Unit) {
             modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)
         )
         NeoButtonPrimary(text = "Pick my time-sinks", onClick = onAdd, backgroundColor = Orange)
-    }
-}
-
-/** Which blocking permissions are granted. Re-read every time Home comes back into view. */
-private data class SetupState(val notifications: Boolean, val overlay: Boolean, val battery: Boolean) {
-    val allDone get() = notifications && overlay && battery
-
-    companion object {
-        fun read(context: android.content.Context) = SetupState(
-            notifications = SetupChecks.notificationsAllowed(context),
-            overlay = SetupChecks.canShowPauseScreen(context),
-            battery = SetupChecks.ignoresBatteryOptimizations(context)
-        )
-    }
-}
-
-/** Checklist of the switches blocking needs. Disappears once everything is on. */
-@Composable
-private fun BlockingSetupCard(
-    setup: SetupState,
-    onNotifications: () -> Unit,
-    onOverlay: () -> Unit,
-    onBattery: () -> Unit,
-    onAppInfo: () -> Unit
-) {
-    NeoCard(contentPadding = PaddingValues(16.dp)) {
-        NeoPill("Almost ready")
-        Text(
-            "Turn these on so reminders show up on time.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-        )
-        SetupRow("Notifications", "For reminders", setup.notifications, onNotifications)
-        SetupRow("Display over other apps", "To show the pause screen", setup.overlay, onOverlay)
-        SetupRow("Run in background", "Choose \"Don't optimise\"", setup.battery, onBattery)
-        Text(
-            "Using vivo, iQOO or Xiaomi? Also allow background pop-ups in App info.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        Text(
-            "Open App info",
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .clickable(role = Role.Button, onClick = onAppInfo)
-                .padding(vertical = 12.dp)
-        )
-    }
-}
-
-@Composable
-private fun SetupRow(title: String, detail: String, done: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(detail, style = MaterialTheme.typography.bodyMedium)
-        }
-        if (done) {
-            Text("Done", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp))
-        } else {
-            Box(
-                Modifier
-                    .heightIn(min = 44.dp)
-                    .clip(ButtonShape)
-                    .background(Lime, ButtonShape)
-                    .border(BorderWidth, Neo.colors.outline, ButtonShape)
-                    .clickable(role = Role.Button, onClick = onClick)
-                    .semantics { contentDescription = "Allow $title" }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Allow", fontWeight = FontWeight.Bold, color = Ink)
-            }
-        }
     }
 }
 

@@ -8,14 +8,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.platform.LocalConfiguration
-import android.Manifest
-import android.os.Build
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -68,7 +63,6 @@ import com.unscroll.app.appContainer
 import com.unscroll.app.data.DEFAULT_APP_LIMIT_MINUTES
 import com.unscroll.app.data.InstalledApp
 import com.unscroll.app.data.Strictness
-import com.unscroll.app.data.UsageRepository
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.launchableApps
 import com.unscroll.app.service.BlockerService
@@ -81,13 +75,20 @@ import com.unscroll.app.ui.mascot.Mascot
 import com.unscroll.app.ui.components.AppSearchField
 import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoButtonPrimary
+import com.unscroll.app.ui.components.NeoButtonOutline
+import com.unscroll.app.ui.components.ConfirmPopupsLink
+import com.unscroll.app.ui.components.SetupDoneNote
+import com.unscroll.app.ui.components.SetupDots
+import com.unscroll.app.ui.components.rememberSetupGuide
+import com.unscroll.app.ui.components.rememberSetupOpener
+import com.unscroll.app.ui.components.setupWords
+import com.unscroll.app.data.SetupStep
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.letterFor
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.tileColorFor
 import com.unscroll.app.ui.theme.BorderWidth
-import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.Lime
 import com.unscroll.app.ui.theme.Neo
 import com.unscroll.app.ui.theme.Orange
@@ -249,7 +250,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 if (hasUsage) {
                     Text("Usage access is on. Nice!", fontWeight = FontWeight.Bold)
                 } else {
-                    NeoButtonPrimary("Turn on usage access", onClick = { UsageRepository.openUsageAccessSettings(context) }, backgroundColor = Orange)
+                    NeoButtonPrimary("Turn on usage access", onClick = { SetupChecks.openUsageAccess(context) }, backgroundColor = Orange)
                 }
             }
 
@@ -277,7 +278,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 )
             }
 
-            else -> PermissionsStep(resumeCount = resumeCount, onFinish = { finish() })
+            else -> PermissionsStep(strictness = strictness, resumeCount = resumeCount, onFinish = { finish() })
         }
     }
 }
@@ -407,18 +408,18 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
     )
 }
 
-/** Last step: the settings reminders need (kept short and calm on purpose). */
+/**
+ * Last step: the switches this phone and the chosen strictness need, one at a time
+ * (kept short and calm on purpose). Anything skipped stays on Home's "Almost ready" card.
+ */
 @Composable
-private fun ColumnScope.PermissionsStep(resumeCount: Int, onFinish: () -> Unit) {
-    val context = LocalContext.current
-    var asked by remember { mutableIntStateOf(0) }
-    val notifications = remember(resumeCount, asked) { SetupChecks.notificationsAllowed(context) }
-    val overlay = remember(resumeCount) { SetupChecks.canShowPauseScreen(context) }
-    val battery = remember(resumeCount) { SetupChecks.ignoresBatteryOptimizations(context) }
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) SetupChecks.openNotificationSettings(context)
-        asked++
-    }
+private fun ColumnScope.PermissionsStep(strictness: Strictness, resumeCount: Int, onFinish: () -> Unit) {
+    val container = appContainer()
+    val scope = rememberCoroutineScope()
+    var answered by remember { mutableIntStateOf(0) }
+    val guide = rememberSetupGuide(strictness, focusOn = false, refresh = resumeCount + answered)
+    val open = rememberSetupOpener(onAnswered = { answered++ })
+    val step = guide?.next
 
     Column(
         Modifier
@@ -427,51 +428,37 @@ private fun ColumnScope.PermissionsStep(resumeCount: Int, onFinish: () -> Unit) 
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Mascot(mood = MoodLevel.HAPPY, size = if (isShortScreen()) 84.dp else 120.dp, modifier = Modifier.align(Alignment.CenterHorizontally))
-        NeoPill("Last step")
-        Text("A few quick settings", style = MaterialTheme.typography.headlineLarge)
-        Text("These let ScrollNah remind you when you reach a limit. You can change them anytime in Settings.", style = MaterialTheme.typography.bodyLarge)
-        OnboardingPermission("Notifications", "For reminders", notifications) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                SetupChecks.openNotificationSettings(context)
+        if (guide == null) return@Column // settings still loading (a split second)
+        Mascot(
+            mood = if (step == null) MoodLevel.THRIVING else MoodLevel.HAPPY,
+            size = if (isShortScreen()) 84.dp else 120.dp,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+        // "Last step" + a dot per switch (ticked when done), and a short "... is on" after each one.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            NeoPill("Last step")
+            if (guide.total > 0) SetupDots(guide)
+        }
+        SetupDoneNote(guide)
+        if (step == null) {
+            Text("You're all set", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+            Text("ScrollNah has what it needs on this phone. You can check it anytime in Settings.", style = MaterialTheme.typography.bodyLarge)
+        } else {
+            val words = setupWords(step, guide.uses)
+            Text(words.title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+            Text(words.why, style = MaterialTheme.typography.bodyLarge)
+            if (words.how != null) Text(words.how, style = MaterialTheme.typography.bodyLarge)
+            NeoButtonPrimary(words.button, onClick = { open(step) })
+            if (step == SetupStep.POPUPS && SetupChecks.popupsNeedConfirming) {
+                ConfirmPopupsLink(onConfirm = { scope.launch { container.settings.setPopupsConfirmed() } })
             }
-        }
-        OnboardingPermission("Display over other apps", "To show the pause screen", overlay) {
-            SetupChecks.openOverlaySettings(context)
-        }
-        OnboardingPermission("Run in background", "Choose \"Don't optimise\" for ScrollNah", battery) {
-            SetupChecks.openBatterySettings(context)
         }
     }
     Spacer(Modifier.height(12.dp))
-    NeoButtonPrimary("Finish", onClick = onFinish, backgroundColor = Orange)
-}
-
-@Composable
-private fun OnboardingPermission(title: String, detail: String, done: Boolean, onAllow: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(detail, style = MaterialTheme.typography.bodyMedium)
-        }
-        if (done) {
-            Text("On", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp))
-        } else {
-            val shape = RoundedCornerShape(999.dp)
-            Box(
-                Modifier
-                    .heightIn(min = 44.dp)
-                    .clip(shape)
-                    .background(Lime, shape)
-                    .border(BorderWidth, Neo.colors.outline, shape)
-                    .clickable(role = Role.Button, onClick = onAllow)
-                    .semantics { contentDescription = "Allow $title" }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) { Text("Allow", fontWeight = FontWeight.Bold, color = Ink) }
-        }
+    if (step == null) {
+        NeoButtonPrimary("Finish", onClick = onFinish, backgroundColor = Orange)
+    } else {
+        NeoButtonOutline("Skip for now", onClick = onFinish)
     }
 }
 
