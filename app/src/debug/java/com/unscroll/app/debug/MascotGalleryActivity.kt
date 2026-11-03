@@ -39,16 +39,16 @@ import com.unscroll.app.ui.theme.Orange
 /**
  * Debug builds only: every mascot mood and growth stage on one screen, to check the art.
  * Open it with:
- *   adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity
+ *   adb shell am start -n app.scrollnah/com.unscroll.app.debug.MascotGalleryActivity
  */
 class MascotGalleryActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Store artwork: saves big mascot PNGs to files/store/ for the Play listing graphics.
-        //   adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --ez export true
+        //   adb shell am start -n app.scrollnah/com.unscroll.app.debug.MascotGalleryActivity --ez export true
         if (intent.getBooleanExtra("export", false)) exportStoreArt()
         // Test Bloomy's celebration on Home without waiting a week (FLOWER or POT):
-        //   adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --es bloom FLOWER
+        //   adb shell am start -n app.scrollnah/com.unscroll.app.debug.MascotGalleryActivity --es bloom FLOWER
         intent.getStringExtra("bloom")?.let { name ->
             val event = BloomEvent.valueOf(name)
             val settings = (application as UnscrollApplication).container.settings
@@ -57,7 +57,7 @@ class MascotGalleryActivity : ComponentActivity() {
             return
         }
         // Test the "BHIM not opening?" notification without a payment app installed:
-        //   adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --es paymenthelp BHIM
+        //   adb shell am start -n app.scrollnah/com.unscroll.app.debug.MascotGalleryActivity --es paymenthelp BHIM
         intent.getStringExtra("paymenthelp")?.let { appName ->
             getSharedPreferences("payment_help", MODE_PRIVATE).edit().clear().apply() // skip the once-a-day check
             LimitActions.showPaymentAppHelp(this, appName)
@@ -65,7 +65,7 @@ class MascotGalleryActivity : ComponentActivity() {
             return
         }
         // Test the Sunday "week in review is ready" note on any day:
-        //   adb shell am start -n com.scrollnah.app/com.unscroll.app.debug.MascotGalleryActivity --ez weekready true
+        //   adb shell am start -n app.scrollnah/com.unscroll.app.debug.MascotGalleryActivity --ez weekready true
         if (intent.getBooleanExtra("weekready", false)) {
             val container = (application as UnscrollApplication).container
             container.appScope.launch {
