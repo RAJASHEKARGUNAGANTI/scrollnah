@@ -108,6 +108,11 @@ object BeastGuard {
 
     fun startCooldown(now: Long = System.currentTimeMillis()) = prefs.edit().putLong("unlock_at", now + WAIT_MS).apply()
 
-    /** After a loosening change is saved, the next one needs a new cool-down. */
-    fun used() = prefs.edit().remove("unlock_at").apply()
+    /**
+     * After a loosening change is saved, the next one needs a new cool-down.
+     * Written straight away (commit), because restoring a backup restarts ScrollNah right after.
+     */
+    fun used() {
+        prefs.edit().remove("unlock_at").commit()
+    }
 }

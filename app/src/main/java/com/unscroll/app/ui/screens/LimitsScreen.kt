@@ -520,11 +520,20 @@ fun LimitsScreen(
 }
 
 /** 61_000 ms -> 2 ("2 min left"): rounds up, so it never says 0 while time is left. */
-private fun minutesUp(ms: Long): Int = ((ms + 59_999L) / 60_000L).toInt()
+internal fun minutesUp(ms: Long): Int = ((ms + 59_999L) / 60_000L).toInt()
 
-/** Beast mode's "not so fast" question when an edit gives more time. */
+/**
+ * Beast mode's "not so fast" question when an edit gives more time.
+ * [why] starts the message (also used for restoring a backup, which can bring back looser limits).
+ */
 @Composable
-private fun BeastGuardDialog(state: BeastGuard.State, onStart: () -> Unit, onKeepStrict: () -> Unit, onClose: () -> Unit) {
+internal fun BeastGuardDialog(
+    state: BeastGuard.State,
+    onStart: () -> Unit,
+    onKeepStrict: () -> Unit,
+    onClose: () -> Unit,
+    why: String = "This gives you more time"
+) {
     val name = com.unscroll.app.ui.mascot.LocalMascot.current.theme.mascotName
     AlertDialog(
         onDismissRequest = onClose,
@@ -536,7 +545,7 @@ private fun BeastGuardDialog(state: BeastGuard.State, onStart: () -> Unit, onKee
                     is BeastGuard.State.Waiting ->
                         "The cool-down is running: ${minutesUp(state.msLeft)} more min. After that you have 15 minutes to make this change. – $name"
                     else ->
-                        "This gives you more time, so I ask for a 10-minute cool-down first. If you still want it then, you have 15 minutes to make the change. – $name"
+                        "$why, so I ask for a 10-minute cool-down first. If you still want it then, you have 15 minutes to make the change. – $name"
                 }
             )
         },

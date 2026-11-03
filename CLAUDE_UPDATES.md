@@ -437,6 +437,12 @@ debug gallery (below).
   Background autostart (`com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity`),
   not in App info on MIUI 14. App-op 10008 stayed "ignore", but Autostart was never actually turned on, so
   whether 10008 is that switch is unverified.
+- **Beast mode: restoring a backup now needs the cool-down too** (2026-11-04). It was a gap: an older backup
+  could bring back looser limits or Chill at once. `RestoreBackupAction` asks `BeastGuard` first (in Beast,
+  any restore counts as loosening) and checks again before restoring; `BeastGuard.used()` now commits
+  synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
+  the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
+  "Start cool-down" it shows the countdown.
 - **Play signing:** the Play-installed app is signed by Google's app signing key (CN=Android, O=Google Inc.,
   SHA-256 40:0F:DE:87:8D:F2:7E:9E...), not ours (AC:58:24:BA...). GitHub APKs and Play installs can't update
   each other. (`apksigner verify` needs `--max-sdk-version 36` on Play APKs: they carry a v3.2 post-quantum

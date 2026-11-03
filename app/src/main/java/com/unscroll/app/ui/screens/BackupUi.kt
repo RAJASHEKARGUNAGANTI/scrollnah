@@ -19,8 +19,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.Backup
+import com.unscroll.app.data.BeastGuard
+import com.unscroll.app.data.Strictness
 import com.unscroll.app.ui.theme.Neo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -33,6 +36,8 @@ import java.time.format.DateTimeFormatter
  * check it, ask "Restore this backup?", restore, then restart ScrollNah.
  * [content] draws the button or row and gets the function that starts it all.
  * Used in Settings and on the first setup screen (a new phone).
+ * In Beast mode a backup could bring back looser limits, so it needs the same 10-minute cool-down
+ * as loosening a limit (see BeastGuard).
  */
 @Composable
 internal fun RestoreBackupAction(content: @Composable (start: () -> Unit) -> Unit) {
@@ -51,7 +56,36 @@ internal fun RestoreBackupAction(content: @Composable (start: () -> Unit) -> Uni
             }
         }
     }
-    content { openBackup.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) }
+    // Beast mode's cool-down question, when a restore isn't allowed yet.
+    var guard by remember { mutableStateOf<BeastGuard.State?>(null) }
+
+    /** True if restoring may go ahead now; otherwise shows the cool-down question. */
+    suspend fun beastAllows(): Boolean {
+        if (container.settings.strictness.first() != Strictness.BEAST) return true
+        val state = BeastGuard.state()
+        if (state is BeastGuard.State.Open) return true
+        guard = state
+        return false
+    }
+
+    content {
+        scope.launch {
+            if (beastAllows()) openBackup.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
+        }
+    }
+
+    guard?.let { state ->
+        BeastGuardDialog(
+            state = state,
+            onStart = {
+                BeastGuard.startCooldown()
+                guard = null
+            },
+            onKeepStrict = { guard = null },
+            onClose = { guard = null },
+            why = "A backup can bring back looser limits"
+        )
+    }
 
     pending?.let { (json, summary) ->
         val date = Instant.ofEpochMilli(summary.exportedAt).atZone(ZoneId.systemDefault()).toLocalDate()
@@ -71,8 +105,11 @@ internal fun RestoreBackupAction(content: @Composable (start: () -> Unit) -> Uni
                 TextButton(onClick = {
                     pending = null
                     container.appScope.launch {
+                        // The 15 minutes after a cool-down may have run out while the file was being picked.
+                        if (!withContext(Dispatchers.Main) { beastAllows() }) return@launch
                         val ok = try {
                             Backup.restore(container, json)
+                            BeastGuard.used() // the next loosening needs a new cool-down
                             true
                         } catch (e: Exception) {
                             false
