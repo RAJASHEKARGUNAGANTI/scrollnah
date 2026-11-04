@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.unscroll.app.service.BlockerService
 import com.unscroll.app.service.SetupReturn
+import com.unscroll.app.service.TamperWatch
 import com.unscroll.app.ui.navigation.UnscrollApp
 import com.unscroll.app.ui.screens.OnboardingScreen
 import com.unscroll.app.ui.theme.AppTheme
@@ -70,6 +71,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Parent lock's report: notice a switch that was turned off while ScrollNah wasn't watching.
+        TamperWatch.checkSwitches(this)
         // Make sure the blocker is running (e.g. right after usage access was granted).
         BlockerService.startIfNeeded(this)
         // Keep the home-screen widget in sync with what the app shows.

@@ -1,18 +1,20 @@
 package com.unscroll.app.data
 
 /** Switches ScrollNah may need turned on, in the order the setup guide asks for them. */
-enum class SetupStep { NOTIFICATIONS, OVERLAY, POPUPS, BATTERY }
+enum class SetupStep { NOTIFICATIONS, OVERLAY, POPUPS, BATTERY, UNINSTALL_GUARD }
 
 /**
  * Which switches are on right now. null = this phone doesn't need that switch:
  * [popups] only exists on Xiaomi and vivo phones, and Google Pixels don't stop apps in the
- * background, so [battery] is null there.
+ * background, so [battery] is null there. [uninstallGuard] is only asked for when a parent
+ * chose Parent lock's uninstall protection.
  */
 data class SetupFacts(
     val notifications: Boolean,
     val overlay: Boolean,
     val popups: Boolean?,
-    val battery: Boolean?
+    val battery: Boolean?,
+    val uninstallGuard: Boolean? = null
 )
 
 /** Which features the user's choices rely on. */
@@ -37,6 +39,7 @@ object SetupPlan {
         // The pop-up switch only matters for the Pause screen (bubbles are overlays, not screens).
         if (uses.pauseScreen && facts.popups == false) add(SetupStep.POPUPS)
         if (facts.battery == false) add(SetupStep.BATTERY)
+        if (facts.uninstallGuard == false) add(SetupStep.UNINSTALL_GUARD)
     }
 
     /**

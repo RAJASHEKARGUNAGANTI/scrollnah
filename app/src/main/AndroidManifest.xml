@@ -158,6 +158,31 @@
             </intent-filter>
         </receiver>
 
+        <!-- Parent lock: notes when the phone's clock is moved (only the system sends TIME_SET). -->
+        <receiver
+            android:name=".service.ClockChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Parent lock's uninstall protection: a device admin app that asks for no device powers,
+             so Android makes you turn it off before ScrollNah can be uninstalled. -->
+        <receiver
+            android:name=".service.UninstallGuardReceiver"
+            android:description="@string/uninstall_guard_description"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/uninstall_guard" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Opt-in watcher for Instagram Reels / YouTube Shorts (see FeatureWatchService). -->
         <service
             android:name=".service.FeatureWatchService"

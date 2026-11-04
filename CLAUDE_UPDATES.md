@@ -443,6 +443,45 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
+## Parent lock: levels 1, 2 and 3 (2026-11-04, developer request)
+Developer: on a child's phone, kids got around limits; protect everything with a PIN or pattern, choose it during
+setup, a lock button on Home, an on/off switch in Settings that also shows/hides the Home button, and make
+uninstalling need the lock too. Name chosen: **Parent lock**.
+- **Level 1, the lock** (`data/ParentLock.kt`, `ui/components/ParentLockUi.kt`): PIN (4-8 numbers) or 3x3 pattern
+  (>= 4 dots, passing over a middle dot picks it). Stored as a salted PBKDF2-SHA256 hash in SharedPreferences
+  `parent_lock` (not in ScrollNah backups). 5 free tries, then 30 s, 1 min, 5 min, 15 min waits. "Forgot PIN"
+  starts a 24-hour wait (the right PIN cancels it), then a new PIN can be set without the old one; both noted in
+  the report. Unlocking lasts while a locked page is in use + 5 min; the screen turning off (receiver in
+  UnscrollApplication), the Home lock button, or ScrollNah restarting locks it again.
+  Protected: Limits, Settings, Break reminders and Add app (`ParentLockGate` in UnscrollApp), the Pause screen's
+  "Open for 5 minutes" (PIN popup; locks again right after), ending focus early on Home (PIN; the Quick Settings
+  tile just says "end focus in ScrollNah"), Chill's "5 more min" notification button (hidden; NudgeReceiver
+  ignores old ones). With the lock on, Beast's cool-down is skipped (the PIN already proves it's the parent).
+- **Level 2, the report** (`data/TamperLog.kt`, `service/TamperWatch.kt`): only while the lock is on, max 100
+  entries, newest first. Notes: a needed switch turned off (must stay off >= 20 s; Android briefly read the overlay
+  as off during setup) and back on, ScrollNah force-stopped (Android 11+ `ApplicationExitInfo` REASON_USER_REQUESTED,
+  checked at app start), the clock moved >= 2 min (manifest TIME_SET receiver, offset vs elapsedRealtime, same boot
+  only), 5 wrong tries, "Forgot PIN" asked/cancelled/used, uninstall protection turned off. Settings > Parent lock >
+  Report lists them; an orange dot on Home's lock button means unseen entries.
+- **Level 3, uninstall protection** (`UninstallGuardReceiver`, `res/xml/uninstall_guard.xml` with empty
+  uses-policies): optional switch in setup (default on when the lock is chosen) and Settings; the guided setup adds
+  an "uninstall protection" step (`SetupStep.UNINSTALL_GUARD`). Android then refuses to uninstall
+  (`DELETE_FAILED_DEVICE_POLICY_MANAGER`) until it's deactivated; deactivating shows ScrollNah's "ask a parent"
+  message and is noted in the report, and Home asks to turn it back on. It can't truly stop a determined child
+  (Android allows deactivating, force stop, safe mode, factory reset); Settings points to Google Family Link.
+- Setup: new page "Is this phone for a child?" (step 5 of 8) between strictness and permissions.
+- Also fixed: Settings > Focus & passes let Beast mode end focus early (Home and the tile already blocked it).
+- Tested on the Pixel emulator (API 35): setup with PIN + uninstall protection (3 steps), Android refused
+  `adb uninstall`, Limits locked, wrong PIN message, right PIN opens Limits, Home lock button locks, Pause screen
+  "Open for 5 minutes" asked for the PIN and then opened Chrome, report noted overlay off (after ~25 s), force stop,
+  clock +3 h ("forward by 2 h 59 min"), and deactivating uninstall protection (asked + off). Unit tests in
+  `ParentLockTest`. Redmi (MIUI 14, 2026-11-04, test copy): setup with a pattern, the uninstall-protection step
+  opened Android's "Activate device admin app?" page and activated it; Home shows the lock button (dark mode).
+  Still to try on a real phone: locked pages with the pattern, the report, and vivo/iQOO; the lock pages weren't
+  seen at 360x640.
+- Play: no new permission, but reviewers check device-admin apps: reviewer note in `store/play-console-answers.md`.
+  Privacy policy updated. Ships in the version after 2.3.0.
+
 - **Play signing:** the Play-installed app is signed by Google's app signing key (CN=Android, O=Google Inc.,
   SHA-256 40:0F:DE:87:8D:F2:7E:9E...), not ours (AC:58:24:BA...). GitHub APKs and Play installs can't update
   each other. (`apksigner verify` needs `--max-sdk-version 36` on Play APKs: they carry a v3.2 post-quantum

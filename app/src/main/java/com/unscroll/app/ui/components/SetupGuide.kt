@@ -178,6 +178,12 @@ fun setupWords(step: SetupStep, uses: SetupUses): SetupWords = when (step) {
         how = "Find ScrollNah and choose \"Don't optimise\" (on some phones \"No restrictions\").",
         button = "Open settings"
     )
+    SetupStep.UNINSTALL_GUARD -> SetupWords(
+        title = "Turn on uninstall protection",
+        why = "For Parent lock: Android then asks to turn this off before ScrollNah can be removed, and the lock's report shows it.",
+        how = "Tap \"Activate\" on the next page. ScrollNah gets no control over anything else.",
+        button = "Continue"
+    )
 }
 
 /** vivo/iQOO only: the phone can't tell us about its pop-up switch, so the user does. */
@@ -252,6 +258,7 @@ private fun doneText(step: SetupStep) = when (step) {
     SetupStep.OVERLAY -> "Display over other apps is on"
     SetupStep.POPUPS -> "Pop-ups in the background are on"
     SetupStep.BATTERY -> "ScrollNah can run in the background"
+    SetupStep.UNINSTALL_GUARD -> "Uninstall protection is on"
 }
 
 /**

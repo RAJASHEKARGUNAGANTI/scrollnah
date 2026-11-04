@@ -178,6 +178,19 @@ class BlockerService : Service() {
                 delay(30 * 60_000L)
             }
         }
+        // Parent lock's report: has a switch ScrollNah needs been turned off? Every 30 s while the
+        // screen is on (a few cheap system checks), and only when Parent lock is on.
+        scope.launch {
+            while (isActive) {
+                screenOn.first { it }
+                try {
+                    TamperWatch.checkSwitches(this@BlockerService)
+                } catch (e: Exception) {
+                    debug("tamper check failed: $e")
+                }
+                delay(30_000L)
+            }
+        }
         // The main check, once a second.
         scope.launch {
             while (isActive) {

@@ -13,6 +13,7 @@ import com.unscroll.app.PauseActivity
 import com.unscroll.app.R
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.Strictness
+import com.unscroll.app.data.ParentLock
 import com.unscroll.app.ui.components.duration
 
 /** What hit its limit: a whole app, or a feature like YouTube Shorts. */
@@ -124,7 +125,8 @@ object LimitActions {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(openAppIntent(context))
-            .addAction(0, "5 more min", snooze)
+            // Parent lock: no "5 more min" from a notification (it can't ask for the PIN).
+            .apply { if (!ParentLock.isOn) addAction(0, "5 more min", snooze) }
             .addAction(0, "I'm done", goHome)
             .build()
         try {

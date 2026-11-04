@@ -10,6 +10,7 @@ import android.os.Process
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import com.unscroll.app.UnscrollApplication
+import com.unscroll.app.data.ParentLock
 import com.unscroll.app.data.SetupFacts
 import com.unscroll.app.data.SetupStep
 import com.unscroll.app.data.UsageRepository
@@ -56,7 +57,8 @@ object SetupChecks {
         notifications = notificationsAllowed(context),
         overlay = canShowPauseScreen(context),
         popups = backgroundPopupsAllowed(context) ?: if (isVivo) popupsConfirmed else null,
-        battery = if (isPixel) null else ignoresBatteryOptimizations(context)
+        battery = if (isPixel) null else ignoresBatteryOptimizations(context),
+        uninstallGuard = if (ParentLock.isOn && ParentLock.uninstallProtection) TamperWatch.isGuardActive(context) else null
     )
 
     /** True on vivo/iQOO, where the user has to tell us they allowed pop-ups. */
@@ -87,6 +89,8 @@ object SetupChecks {
                 openBatterySettings(context)
                 SetupReturn.watch(app) { ignoresBatteryOptimizations(app) }
             }
+            // Android's own "Activate device admin app?" page; it comes back to ScrollNah by itself.
+            SetupStep.UNINSTALL_GUARD -> context.startActivity(TamperWatch.guardActivationIntent(context))
         }
     }
 

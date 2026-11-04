@@ -71,6 +71,11 @@ import com.unscroll.app.data.Websites
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.ui.components.FireIcon
 import com.unscroll.app.ui.components.SetupStepCard
+import com.unscroll.app.ui.components.LockIcon
+import com.unscroll.app.ui.components.UnlockDialog
+import com.unscroll.app.data.ParentLock
+import android.widget.Toast
+import com.unscroll.app.data.TamperLog
 import com.unscroll.app.ui.components.rememberSetupGuide
 import com.unscroll.app.ui.components.rememberSetupOpener
 import com.unscroll.app.ui.components.FunStat
@@ -167,6 +172,16 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val setupGuide = rememberSetupGuide(savedStrictness, focusOn = focusLeftMs > 0, refresh = refreshCount + setupAnswered)
     val openSetupStep = rememberSetupOpener(onAnswered = { setupAnswered++ })
 
+    // Parent lock: the lock button in the header, and what to do once the PIN is right.
+    val lock by ParentLock.state.collectAsStateWithLifecycle()
+    val reportEvents by TamperLog.events.collectAsStateWithLifecycle()
+    val reportSeenAt by TamperLog.seenAt.collectAsStateWithLifecycle()
+    var afterUnlock by remember { mutableStateOf<(() -> Unit)?>(null) }
+    /** Runs [action] now, or after the parent PIN when Parent lock is locked. */
+    fun withParent(action: () -> Unit) {
+        if (ParentLock.isLocked) afterUnlock = action else action()
+    }
+
     // Every time the screen comes back into view (e.g. returning from Settings),
     // re-check the permission and reload today's numbers.
     LifecycleResumeEffect(Unit) {
@@ -255,6 +270,17 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     ) {
         item {
             HomeHeader(
+                lockOn = lock.on,
+                locked = lock.locked,
+                lockNews = reportEvents.count { it.at > reportSeenAt },
+                onLock = {
+                    if (ParentLock.isLocked) {
+                        afterUnlock = { Toast.makeText(context, "Unlocked. Locks again when the screen turns off.", Toast.LENGTH_SHORT).show() }
+                    } else {
+                        ParentLock.lock()
+                        Toast.makeText(context, "Locked", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 userName = userName,
                 isDark = Neo.colors.isDark,
                 onToggleTheme = { scope.launch { container.settings.setDarkMode(!isDarkNow) } },
@@ -289,9 +315,11 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                         FocusTileService.refresh(context) // the Quick Settings tile shows it too
                     },
                     onEnd = {
-                        FocusRules.endFocus()
-                        focusLeftMs = 0
-                        FocusTileService.refresh(context)
+                        withParent {
+                            FocusRules.endFocus()
+                            focusLeftMs = 0
+                            FocusTileService.refresh(context)
+                        }
                     }
                 )
             }
@@ -332,6 +360,16 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
         )
     }
 
+    afterUnlock?.let { action ->
+        UnlockDialog(
+            onUnlocked = {
+                afterUnlock = null
+                action()
+            },
+            onDismiss = { afterUnlock = null }
+        )
+    }
+
     if (showNameDialog) {
         NameDialog(
             currentName = userName,
@@ -350,6 +388,10 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
  */
 @Composable
 private fun HomeHeader(
+    lockOn: Boolean,
+    locked: Boolean,
+    lockNews: Int,
+    onLock: () -> Unit,
     userName: String,
     isDark: Boolean,
     onToggleTheme: () -> Unit,
@@ -392,6 +434,27 @@ private fun HomeHeader(
             Text("scrollnah", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Parent lock (only when it's turned on in Settings): closed = locked, open + lime = unlocked.
+            // An orange dot means the lock's report has something new.
+            if (lockOn) {
+                Box {
+                    HeaderButton(
+                        onClick = onLock,
+                        label = if (locked) "Parent lock is on. Unlock" else "Unlocked. Lock now",
+                        background = if (locked) Neo.colors.surface else Lime
+                    ) { LockIcon(open = !locked, tint = if (locked) Neo.colors.content else Ink) }
+                    if (lockNews > 0) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .size(14.dp)
+                                .clip(PillShape)
+                                .background(Orange, PillShape)
+                                .border(BorderWidth, Neo.colors.outline, PillShape)
+                        )
+                    }
+                }
+            }
             // Light/dark switch: shows the mode you'll switch TO.
             HeaderButton(onClick = onToggleTheme, label = if (isDark) "Switch to light mode" else "Switch to dark mode") {
                 if (isDark) SunIcon() else MoonIcon()
@@ -401,12 +464,17 @@ private fun HomeHeader(
 }
 
 @Composable
-private fun HeaderButton(onClick: () -> Unit, label: String, icon: @Composable () -> Unit) {
+private fun HeaderButton(
+    onClick: () -> Unit,
+    label: String,
+    background: androidx.compose.ui.graphics.Color = Neo.colors.surface,
+    icon: @Composable () -> Unit
+) {
     Box(
         Modifier
             .size(46.dp)
             .clip(ButtonShape)
-            .background(Neo.colors.surface, ButtonShape)
+            .background(background, ButtonShape)
             .border(BorderWidth, Neo.colors.outline, ButtonShape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },

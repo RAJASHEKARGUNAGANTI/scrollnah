@@ -9,6 +9,8 @@ import com.unscroll.app.data.db.BreakLog
 class NudgeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val key = intent.getStringExtra(EXTRA_KEY) ?: return
+        // An older notification's button: no extra minutes while Parent lock is on.
+        if (com.unscroll.app.data.ParentLock.isOn) return LimitActions.cancelNudge(context, key)
         Allowances.grant(key)
         LimitActions.cancelNudge(context, key)
     }
@@ -31,7 +33,15 @@ class BreakSnoozeReceiver : BroadcastReceiver() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            TamperWatch.rememberClock(context) // the time since boot starts again from 0
             BlockerService.startIfNeeded(context)
         }
+    }
+}
+
+/** The phone's clock was changed: Parent lock's report notes a big jump (see TamperWatch). */
+class ClockChangeReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_TIME_CHANGED) TamperWatch.clockChanged(context)
     }
 }

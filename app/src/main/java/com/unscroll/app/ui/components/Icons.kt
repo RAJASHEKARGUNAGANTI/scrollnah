@@ -186,6 +186,33 @@ fun CheckIcon(modifier: Modifier = Modifier, size: Dp = 16.dp, tint: Color = Loc
     }
 }
 
+/** Padlock for Parent lock: [open] lifts the shackle off the body. */
+@Composable
+fun LockIcon(open: Boolean, modifier: Modifier = Modifier, size: Dp = 22.dp, tint: Color = LocalContentColor.current) {
+    StrokeIcon(modifier, size, tint) { s, stroke, color ->
+        drawRoundRect(
+            color,
+            topLeft = Offset(5f * s, 11f * s),
+            size = androidx.compose.ui.geometry.Size(14f * s, 10f * s),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.5f * s),
+            style = stroke
+        )
+        val shackle = Path().apply {
+            if (open) {
+                moveTo(8f * s, 7f * s); lineTo(8f * s, 5f * s)
+                arcTo(androidx.compose.ui.geometry.Rect(8f * s, 1f * s, 16f * s, 9f * s), 180f, 180f, false)
+                lineTo(16f * s, 11f * s)
+            } else {
+                moveTo(8f * s, 11f * s); lineTo(8f * s, 8f * s)
+                arcTo(androidx.compose.ui.geometry.Rect(8f * s, 4f * s, 16f * s, 12f * s), 180f, 180f, false)
+                lineTo(16f * s, 11f * s)
+            }
+        }
+        drawPath(shackle, color, style = stroke)
+        drawCircle(color, radius = 1.3f * s, center = Offset(12f * s, 15.5f * s))
+    }
+}
+
 /** Magnifying glass for search fields. */
 @Composable
 fun SearchIcon(modifier: Modifier = Modifier, size: Dp = 20.dp) {

@@ -40,6 +40,8 @@ class FocusTileService : TileService() {
             if (FocusRules.focusActive()) {
                 if (container.settings.strictness.first() == Strictness.BEAST) {
                     Toast.makeText(this@FocusTileService, "Beast mode: focus can't end early", Toast.LENGTH_SHORT).show()
+                } else if (com.unscroll.app.data.ParentLock.isOn) {
+                    Toast.makeText(this@FocusTileService, "Parent lock is on: end focus in ScrollNah", Toast.LENGTH_SHORT).show()
                 } else {
                     FocusRules.endFocus()
                 }

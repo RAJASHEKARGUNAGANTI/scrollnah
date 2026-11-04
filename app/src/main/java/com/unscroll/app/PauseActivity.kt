@@ -7,7 +7,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.lifecycle.Lifecycle
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.unscroll.app.data.ParentLock
 import com.unscroll.app.data.db.PauseLog
+import com.unscroll.app.ui.components.UnlockDialog
 import com.unscroll.app.service.Allowances
 import com.unscroll.app.service.LimitActions
 import com.unscroll.app.service.PauseReason
@@ -44,6 +50,14 @@ class PauseActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
+                // Parent lock: "Open for 5 minutes" needs the parent PIN first.
+                var askParentFor by remember { mutableStateOf<String?>(null) }
+                var askingParent by remember { mutableStateOf(false) }
+                fun allowFiveMinutes(reason: String?) {
+                    log(packageToLog, reason, openedAnyway = true)
+                    Allowances.grant(key)
+                    finish() // the app underneath shows again
+                }
                 PauseScreen(
                     appName = name,
                     openCount = opens,
@@ -58,11 +72,25 @@ class PauseActivity : ComponentActivity() {
                     },
                     // Beast mode: no "+5 minutes" button at all.
                     onAllowFiveMinutes = if (locked) null else { reason ->
-                        log(packageToLog, reason, openedAnyway = true)
-                        Allowances.grant(key)
-                        finish() // the app underneath shows again
+                        if (ParentLock.isLocked) {
+                            askParentFor = reason
+                            askingParent = true
+                        } else {
+                            allowFiveMinutes(reason)
+                        }
                     }
                 )
+                if (askingParent) {
+                    UnlockDialog(
+                        subtitle = "5 more minutes of $name needs the parent PIN or pattern.",
+                        onUnlocked = {
+                            askingParent = false
+                            ParentLock.lock() // just this once
+                            allowFiveMinutes(askParentFor)
+                        },
+                        onDismiss = { askingParent = false }
+                    )
+                }
             }
         }
     }

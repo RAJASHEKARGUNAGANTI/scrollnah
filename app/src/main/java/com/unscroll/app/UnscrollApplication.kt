@@ -3,6 +3,13 @@ package com.unscroll.app
 import com.unscroll.app.data.MascotReward
 
 import com.unscroll.app.data.BeastGuard
+import com.unscroll.app.data.ParentLock
+import com.unscroll.app.data.TamperLog
+import com.unscroll.app.service.TamperWatch
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import android.app.Application
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -72,6 +79,19 @@ class UnscrollApplication : Application() {
         Allowances.init(this)
         FocusRules.init(this)
         BeastGuard.init(this)
+        ParentLock.init(this)
+        TamperLog.init(this)
+        TamperWatch.ensureClockBaseline(this)
+        TamperWatch.checkExits(this)
+        // Parent lock locks again as soon as the screen turns off.
+        ContextCompat.registerReceiver(
+            this,
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) = ParentLock.lock()
+            },
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 }
 

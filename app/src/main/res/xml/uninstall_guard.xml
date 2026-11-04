@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Parent lock's uninstall protection asks for no device powers: being an active
+     device admin app is enough for Android to ask before ScrollNah is uninstalled. -->
+<device-admin>
+    <uses-policies />
+</device-admin>

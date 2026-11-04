@@ -77,6 +77,10 @@ import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoButtonOutline
 import com.unscroll.app.ui.components.ConfirmPopupsLink
+import com.unscroll.app.ui.components.SetLockContent
+import com.unscroll.app.data.ParentLock
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.layout.PaddingValues
 import com.unscroll.app.ui.components.SetupDoneNote
 import com.unscroll.app.ui.components.SetupDots
 import com.unscroll.app.ui.components.rememberSetupGuide
@@ -97,9 +101,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val STEPS = 7
+private const val STEPS = 8
 
-/** First-run walkthrough: pick a mascot -> meet it -> name -> usage access -> pick apps -> strictness -> permissions. */
+/** First-run walkthrough: pick a mascot -> meet it -> name -> usage access -> pick apps -> strictness -> Parent lock -> permissions. */
 @Composable
 fun OnboardingScreen(onFinished: () -> Unit) {
     val context = LocalContext.current
@@ -277,6 +281,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                     onSelect = { strictness = Strictness.entries[it] }
                 )
             }
+
+            6 -> ParentLockStep(onNext = { step++ })
 
             else -> PermissionsStep(strictness = strictness, resumeCount = resumeCount, onFinish = { finish() })
         }
@@ -460,6 +466,81 @@ private fun ColumnScope.PermissionsStep(strictness: Strictness, resumeCount: Int
     } else {
         NeoButtonOutline("Skip for now", onClick = onFinish)
     }
+}
+
+/**
+ * Step 5: is this phone for a child? Then a parent sets a PIN or pattern here, and can ask for
+ * uninstall protection (switched on in the last step). Off by default; also in Settings later.
+ */
+@Composable
+private fun ColumnScope.ParentLockStep(onNext: () -> Unit) {
+    val lock by ParentLock.state.collectAsStateWithLifecycle()
+    var forChild by remember { mutableStateOf(if (lock.on) true else null) } // null = not answered yet
+    var guardUninstall by remember { mutableStateOf(true) }
+
+    Column(
+        Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        NeoPill("Step 5")
+        Text("Is this phone for a child?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+        Text(
+            "A Parent lock keeps the limits you set safe. With it on, changing limits or settings, taking extra minutes, " +
+                "ending focus early and turning the lock off all need your PIN or pattern. " +
+                "It also notes if someone stops ScrollNah or turns off something it needs.",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        OptionCardRow(
+            options = listOf("Yes" to "Add a Parent lock", "No" to "It's my own phone"),
+            selectedIndex = when (forChild) { true -> 0; false -> 1; null -> -1 },
+            onSelect = { i ->
+                forChild = i == 0
+                if (i == 1 && lock.on) ParentLock.turnOff() // changed their mind
+            }
+        )
+        if (forChild == true) {
+            if (!lock.on) {
+                NeoCard(contentPadding = PaddingValues(vertical = 16.dp, horizontal = 8.dp)) {
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        SetLockContent(title = "Set the parent lock", onDone = {})
+                    }
+                }
+            } else {
+                Text("Parent lock is set.", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp)
+                    ) {
+                        Text("Also guard against uninstalling", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Android will ask before ScrollNah can be removed. You'll switch it on in the last step.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    NeoSwitch(checked = guardUninstall, onToggle = { guardUninstall = !guardUninstall }, label = "Guard against uninstalling")
+                }
+                Text("You can change all of this later in Settings.", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    NeoButtonPrimary(
+        text = when {
+            forChild == true && !lock.on -> "Set the PIN or pattern first"
+            forChild == null -> "Choose one to go on"
+            else -> "Next"
+        },
+        enabled = forChild == false || (forChild == true && lock.on),
+        onClick = {
+            if (lock.on) ParentLock.uninstallProtection = guardUninstall
+            onNext()
+        }
+    )
 }
 
 /** Small phones (or big display size): use smaller pictures so the text fits. */

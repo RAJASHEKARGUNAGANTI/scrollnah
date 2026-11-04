@@ -13,6 +13,7 @@ import java.time.DayOfWeek
 import androidx.compose.foundation.layout.FlowRow
 
 import com.unscroll.app.data.BeastGuard
+import com.unscroll.app.data.ParentLock
 import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.delay
 import com.unscroll.app.data.db.TrackedApp
@@ -198,7 +199,8 @@ fun LimitsScreen(
     DisposableEffect(Unit) { onDispose { onUnsavedChanges(false) } }
 
     // Beast mode: giving yourself more time needs a 10-minute cool-down first (see BeastGuard).
-    val loosens = savedStrictness == Strictness.BEAST && (
+    // Not with Parent lock on: this screen already needed the parent's PIN.
+    val loosens = savedStrictness == Strictness.BEAST && !ParentLock.isOn && (
         apps.any { app ->
             appDrafts[app.packageName]?.let {
                 BeastGuard.limitLoosened(app.limitMinutes, app.enabled, app.weekendLimitMinutes, it.minutes, it.enabled, it.weekendMinutes) ||
@@ -300,7 +302,7 @@ fun LimitsScreen(
                 allowWeekend = true,
                 onRemove = {
                     // Removing an app is a looser limit too, so Beast mode asks for the cool-down.
-                    guarded(isLoosening = savedStrictness == Strictness.BEAST) {
+                    guarded(isLoosening = savedStrictness == Strictness.BEAST && !ParentLock.isOn) {
                         appDrafts.remove(app.packageName)
                         scope.launch {
                             appDao.delete(app.packageName)
@@ -335,7 +337,7 @@ fun LimitsScreen(
                     onChange = { groupDrafts[group.id] = it },
                     onRename = { namingGroup = group.id },
                     onRemove = {
-                        guarded(isLoosening = savedStrictness == Strictness.BEAST && group.enabled && group.members().isNotEmpty()) {
+                        guarded(isLoosening = savedStrictness == Strictness.BEAST && !ParentLock.isOn && group.enabled && group.members().isNotEmpty()) {
                             groupDrafts.remove(group.id)
                             scope.launch { groupDao.delete(group.id) }
                         }

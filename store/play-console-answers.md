@@ -80,3 +80,11 @@ Recommended: **use the existing key** so GitHub installs and Play installs are t
 - Create a closed test track, upload the AAB from `./gradlew bundlePlayRelease` (`app/build/outputs/bundle/playRelease/app-play-release.aab`).
 - Add at least **12 testers** (an email list or a Google Group), share the opt-in link, and make sure they install it and actually use it.
 - Keep at least 12 opted in for **14 days in a row**, then apply for production access in the Dashboard.
+
+## Parent lock (from 2.4.0, not in 2.3.0)
+
+Parent lock is optional and off by default. It adds no new Android permissions. Its **uninstall protection** registers ScrollNah as a device admin app with an **empty `<uses-policies />`** (`res/xml/uninstall_guard.xml`): it can't lock, wipe or change anything; Android only asks to deactivate it before uninstalling. There is no separate Play declaration form for this, but reviewers check device-admin apps, so add a reviewer note (App content > App access, or the release's notes to reviewers):
+
+> ScrollNah has an optional Parent lock for parents who set it up on a child's phone. With it, ScrollNah can register as a device admin app that requests no policies (uses-policies is empty), only so Android asks before ScrollNah is uninstalled. The user turns it on themselves on Android's standard "Activate device admin app?" screen and can turn it off in ScrollNah's Settings with the parent PIN, or in Android's Device admin apps settings. It is never required and never activated without the user's action. ScrollNah does not monitor messages, browsing, location or other apps' content; the lock's report only notes ScrollNah's own state (stopped, a needed setting turned off, the clock moved) and stays on the phone.
+
+If Play considers this "parental control / monitoring", the Families or Stalkerware policy questions may come up: ScrollNah keeps its ongoing "keeping watch" notification, shows its icon, doesn't hide, and sends nothing off the phone.

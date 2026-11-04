@@ -4,7 +4,7 @@ title: ScrollNah privacy policy
 
 # ScrollNah privacy policy
 
-_Last updated: 2 November 2026_
+_Last updated: 4 November 2026_
 
 ScrollNah is an Android app that helps you spend less time on the apps you choose, with a friendly mascot (Blobby or Bloomy). This policy explains what the app looks at, what it keeps, and where it keeps it.
 
@@ -17,6 +17,16 @@ To work, ScrollNah reads a few things on your device. None of it ever leaves the
 - **App usage (Usage access).** With your permission, ScrollNah reads Android's app usage statistics to see which app is in front and how many minutes you spent in the apps you chose to limit. This is how it counts your minutes, shows the Pause screen at your limit and reminds you to take breaks.
 - **Your list of installed apps.** So you can pick which apps to limit. ScrollNah only shows apps that have a launcher icon.
 - **Notifications, "Display over other apps" and running in the background.** These permissions let ScrollNah show reminders, the Pause screen and the mascot bubble at the right moment. They do not let ScrollNah read the content of other apps.
+
+### Parent lock (optional, off by default)
+
+If a parent turns on **Parent lock** (for a child's phone), ScrollNah also checks, on the phone only:
+
+- whether the settings it needs (Usage access, "Display over other apps", notifications, running in the background) are still on,
+- whether ScrollNah was force-stopped (Android tells an app this when it starts again),
+- whether the phone's clock was moved by more than a couple of minutes.
+
+It notes these in a short report that only someone with the parent PIN or pattern can open in ScrollNah's Settings. **Uninstall protection** (optional) makes ScrollNah a "device admin app" that asks for **no device powers at all**: Android simply asks to turn it off before ScrollNah can be uninstalled. ScrollNah cannot lock, wipe or control the phone.
 
 ### Optional Reels, Shorts and website tracker (GitHub version only)
 
@@ -33,6 +43,7 @@ All of this is stored only on your phone, inside the app's private storage:
 - Your answers on the Pause screen (for example "Bored") and whether you took a break, used for your weekly report
 - Your name, if you type one, so the app can say hello
 - Your mascot and light/dark choice
+- If Parent lock is on: a scrambled, salted fingerprint (hash) of the PIN or pattern, never the PIN itself, and the lock's report (up to 100 short entries such as "Display over other apps was turned off, Today 4:10 PM")
 
 ## What ScrollNah shares
 
@@ -47,11 +58,12 @@ The only link out of the app is **Settings > Feedback**, which opens a GitHub Di
 ## Deleting your data
 
 - **Settings > Data > Clear history** deletes your saved minutes, weekly report history, streak days, Pause answers and break history (your limits and garden stay).
-- **Uninstalling ScrollNah** deletes everything it stored on the phone. Backup files you saved stay where you put them; delete them like any other file.
+- **Turning off Parent lock** (Settings > Parent lock) deletes the PIN fingerprint and the lock's report, and switches off uninstall protection.
+- **Uninstalling ScrollNah** deletes everything it stored on the phone. If uninstall protection is on, Android asks to turn it off first. Backup files you saved stay where you put them; delete them like any other file.
 
 ## Children
 
-ScrollNah is not directed at children under 13 and does not knowingly collect any personal information from anyone.
+ScrollNah is not directed at children under 13 and does not knowingly collect any personal information from anyone. Parents may set it up on a child's phone with Parent lock; even then, ScrollNah collects nothing and everything stays on that phone.
 
 ## Changes
 

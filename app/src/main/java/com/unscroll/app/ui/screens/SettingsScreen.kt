@@ -68,6 +68,14 @@ import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.data.SetupFacts
+import com.unscroll.app.data.ParentLock
+import com.unscroll.app.data.Strictness
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import com.unscroll.app.data.TamperLog
+import com.unscroll.app.service.TamperWatch
+import com.unscroll.app.ui.components.SetLockDialog
 import com.unscroll.app.data.SetupStep
 import com.unscroll.app.ui.components.ConfirmPopupsLink
 import com.unscroll.app.ui.components.NeoButtonPrimary
@@ -121,6 +129,15 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     var editingName by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
 
+    // Parent lock: its switch, change PIN, uninstall protection and report.
+    val lock by ParentLock.state.collectAsStateWithLifecycle()
+    val reportEvents by TamperLog.events.collectAsStateWithLifecycle()
+    val strictness by container.settings.strictness.collectAsStateWithLifecycle(Strictness.FIRM)
+    val guardActive = remember(refresh) { TamperWatch.isGuardActive(context) }
+    var settingLock by remember { mutableStateOf(false) }
+    var confirmLockOff by remember { mutableStateOf(false) }
+    var showReport by remember { mutableStateOf(false) }
+
     // Android's own "save as" and "open" screens: the user picks where the file goes (no permission needed).
     val saveBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) container.appScope.launch {
@@ -151,6 +168,51 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                     action = "Edit",
                     onClick = { editingName = true }
                 )
+            }
+        }
+
+        item {
+            Section("Parent lock") {
+                Text(
+                    "For a child's phone. With it on, changing limits or settings, taking extra minutes, " +
+                        "ending focus early and turning the lock off need a PIN or pattern.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                SwitchRow(
+                    "Parent lock",
+                    if (lock.on) "On. Use the lock button on Home to lock it again." else "Off",
+                    lock.on
+                ) { if (lock.on) confirmLockOff = true else settingLock = true }
+                if (lock.on) {
+                    val noun = if (lock.kind == ParentLock.Kind.PIN) "PIN" else "pattern"
+                    SettingRow("PIN or pattern", "Uses a $noun", "Change", onClick = { settingLock = true })
+                    SwitchRow(
+                        "Uninstall protection",
+                        "Android asks to turn this off before ScrollNah can be removed",
+                        ParentLock.uninstallProtection && guardActive
+                    ) {
+                        if (ParentLock.uninstallProtection && guardActive) {
+                            ParentLock.uninstallProtection = false
+                            TamperWatch.removeGuard(context)
+                            refresh++
+                        } else {
+                            ParentLock.uninstallProtection = true
+                            context.startActivity(TamperWatch.guardActivationIntent(context))
+                        }
+                    }
+                    SettingRow(
+                        "Report",
+                        if (reportEvents.isEmpty()) "Nothing unusual so far" else
+                            "${reportEvents.size} ${if (reportEvents.size == 1) "thing" else "things"} noted, newest ${TamperLog.whenText(reportEvents.first().at)}",
+                        "View",
+                        onClick = { showReport = true }
+                    )
+                    Text(
+                        "Android always lets someone stop or remove an app; the report shows when that happens. " +
+                            "For a lock nobody can remove, also use Google Family Link.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
 
@@ -284,7 +346,8 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
 
         item {
             Section("Focus & passes") {
-                if (perms.focusOn) {
+                // Beast mode: focus can't end early (same as Home and the Quick Settings tile).
+                if (perms.focusOn && strictness != Strictness.BEAST) {
                     SettingRow("Focus mode is on", "End it now", "End", onClick = {
                         FocusRules.endFocus()
                         refresh++
@@ -373,6 +436,70 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                 }) { Text("Save", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
             },
             dismissButton = { TextButton(onClick = { editingName = false }) { Text("Cancel", color = Neo.colors.content) } }
+        )
+    }
+
+    if (settingLock) {
+        SetLockDialog(
+            title = if (lock.on) "Change the parent lock" else "Set the parent lock",
+            onDone = {
+                settingLock = false
+                TamperWatch.checkSwitches(context) // start the report from how things are now
+                Toast.makeText(context, "Parent lock is on", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { settingLock = false }
+        )
+    }
+
+    if (confirmLockOff) {
+        AlertDialog(
+            onDismissRequest = { confirmLockOff = false },
+            containerColor = Neo.colors.surface,
+            title = { Text("Turn off Parent lock?", style = MaterialTheme.typography.headlineSmall) },
+            text = { Text("Limits and settings won't need the PIN any more. Uninstall protection turns off and the report is cleared.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmLockOff = false
+                    TamperWatch.removeGuard(context)
+                    TamperLog.clear()
+                    ParentLock.turnOff()
+                    refresh++
+                }) { Text("Turn off", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
+            },
+            dismissButton = { TextButton(onClick = { confirmLockOff = false }) { Text("Cancel", color = Neo.colors.content) } }
+        )
+    }
+
+    if (showReport) {
+        LaunchedEffect(Unit) { TamperLog.markSeen() }
+        AlertDialog(
+            onDismissRequest = { showReport = false },
+            containerColor = Neo.colors.surface,
+            title = { Text("Parent lock report", style = MaterialTheme.typography.headlineSmall) },
+            text = {
+                Column(
+                    Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (reportEvents.isEmpty()) {
+                        Text("Nothing unusual so far. If ScrollNah is stopped, a switch it needs is turned off, the clock is moved or the PIN is guessed wrong, it shows up here.")
+                    }
+                    reportEvents.forEach { e ->
+                        Column {
+                            Text(TamperLog.whenText(e.at), fontWeight = FontWeight.Bold)
+                            Text(TamperLog.describe(e), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showReport = false }) { Text("Close", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
+            },
+            dismissButton = if (reportEvents.isEmpty()) null else {
+                { TextButton(onClick = { TamperLog.clear() }) { Text("Clear", color = Neo.colors.content) } }
+            }
         )
     }
 

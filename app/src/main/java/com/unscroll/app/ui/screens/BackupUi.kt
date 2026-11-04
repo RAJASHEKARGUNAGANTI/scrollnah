@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.Backup
 import com.unscroll.app.data.BeastGuard
+import com.unscroll.app.data.ParentLock
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.ui.theme.Neo
 import kotlinx.coroutines.Dispatchers
@@ -62,6 +63,7 @@ internal fun RestoreBackupAction(content: @Composable (start: () -> Unit) -> Uni
     /** True if restoring may go ahead now; otherwise shows the cool-down question. */
     suspend fun beastAllows(): Boolean {
         if (container.settings.strictness.first() != Strictness.BEAST) return true
+        if (ParentLock.isOn) return true // Settings already needed the parent's PIN
         val state = BeastGuard.state()
         if (state is BeastGuard.State.Open) return true
         guard = state

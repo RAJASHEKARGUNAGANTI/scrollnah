@@ -22,6 +22,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.unscroll.app.ui.components.ParentLockGate
 import com.unscroll.app.ui.screens.AddAppScreen
 import com.unscroll.app.ui.screens.BreakRemindersScreen
 import com.unscroll.app.ui.screens.GardenScreen
@@ -87,8 +88,9 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
                     )
                 }
             }
+            // Parent lock: Limits, Settings and the pages opened from them need the PIN first.
             composable(Destination.LIMITS.route) {
-                ReadableWidth {
+                ReadableWidth { ParentLockGate {
                     LimitsScreen(
                         onBack = { navController.popBackStack() },
                         onAddApp = { navController.navigate(ADD_APP_ROUTE) },
@@ -99,15 +101,15 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
                         pendingLeave = pendingLeave,
                         onLeaveCancelled = { pendingLeave = null }
                     )
-                }
+                } }
             }
             composable(Destination.SETTINGS.route) {
-                ReadableWidth {
+                ReadableWidth { ParentLockGate {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
                     )
-                }
+                } }
             }
             composable(GARDEN_ROUTE) {
                 ReadableWidth {
@@ -115,14 +117,14 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
                 }
             }
             composable(BREAKS_ROUTE) {
-                ReadableWidth {
+                ReadableWidth { ParentLockGate {
                     BreakRemindersScreen(onBack = { navController.popBackStack() })
-                }
+                } }
             }
             composable(ADD_APP_ROUTE) {
-                ReadableWidth {
+                ReadableWidth { ParentLockGate {
                     AddAppScreen(onBack = { navController.popBackStack() })
-                }
+                } }
             }
             composable(Destination.STATS.route) {
                 ReadableWidth {
