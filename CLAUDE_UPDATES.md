@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.0 (code 13) = 2.3.0 + Parent lock, built as `release/ScrollNah-2.4.0-play.aab` (Play APK 1.58 MB); the developer will upload it after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
