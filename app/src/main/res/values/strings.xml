@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">ScrollNah</string>
     <string name="uninstall_guard_description">Parent lock: Android asks to turn this off before ScrollNah can be uninstalled. ScrollNah can\'t control anything else on this phone.</string>
-    <string name="feature_watch_description">Lets ScrollNah spot Instagram Reels, YouTube Shorts and sites like youtube.com, so it can count those minutes and remind you at your limit. It only checks which screen is open in those apps and your browser\'s address bar. Only minutes are saved, on this phone.</string>
+    <string name="feature_watch_description">Lets ScrollNah spot Instagram Reels, YouTube Shorts and sites like youtube.com, so it can count those minutes and how many Reels and Shorts you scroll, and remind you at your limit. It only checks which screen is open in those apps, when their videos scroll, and your browser\'s address bar. It never reads messages, passwords or other apps. Only minutes and the count are saved, on this phone.</string>
     <string name="widget_description">Your mascot\'s mood, the app closest to its limit and your streak.</string>
     <string name="widget_mascot_description">Your mascot in today\'s mood, moving about on your home screen.</string>
     <string name="widget_small_description">Your mascot and the minutes left today.</string>

@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.0 (code 13) = 2.3.0 + Parent lock, built as `release/ScrollNah-2.4.0-play.aab` (Play APK 1.58 MB); the developer will upload it after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.0 (code 13) = 2.3.0 + Parent lock + reel counting (GitHub version) + "Add widget", rebuilt 2026-11-06 as `release/ScrollNah-2.4.0-play.aab` (Play APK 1.58 MB) and released on GitHub as v2.4.0; the developer will upload the bundle to Play after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -443,6 +443,36 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
+## Reel counting + "Add widget" button (2026-11-06, developer request after looking at BrainPal)
+- **Reel counting (tracker only, so GitHub version for now):** `FeatureWatchService` now also listens to
+  `typeViewScrolled`. While the Reels/Shorts viewer is open (a "visit"), scroll events from the pager
+  (`clips_viewer_view_pager`, `reel_recycler`) go to `ReelCounter`: the opening video counts 1, then each
+  page that shows up (fromIndex..toIndex) for the first time in the visit adds 1 (swiping back doesn't).
+  It does NOT wait for the settled event (from == to): Android batches scroll events for the service
+  (notificationTimeout 300 ms), and in the emulator test only "between two videos" events arrived.
+  Back within 60 s = same visit. Apps that give no page numbers: a swipe moving >= 40% of the screen counts.
+  Saved in `feature_usage.views` (DB version 8, migration adds the column; backups carry it automatically).
+  Debug builds log every scroll event to `files/blocker.log` ("scroll youtube_shorts: from=3 to=3 ... -> +1",
+  or "scroll ignored: <id>") to tune the IDs on real phones.
+- **Badge while scrolling:** `ReelBadge` = lime pill with the mascot (today's mood from `WidgetData.load`,
+  redrawn at most every 5 min) and today's total (Reels + Shorts), top centre under the status bar, a small
+  hop when it goes up. `TYPE_ACCESSIBILITY_OVERLAY`, so no overlay permission and FLAG_NOT_TOUCHABLE.
+  Settings > Reminders > "Reel count while scrolling" (default on, only shown when the tracker exists).
+- **Home:** "0 reels" / "85 reels" sticker on the mascot's head (tracker on, or a count today).
+- **Add widget:** `MascotWidgets.Kind` + `canPin`/`pin` (`requestPinAppWidget`), `AddWidgetDialog` (3 choices
+  with mini mascots; manual steps if the home screen can't pin). Settings > Mascot > "Home-screen widget: Add",
+  and Home's "Put Blobby on your home screen" card (after setup, until a widget is placed or "Not now").
+- Texts updated: Accessibility description, the Limits disclosure ("never reads messages, passwords or other
+  apps"), privacy policy (minutes and the count; 6 Nov 2026).
+- Tested 2026-11-06 on the emulator (API 35): unit tests (`ReelCounterTest`, 8 cases; 70 tests in all); Home sticker; widget
+  card, picker and the Pixel launcher's "Add to home screen" prompt (card gone once placed); 360x640 at font
+  1.3. Counting with a throwaway stand-in app (package com.instagram.android, a full-screen snapping ListView
+  with id `clips_viewer_view_pager`, kept in the session scratchpad, never in the repo): opening video = 1,
+  10 swipes forward counted, 3 back not counted, leave and return within a minute not counted, badge = Home
+  count (17); the R8 release APK counted 3 swipes -> 4. The emulator's YouTube is too old for Shorts, so
+  NOT yet tested with real Instagram/YouTube (IDs and event batching may differ) - do it on the Redmi/iQOO.
+- Sizes: GitHub release APK 1.61 MB, Play release APK 1.58 MB (the tracker code is removed from Play by R8).
+
 ## Parent lock: levels 1, 2 and 3 (2026-11-04, developer request)
 Developer: on a child's phone, kids got around limits; protect everything with a PIN or pattern, choose it during
 setup, a lock button on Home, an on/off switch in Settings that also shows/hides the Home button, and make

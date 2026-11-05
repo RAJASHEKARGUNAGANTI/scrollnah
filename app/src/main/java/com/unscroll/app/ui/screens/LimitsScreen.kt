@@ -1089,9 +1089,10 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit) {
             modifier = Modifier.padding(top = 8.dp)
         )
         Text(
-            "To spot Reels, Shorts and sites like youtube.com, ScrollNah needs Accessibility access. " +
-                "It only checks which screen is open in Instagram and YouTube, and your browser's address bar. " +
-                "Only minutes are saved, on this phone.\n\n" +
+            "To spot Reels, Shorts and sites like youtube.com, and count how many Reels and Shorts you scroll, " +
+                "ScrollNah needs Accessibility access. It only checks which screen is open in Instagram and YouTube, " +
+                "when their videos scroll, and your browser's address bar. It never reads messages, passwords or other apps. " +
+                "Only minutes and the count are saved, on this phone.\n\n" +
                 "Note: some UPI and bank apps (like BHIM) won't open while any app uses Accessibility. " +
                 "Turn this off while you pay; your other limits keep working.\n\n" +
                 "In Settings: Downloaded apps > ScrollNah > turn on.",

@@ -4,7 +4,7 @@ title: ScrollNah privacy policy
 
 # ScrollNah privacy policy
 
-_Last updated: 4 November 2026_
+_Last updated: 6 November 2026_
 
 ScrollNah is an Android app that helps you spend less time on the apps you choose, with a friendly mascot (Blobby or Bloomy). This policy explains what the app looks at, what it keeps, and where it keeps it.
 
@@ -30,7 +30,7 @@ It notes these in a short report that only someone with the parent PIN or patter
 
 ### Optional Reels, Shorts and website tracker (GitHub version only)
 
-The version of ScrollNah downloaded from GitHub includes an optional tracker that uses Android's Accessibility service, **switched off by default**. If you turn it on, it only checks which screen is open in Instagram and YouTube (to spot Reels and Shorts) and reads your browser's address bar (to count time on sites like youtube.com). It saves **only minutes**, never what is on the screen or which pages you visited. **The Google Play version of ScrollNah does not include this tracker.**
+The version of ScrollNah downloaded from GitHub includes an optional tracker that uses Android's Accessibility service, **switched off by default**. If you turn it on, it only checks which screen is open in Instagram and YouTube (to spot Reels and Shorts), notices when their videos scroll (to count about how many Reels and Shorts you watch), and reads your browser's address bar (to count time on sites like youtube.com). It saves **only minutes and that count**, never what is on the screen, which videos you watched or which pages you visited. It never reads messages, passwords or other apps. **The Google Play version of ScrollNah does not include this tracker.**
 
 ## What ScrollNah stores
 

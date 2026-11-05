@@ -94,10 +94,31 @@ object MascotWidgets {
         }
     }
 
-    private fun anyPlaced(context: Context): Boolean {
+    /** True if any ScrollNah widget is on the home screen. */
+    fun anyPlaced(context: Context): Boolean {
         val manager = AppWidgetManager.getInstance(context)
         return listOf(BlobbyWidget::class.java, SmallMascotWidgetReceiver::class.java, MascotOnlyWidgetReceiver::class.java)
             .any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
+    }
+
+    /** The widgets, for the "Add widget" picker. */
+    enum class Kind(val title: String, val size: String, val receiver: Class<out MascotWidgetProvider>) {
+        MASCOT("Just the mascot", "2 × 2", MascotOnlyWidgetReceiver::class.java),
+        SMALL("Mascot and time left", "2 × 2", SmallMascotWidgetReceiver::class.java),
+        MEDIUM("Mood, top app and streak", "4 × 2", BlobbyWidget::class.java)
+    }
+
+    /** True if this phone's home screen lets apps add a widget for the user (most do; some Xiaomi phones don't). */
+    fun canPin(context: Context): Boolean = AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported
+
+    /**
+     * Asks the home screen to add a widget. The phone shows its own "Add to home screen?"
+     * confirmation with a preview. Returns false if the home screen can't do it.
+     */
+    fun pin(context: Context, kind: Kind): Boolean = try {
+        AppWidgetManager.getInstance(context).requestPinAppWidget(ComponentName(context, kind.receiver), null, null)
+    } catch (e: Exception) {
+        false
     }
 }
 

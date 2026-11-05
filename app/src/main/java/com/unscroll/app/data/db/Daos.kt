@@ -81,6 +81,21 @@ interface FeatureDao {
     @Query("SELECT * FROM feature_usage WHERE date >= :fromDate AND date <= :toDate")
     suspend fun usageBetween(fromDate: String, toDate: String): List<FeatureUsage>
 
+    @Query("UPDATE feature_usage SET views = views + :count WHERE date = :date AND featureId = :featureId")
+    suspend fun addViewsOnly(date: String, featureId: String, count: Int)
+
+    /** Reels + Shorts videos scrolled on [date] (all features together). */
+    @Query("SELECT COALESCE(SUM(views), 0) FROM feature_usage WHERE date = :date")
+    suspend fun totalViews(date: String): Int
+
+    /** Adds [count] videos to today's Reels/Shorts count and returns the day's total for all features. */
+    @Transaction
+    suspend fun addViews(date: String, featureId: String, count: Int): Int {
+        ensureUsageRow(date, featureId)
+        addViewsOnly(date, featureId, count)
+        return totalViews(date)
+    }
+
     /** Adds [delta] ms to today's total for a feature and returns the new total. */
     @Transaction
     suspend fun addAndGet(date: String, featureId: String, delta: Long): Long {

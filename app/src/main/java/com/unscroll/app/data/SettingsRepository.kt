@@ -32,6 +32,8 @@ class SettingsRepository(context: Context) {
     private val potLastDateKey = stringPreferencesKey("pot_last_date")
     private val bloomEventKey = stringPreferencesKey("bloom_event")
     private val timeLeftBubbleKey = booleanPreferencesKey("time_left_bubble")
+    private val reelBadgeKey = booleanPreferencesKey("reel_badge")
+    private val widgetCardDoneKey = booleanPreferencesKey("widget_card_done")
     private val popupsConfirmedKey = booleanPreferencesKey("popups_confirmed")
     private val weekReadyNoteKey = booleanPreferencesKey("week_ready_note")
     private val insteadIdeasKey = stringPreferencesKey("instead_ideas")
@@ -121,6 +123,20 @@ class SettingsRepository(context: Context) {
 
     suspend fun setTimeLeftBubble(on: Boolean) {
         store.edit { it[timeLeftBubbleKey] = on }
+    }
+
+    /** Show today's Reels/Shorts count with the mascot while Reels or Shorts are open (default on; needs the tracker). */
+    val reelBadge: Flow<Boolean> = store.data.map { it[reelBadgeKey] ?: true }
+
+    suspend fun setReelBadge(on: Boolean) {
+        store.edit { it[reelBadgeKey] = on }
+    }
+
+    /** Home's "Put me on your home screen" card was used or closed, so it doesn't come back. */
+    val widgetCardDone: Flow<Boolean> = store.data.map { it[widgetCardDoneKey] ?: false }
+
+    suspend fun setWidgetCardDone() {
+        store.edit { it[widgetCardDoneKey] = true }
     }
 
     /** vivo/iQOO: the user told us they allowed pop-ups in the background (the phone can't be asked). */

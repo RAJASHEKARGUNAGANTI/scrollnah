@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -80,7 +81,9 @@ import com.unscroll.app.ui.components.rememberSetupGuide
 import com.unscroll.app.ui.components.rememberSetupOpener
 import com.unscroll.app.ui.components.FunStat
 import com.unscroll.app.ui.components.LetterTile
+import com.unscroll.app.ui.components.AddWidgetDialog
 import com.unscroll.app.ui.components.NeoButtonPrimary
+import com.unscroll.app.widget.MascotWidgets
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.NeoProgressBar
@@ -147,6 +150,13 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
         .collectAsStateWithLifecycle(emptyList())
 
     var hasAccess by remember { mutableStateOf(container.usage.hasUsageAccess()) }
+    // Reels/Shorts scrolled today (counted by the optional tracker; null = don't show a count).
+    var trackerOn by remember { mutableStateOf(FeatureWatchService.isEnabled(context)) }
+    val reelsToday = featureUsage.sumOf { it.views }.takeIf { FeatureWatchService.available && (trackerOn || it > 0) }
+    // "Put Blobby on your home screen": once, after setup, if no widget is placed yet.
+    val widgetCardDone by container.settings.widgetCardDone.collectAsStateWithLifecycle(initialValue = true)
+    var widgetPlaced by remember { mutableStateOf(MascotWidgets.anyPlaced(context)) }
+    var addingWidget by remember { mutableStateOf(false) }
     var usedMinutes by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var openCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) } // only apps with an open limit
     var refreshCount by remember { mutableIntStateOf(0) }
@@ -186,6 +196,8 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     // re-check the permission and reload today's numbers.
     LifecycleResumeEffect(Unit) {
         hasAccess = container.usage.hasUsageAccess()
+        trackerOn = FeatureWatchService.isEnabled(context)
+        widgetPlaced = MascotWidgets.anyPlaced(context)
         refreshCount++
         onPauseOrDispose { }
     }
@@ -291,7 +303,7 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             when {
                 !hasAccess -> UsageAccessCard(onGrant = { SetupChecks.openUsageAccess(context) })
                 appRows.isEmpty() -> NoLimitsCard(onAdd = onEditLimits)
-                else -> MascotMoodCard(totalUsed, totalLimit, appAtLimit)
+                else -> MascotMoodCard(totalUsed, totalLimit, appAtLimit, reelsToday)
             }
         }
         if (hasAccess && trackedApps.isNotEmpty() && setupGuide != null && (setupGuide.next != null || setupGuide.justDone != null)) {
@@ -300,6 +312,16 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                     guide = setupGuide,
                     onOpen = openSetupStep,
                     onConfirm = { scope.launch { container.settings.setPopupsConfirmed() } }
+                )
+            }
+        }
+        val setupFinished = setupGuide != null && setupGuide.next == null && setupGuide.justDone == null
+        if (hasAccess && appRows.isNotEmpty() && setupFinished && !widgetCardDone && !widgetPlaced) {
+            item {
+                AddWidgetCard(
+                    mascotName = mascotTheme.mascotName,
+                    onAdd = { addingWidget = true },
+                    onNotNow = { scope.launch { container.settings.setWidgetCardDone() } }
                 )
             }
         }
@@ -358,6 +380,12 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             onDone = { scope.launch { container.settings.setBloomEvent(null) } },
             onOpenGarden = onOpenGarden
         )
+    }
+
+    // The card goes away once a widget is really placed (checked when Home comes back into view),
+    // so cancelling the phone's "Add to home screen" prompt keeps it.
+    if (addingWidget) {
+        AddWidgetDialog(onDismiss = { addingWidget = false })
     }
 
     afterUnlock?.let { action ->
@@ -482,9 +510,35 @@ private fun HeaderButton(
     ) { icon() }
 }
 
+/** Once, after setup: put the mascot widget on the home screen (Android's own "Add" prompt). */
+@Composable
+private fun AddWidgetCard(mascotName: String, onAdd: () -> Unit, onNotNow: () -> Unit) {
+    NeoCard(modifier = Modifier.fillMaxWidth(), shape = CardShapeLarge, contentPadding = PaddingValues(16.dp)) {
+        Text("Put $mascotName on your home screen", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "See today's mood without opening ScrollNah.",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+        )
+        NeoButtonPrimary("Add widget", onClick = onAdd, modifier = Modifier.fillMaxWidth())
+        TextButton(onClick = onNotNow, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)) {
+            Text("Not now", fontWeight = FontWeight.Bold, color = Neo.colors.content)
+        }
+    }
+}
+
+/** "85 reels" on the mascot's head: Reels + Shorts scrolled today. */
+@Composable
+private fun ReelCountSticker(reels: Int, modifier: Modifier = Modifier) {
+    val number = remember(reels) { java.text.NumberFormat.getIntegerInstance().format(reels) }
+    Box(modifier.clearAndSetSemantics { contentDescription = if (reels == 1) "1 reel today" else "$number reels today" }) {
+        NeoPill(if (reels == 1) "1 reel" else "$number reels")
+    }
+}
+
 /** The mascot's mood comes from today's real usage compared to the user's limits. */
 @Composable
-private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?) {
+private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?, reelsToday: Int?) {
     val mood = MoodLevel.from(totalUsed, totalLimit, anyAppAtLimit = appAtLimit != null)
     val overLimit = mood == MoodLevel.OVER
     val cardColor = if (overLimit) Orange else Lime
@@ -502,13 +556,17 @@ private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?)
     ) {
         if (pillOnTop) NeoPill(text.pill, modifier = Modifier.padding(bottom = 10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Mascot(
-                mood = mood,
-                size = 110.dp,
-                onOrange = overLimit,
-                contentDescription = LocalMascot.current.theme.mascotName,
-                pokeable = true // tap for a jump and a wiggle
-            )
+            Box(contentAlignment = Alignment.TopCenter) {
+                Mascot(
+                    mood = mood,
+                    size = 110.dp,
+                    onOrange = overLimit,
+                    contentDescription = LocalMascot.current.theme.mascotName,
+                    pokeable = true // tap for a jump and a wiggle
+                )
+                // Today's Reels/Shorts count sits on top, like the badge while scrolling.
+                reelsToday?.let { ReelCountSticker(it, Modifier.offset(y = (-10).dp)) }
+            }
             Column(
                 modifier = Modifier.padding(start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)

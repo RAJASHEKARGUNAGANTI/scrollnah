@@ -65,6 +65,7 @@ import com.unscroll.app.data.REPO_URL
 import com.unscroll.app.data.feedbackUrl
 import com.unscroll.app.service.Allowances
 import com.unscroll.app.service.FeatureWatchService
+import com.unscroll.app.ui.components.AddWidgetDialog
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.data.SetupFacts
@@ -103,6 +104,8 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val userName by container.settings.userName.collectAsStateWithLifecycle("")
     val darkMode by container.settings.darkMode.collectAsStateWithLifecycle(null)
     val timeLeftBubble by container.settings.timeLeftBubble.collectAsStateWithLifecycle(true)
+    val reelBadge by container.settings.reelBadge.collectAsStateWithLifecycle(true)
+    var addingWidget by remember { mutableStateOf(false) }
     val weekReadyNote by container.settings.weekReadyNote.collectAsStateWithLifecycle(true)
     val insteadIdeas by container.settings.insteadIdeas.collectAsStateWithLifecycle(emptyList())
     val mascot = LocalMascot.current
@@ -236,6 +239,12 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                         )
                     }
                 }
+                SettingRow(
+                    title = "Home-screen widget",
+                    detail = "${mascot.theme.mascotName} on your home screen, in today's mood",
+                    action = "Add",
+                    onClick = { addingWidget = true }
+                )
                 RewardsPicker(
                     theme = mascot.theme,
                     best = bestStreakEver,
@@ -282,6 +291,15 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                     checked = timeLeftBubble,
                     onToggle = { scope.launch { container.settings.setTimeLeftBubble(!timeLeftBubble) } }
                 )
+                if (FeatureWatchService.available) {
+                    SwitchRow(
+                        "Reel count while scrolling",
+                        "While Reels or Shorts are open, ${LocalMascot.current.theme.mascotName} shows how many you've scrolled today. " +
+                            "Needs the Reels, Shorts & website tracker.",
+                        checked = reelBadge,
+                        onToggle = { scope.launch { container.settings.setReelBadge(!reelBadge) } }
+                    )
+                }
                 SwitchRow(
                     "Week in review on Sundays",
                     "A note on Sunday evening when your week's cards are ready.",
@@ -437,6 +455,10 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             },
             dismissButton = { TextButton(onClick = { editingName = false }) { Text("Cancel", color = Neo.colors.content) } }
         )
+    }
+
+    if (addingWidget) {
+        AddWidgetDialog(onDismiss = { addingWidget = false })
     }
 
     if (settingLock) {

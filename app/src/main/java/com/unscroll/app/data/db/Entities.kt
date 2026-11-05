@@ -1,5 +1,6 @@
 package com.unscroll.app.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.DayOfWeek
@@ -63,12 +64,16 @@ data class FeatureLimit(
     val enabled: Boolean
 )
 
-/** How long a feature was on screen on one day (date is "yyyy-MM-dd"). */
+/**
+ * How long a feature was on screen on one day (date is "yyyy-MM-dd"), and for Reels/Shorts
+ * about how many videos were scrolled ([views], counted by the tracker; 0 for websites).
+ */
 @Entity(tableName = "feature_usage", primaryKeys = ["date", "featureId"])
 data class FeatureUsage(
     val date: String,
     val featureId: String,
-    val millis: Long
+    val millis: Long,
+    @ColumnInfo(defaultValue = "0") val views: Int = 0
 )
 
 /** One answer on the Pause screen: why the user was opening the app and what they chose. */

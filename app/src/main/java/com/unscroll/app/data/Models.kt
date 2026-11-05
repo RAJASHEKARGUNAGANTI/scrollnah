@@ -61,7 +61,8 @@ enum class Feature(
     val title: String,
     val letter: String,
     val viewIds: List<String>,
-    val webPaths: List<String> // the same feature on the website, e.g. youtube.com/shorts/...
+    val webPaths: List<String>, // the same feature on the website, e.g. youtube.com/shorts/...
+    val pagerId: String         // the vertical pager of videos; its scrolling counts them (ReelCounter)
 ) {
     INSTAGRAM_REELS(
         id = "instagram_reels",
@@ -69,7 +70,8 @@ enum class Feature(
         title = "Instagram Reels",
         letter = "R",
         viewIds = listOf("clips_viewer_view_pager", "clips_viewer_container", "clips_video_container"),
-        webPaths = listOf("reels", "reel/")
+        webPaths = listOf("reels", "reel/"),
+        pagerId = "clips_viewer_view_pager"
     ),
     YOUTUBE_SHORTS(
         id = "youtube_shorts",
@@ -77,7 +79,8 @@ enum class Feature(
         title = "YouTube Shorts",
         letter = "S",
         viewIds = listOf("reel_recycler", "reel_player_page_container", "reel_watch_player"),
-        webPaths = listOf("shorts")
+        webPaths = listOf("shorts"),
+        pagerId = "reel_recycler"
     );
 
     companion object {
