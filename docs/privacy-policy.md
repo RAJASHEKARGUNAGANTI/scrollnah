@@ -28,9 +28,9 @@ If a parent turns on **Parent lock** (for a child's phone), ScrollNah also check
 
 It notes these in a short report that only someone with the parent PIN or pattern can open in ScrollNah's Settings. **Uninstall protection** (optional) makes ScrollNah a "device admin app" that asks for **no device powers at all**: Android simply asks to turn it off before ScrollNah can be uninstalled. ScrollNah cannot lock, wipe or control the phone.
 
-### Optional Reels, Shorts and website tracker (GitHub version only)
+### Optional Reels, Shorts and website tracker (off by default)
 
-The version of ScrollNah downloaded from GitHub includes an optional tracker that uses Android's Accessibility service, **switched off by default**. If you turn it on, it only checks which screen is open in Instagram and YouTube (to spot Reels and Shorts), notices when their videos scroll (to count about how many Reels and Shorts you watch), and reads your browser's address bar (to count time on sites like youtube.com). It saves **only minutes and that count**, never what is on the screen, which videos you watched or which pages you visited. It never reads messages, passwords or other apps. **The Google Play version of ScrollNah does not include this tracker.**
+ScrollNah includes an optional tracker that uses Android's Accessibility service. It is **switched off by default**, and ScrollNah explains what it reads and asks you to agree before sending you to Android's settings to turn it on. If you turn it on, it only checks which screen is open in Instagram and YouTube (to spot Reels and Shorts), notices when their videos scroll (to count about how many Reels and Shorts you watch), and reads your browser's address bar (to count time on the websites of apps you limit, like youtube.com). It uses this only for your Reels, Shorts and website limits, the reel count and your weekly report. When you reach a Reels or Shorts limit you set (in Firm or Beast mode), it presses Back once to leave that screen, and that is the only thing it does on its own. It saves **only minutes and that count**, on your phone, never what is on the screen, which videos you watched or which pages you visited, and it sends nothing anywhere. It never reads messages, passwords or other apps. You can turn it off any time in Android's Accessibility settings.
 
 ## What ScrollNah stores
 
@@ -40,6 +40,7 @@ All of this is stored only on your phone, inside the app's private storage:
 - Your "Do this instead" ideas for the Pause screen, and which hat or pot colour your mascot wears
 - Daily minute totals, your streak and Bloomy's garden
 - For the weekly report: per day, the minutes and number of visits for each app you limit, the time of your first use, and how many minutes fell in each hour of the day
+- If the optional tracker is on: per day, the minutes in Reels, Shorts and limited websites, and about how many Reels and Shorts videos you scrolled (just the number)
 - Your answers on the Pause screen (for example "Bored") and whether you took a break, used for your weekly report
 - Your name, if you type one, so the app can say hello
 - Your mascot and light/dark choice

@@ -38,7 +38,9 @@ android {
 
     // Two versions of the app, from the same code:
     //  - github: everything, including the optional Reels/Shorts & website tracker (an Accessibility service).
-    //  - play:   for the Play Store, without the tracker (Google reviews Accessibility use very strictly).
+    //  - play:   for the Play Store. Since 2026-11-06 it has the tracker too (needs the Accessibility
+    //            declaration in Play Console, see store/play-console-answers.md). If Google says no,
+    //            set TRACKER_AVAILABLE to false here and put the removals back in src/play/AndroidManifest.xml.
     // Same applicationId. Play signs its installs with Google's own key, though, so a GitHub
     // APK can't update a Play install (or the other way round): switching means uninstalling first.
     flavorDimensions += "store"
@@ -50,7 +52,7 @@ android {
         }
         create("play") {
             dimension = "store"
-            buildConfigField("boolean", "TRACKER_AVAILABLE", "false")
+            buildConfigField("boolean", "TRACKER_AVAILABLE", "true")
         }
     }
 

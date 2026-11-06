@@ -1,6 +1,6 @@
 # Play Console: draft answers for ScrollNah (Play version)
 
-The Play version is built with `./gradlew bundlePlayRelease`. It has **no Accessibility service**, so the Accessibility declaration does not apply. Check each answer against the current wording in Play Console before submitting.
+The Play version is built with `./gradlew bundlePlayRelease`. Since 2026-11-06 (version after 2.4.2) it includes the **optional Reels/Shorts & website tracker**, an Accessibility service, so the **Accessibility API declaration** below must be filled in with the first upload that has it. Check each answer against the current wording in Play Console before submitting.
 
 ## Policy > App content
 
@@ -12,6 +12,8 @@ The Play version is built with `./gradlew bundlePlayRelease`. It has **no Access
 **All functionality is available without special access** (no login).
 Optional instructions for reviewers:
 > No account needed. To see ScrollNah in action: open ScrollNah, allow Usage access when asked, add an app (for example Chrome) in Limits with a 5-minute limit, choose "Firm", tap "Lock it in", then use that app for 5 minutes. The Pause screen appears over it. To see it straight away, use Limits > "See the Pause screen" (a preview that saves nothing). Focus mode on Home (or the "Focus" Quick Settings tile) pauses limited apps at once. Break reminders (Limits > Break reminders) can be set to remind after a few minutes on one app.
+>
+> Optional Reels/Shorts & website tracker (Accessibility, off by default): open Limits and scroll to "Reels & Shorts". The "Limit Reels, Shorts & websites" card says what the tracker reads; tap "Agree & open Settings", then in Accessibility > Downloaded apps turn on "ScrollNah Reels & Shorts tracker". With YouTube or Instagram installed, open Shorts or Reels and swipe: a small mascot badge counts the videos, and Limits > "Reels & Shorts a day" brings up the Pause screen at that number. "Not now" on the card (or in Settings > Permissions) declines; nothing is turned on.
 >
 > Note on other apps' media: if an app the user chose to limit keeps playing in a picture-in-picture window after it is blocked (over the limit, or during Focus or Bedtime), ScrollNah pauses that playback by briefly requesting audio focus (the standard Android media API, no special permission) and shows a notification explaining why. It never affects apps the user hasn't limited, and nothing happens in Chill mode.
 
@@ -39,7 +41,24 @@ Optional instructions for reviewers:
 - Is all user data encrypted in transit? Not applicable (nothing is transmitted).
 - "Share this card" on the weekly report: only when the user taps it, ScrollNah saves a picture of that card and opens Android's share menu; the picture goes only to the app the user picks. Nothing goes to the developer, so it isn't "collected".
 - "Save a backup" in Settings: only when the user taps it, ScrollNah writes a JSON file to a place the user picks with Android's file picker. ScrollNah never uploads it, so it isn't "collected" or "shared" either.
+- The optional Reels/Shorts & website tracker (Accessibility, off by default) reads, on the phone only, which screen is open in Instagram and YouTube, when their videos scroll, and the browser's address bar. It keeps only minutes and a count of videos in the app's private storage and sends nothing anywhere, so this isn't "collected" either (no web browsing history is saved: the address is only matched against the limited apps' websites and dropped).
 - Do you provide a way for users to request that their data is deleted? Users can delete data in the app (**Settings > Data > Clear history**) or by uninstalling. If asked for a URL, use the privacy policy link.
+
+### Accessibility API (needed from the first Play upload with the tracker)
+ScrollNah is not an accessibility tool (`isAccessibilityTool` isn't set), so Play asks for this declaration. Google's checklist: https://support.google.com/googleplay/android-developer/answer/10964491
+
+- **Why does your app use the AccessibilityService API?** App functionality (only).
+- **Does your app collect or share personal or sensitive user data through it?** No. Everything is processed on the phone; only minutes and a count of Reels/Shorts videos are saved, in the app's private storage, and nothing is sent anywhere (the app has no INTERNET permission).
+- **If a description box is shown:**
+  > ScrollNah is a digital wellbeing app. Its optional tracker (off by default) uses the AccessibilityService API only to notice when the user is in Instagram Reels or YouTube Shorts, to count about how many of those videos they scroll, and to read the browser's address bar so time on the websites of apps they chose to limit (like youtube.com) counts too. Android's usage statistics only say which app is open, not whether the user is in Reels/Shorts or which website is showing, so this can't be done another way. The service only looks at Instagram, YouTube and browsers, saves only minutes and a count on the device, never stores screen content or web addresses, never reads messages or passwords, and sends nothing off the device. Its only action is a fixed rule the user sets up: when their own Reels/Shorts limit is reached (Firm or Beast mode), it presses Back once to leave that screen before ScrollNah's Pause screen appears. It performs no gestures (canPerformGestures="false") and nothing else on its own. Before sending the user to Android's settings, ScrollNah shows an in-app disclosure of what it reads and how it's used, with "Agree & open Settings" and "Not now".
+- **Video link** (YouTube, Unlisted). Show, in this order, slowly, with captions if anything isn't obvious:
+  1. Open ScrollNah on a phone (Home).
+  2. Go to **Limits**, scroll to **Reels & Shorts**: the **"Limit Reels, Shorts & websites"** card. Pause so the whole text can be read; tap the chevron to show the notes too.
+  3. **Decline:** tap **Not now** (the card goes away and nothing is turned on). Go to another tab and back to **Limits**: the disclosure is shown again. (Settings > Permissions > "Reels, Shorts & website tracker" shows the same disclosure as a dialog.)
+  4. **Agree:** tap **Agree & open Settings** > Android's Accessibility settings > Downloaded apps > **ScrollNah Reels & Shorts tracker** > turn on > Android's own "Allow" confirmation.
+  5. **Core feature:** back in ScrollNah, open YouTube Shorts (or Instagram Reels) and swipe a few videos: the mascot badge at the top counts them. Then show Home ("N reels") and, with "Reels & Shorts a day" set low in Limits, the Pause screen at that number.
+  6. Caption at the end: "The tracker only spots Reels/Shorts and limited websites and counts them. Nothing leaves the phone."
+- If you change how the tracker uses Accessibility later, Google says to submit this declaration again.
 
 ### Advertising ID
 **No**, the app does not use an advertising ID. (The manifest has no AD_ID permission.)

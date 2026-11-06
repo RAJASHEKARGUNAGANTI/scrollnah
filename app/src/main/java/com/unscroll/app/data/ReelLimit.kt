@@ -2,7 +2,7 @@ package com.unscroll.app.data
 
 /**
  * The daily reels limit: "50 Reels & Shorts a day" (both apps together, counted by the tracker,
- * so GitHub version only). At the limit the Pause screen comes up, like the minute limits.
+ * so only where the tracker is on). At the limit the Pause screen comes up, like the minute limits.
  *
  * It's saved as a FeatureLimit row with [ID], the number of videos in its limitMinutes field, so it
  * saves with "Lock it in", goes into backups and gets Beast mode's cool-down like the other

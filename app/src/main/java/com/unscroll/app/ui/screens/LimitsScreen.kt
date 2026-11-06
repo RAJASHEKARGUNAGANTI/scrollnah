@@ -112,6 +112,7 @@ import com.unscroll.app.ui.components.letterFor
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.spokenDuration
 import com.unscroll.app.ui.components.tileColorFor
+import com.unscroll.app.ui.components.TrackerDisclosure
 import com.unscroll.app.ui.theme.Background
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.ButtonShape
@@ -177,11 +178,13 @@ fun LimitsScreen(
     var workDraft by remember { mutableStateOf<FocusRules.WorkHours?>(null) }
     val workHours = workDraft ?: savedWork
 
-    // Only offer Reels/Shorts for apps that are actually installed (and never in the Play version).
+    // Only offer Reels/Shorts for apps that are actually installed (and only if this version has the tracker).
     val features = remember {
         if (FeatureWatchService.available) Feature.entries.filter { isAppInstalled(context, it.packageName) } else emptyList()
     }
     var watcherEnabled by remember { mutableStateOf(FeatureWatchService.isEnabled(context)) }
+    // "Not now" on the tracker card hides it until Limits is opened again.
+    var trackerDeclined by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
         watcherEnabled = FeatureWatchService.isEnabled(context)
         onPauseOrDispose { }
@@ -376,8 +379,13 @@ fun LimitsScreen(
                     )
                 }
             }
-            if (!watcherEnabled) {
-                item { WatcherSetupCard(onTurnOn = { FeatureWatchService.openAccessibilitySettings(context) }) }
+            if (!watcherEnabled && !trackerDeclined) {
+                item {
+                    WatcherSetupCard(
+                        onTurnOn = { FeatureWatchService.openAccessibilitySettings(context) },
+                        onNotNow = { trackerDeclined = true }
+                    )
+                }
             }
             items(features, key = { it.id }) { feature ->
                 val saved = featureLimits.find { it.featureId == feature.id }
@@ -1201,10 +1209,11 @@ internal fun AddAppButton(onClick: () -> Unit) {
  * (Google Play requires this "prominent disclosure").
  */
 @Composable
-private fun WatcherSetupCard(onTurnOn: () -> Unit) {
-    // Compact by default: the heading, the key facts and the button. The chevron shows the rest
-    // (the payment-app note and where the switch is). The key facts sit right above the button,
-    // which is the "prominent disclosure + consent" Google asks for before Accessibility.
+private fun WatcherSetupCard(onTurnOn: () -> Unit, onNotNow: () -> Unit) {
+    // Compact by default: the heading, what the tracker reads and does, and the buttons. The
+    // chevron shows the rest (the payment-app note and where the switch is). The facts sit right
+    // above "Agree", with "Not now" to say no: the "prominent disclosure + consent" Google Play
+    // asks for before Accessibility (same words as Settings, see TrackerDisclosure).
     var expanded by rememberSaveable { mutableStateOf(false) }
     val chevronTurn by animateFloatAsState(if (expanded) -90f else 90f, label = "chevron")
     NeoCard(shape = CardShapeLarge, backgroundColor = Lilac, contentPadding = PaddingValues(16.dp)) {
@@ -1219,7 +1228,7 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 NeoPill("Optional")
                 Text(
-                    "Limit Reels, Shorts & websites",
+                    TrackerDisclosure.TITLE,
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -1228,29 +1237,19 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit) {
                 ForwardChevronIcon(Modifier.rotate(chevronTurn), size = 24.dp)
             }
         }
-        Text(
-            "Uses Accessibility only to spot Reels, Shorts and limited websites, and count the videos. " +
-                "Never reads messages or passwords. Nothing leaves your phone.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 6.dp)
-        )
+        Text(TrackerDisclosure.WHAT, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
         AnimatedVisibility(visible = expanded) {
-            Text(
-                "It only checks which screen is open in Instagram and YouTube, when their videos scroll, " +
-                    "and your browser's address bar. Only minutes and the count are saved, on this phone.\n\n" +
-                    "Note: some UPI and bank apps (like BHIM) won't open while any app uses Accessibility. " +
-                    "Turn this off while you pay; your other limits keep working.\n\n" +
-                    "In Settings: Downloaded apps > ScrollNah > turn on.",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            Text(TrackerDisclosure.NOTES, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
         }
         NeoButtonPrimary(
-            "Agree & open Settings",
+            TrackerDisclosure.AGREE,
             onClick = onTurnOn,
             backgroundColor = Lime,
             modifier = Modifier.padding(top = 14.dp)
         )
+        TextButton(onClick = onNotNow, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)) {
+            Text(TrackerDisclosure.DECLINE, fontWeight = FontWeight.Bold, color = Neo.colors.content)
+        }
     }
 }
 

@@ -236,7 +236,7 @@ private fun reviewCards(report: WeekReport, theme: MascotTheme): List<ReviewCard
         }
     }
 
-    // 3. Reels & Shorts (GitHub version, once the tracker has counted some).
+    // 3. Reels & Shorts (once the tracker has counted some).
     report.reels?.let { reels ->
         cards += ReviewCard(CheekPink) {
             val short = LocalShortCard.current

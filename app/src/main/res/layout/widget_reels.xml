@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Reel count widget (2x2, GitHub version): "12 / reels today", a line from the mascot, and the
+<!-- Reel count widget (2x2, needs the tracker): "12 / reels today", a line from the mascot, and the
      mascot in today's mood. Filled in by MascotWidgets.kt (reelViews). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Reel count (2x2) widget, GitHub version only (layout/widget_reels.xml). Drawn by MascotWidgets.kt;
+<!-- Reel count (2x2) widget, needs the tracker (layout/widget_reels.xml). Drawn by MascotWidgets.kt;
      the tracker redraws it while Reels/Shorts are open. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_reels_description"

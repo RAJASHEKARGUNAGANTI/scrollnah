@@ -102,7 +102,7 @@ object DemoMode {
                 TrackedApp(SNAPCHAT, "Snapchat", 20, addedAt = now + 2)
             )
         )
-        if (BuildConfig.TRACKER_AVAILABLE) { // Reels/Shorts only exist in the GitHub version
+        if (BuildConfig.TRACKER_AVAILABLE) { // Reels/Shorts need the tracker
             db.featureDao().upsertLimits(listOf(FeatureLimit(Feature.YOUTUBE_SHORTS.id, 15, true)))
             db.featureDao().addAndGet(today.toString(), Feature.YOUTUBE_SHORTS.id, 9 * 60_000L)
             // Two weeks of Reels/Shorts counts (fewer this week), about 14 s each, for the reel cards.

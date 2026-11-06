@@ -82,6 +82,7 @@ import com.unscroll.app.data.SetupStep
 import com.unscroll.app.ui.components.ConfirmPopupsLink
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
+import com.unscroll.app.ui.components.TrackerDisclosureDialog
 import com.unscroll.app.ui.mascot.LocalMascot
 import com.unscroll.app.ui.mascot.Mascot
 import com.unscroll.app.ui.mascot.MascotLook
@@ -141,6 +142,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val guardActive = remember(refresh) { TamperWatch.isGuardActive(context) }
     var settingLock by remember { mutableStateOf(false) }
     var confirmLockOff by remember { mutableStateOf(false) }
+    var showingTrackerDisclosure by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
 
     // Android's own "save as" and "open" screens: the user picks where the file goes (no permission needed).
@@ -362,7 +364,8 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                 }
                 if (FeatureWatchService.available) {
                     PermissionRow("Reels, Shorts & website tracker", "Optional, for Reels, Shorts & websites", perms.tracker) {
-                        FeatureWatchService.openAccessibilitySettings(context)
+                        // Turning it on: say what it reads first (Google Play's prominent disclosure).
+                        if (perms.tracker) FeatureWatchService.openAccessibilitySettings(context) else showingTrackerDisclosure = true
                     }
                 }
                 if (perms.tracker) {
@@ -475,6 +478,16 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
 
     if (addingWidget) {
         AddWidgetDialog(onDismiss = { addingWidget = false })
+    }
+
+    if (showingTrackerDisclosure) {
+        TrackerDisclosureDialog(
+            onAgree = {
+                showingTrackerDisclosure = false
+                FeatureWatchService.openAccessibilitySettings(context)
+            },
+            onDismiss = { showingTrackerDisclosure = false }
+        )
     }
 
     if (settingLock) {

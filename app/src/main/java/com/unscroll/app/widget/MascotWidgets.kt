@@ -52,7 +52,7 @@ abstract class MascotWidgetProvider : AppWidgetProvider() {
 /** Medium widget (4x2). Keeps the old class name so widgets people already placed keep working. */
 class BlobbyWidget : MascotWidgetProvider()
 
-/** Reel count widget (2x2, GitHub version only): "12 reels today" with the mascot. */
+/** Reel count widget (2x2, needs the tracker): "12 reels today" with the mascot. */
 class ReelCountWidgetReceiver : MascotWidgetProvider()
 
 /** Small widget (2x2): mascot + "4 min left" + "on Instagram today". */
@@ -141,7 +141,7 @@ object MascotWidgets {
         MEDIUM("Mood, top app and streak", "4 × 2", BlobbyWidget::class.java)
     }
 
-    /** The widgets this version offers (the Play version has no tracker, so no reel count widget). */
+    /** The widgets this version offers (no reel count widget if this version has no tracker). */
     val available: List<Kind> get() = Kind.entries.filter { it != Kind.REELS || FeatureWatchService.available }
 
     /** True if this phone's home screen lets apps add a widget for the user (most do; some Xiaomi phones don't). */

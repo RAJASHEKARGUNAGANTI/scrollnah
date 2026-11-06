@@ -278,7 +278,7 @@ internal fun HourBars(hours: IntArray, peak: Int, peakColor: androidx.compose.ui
 }
 
 /**
- * Reels & Shorts this week (GitHub version, from the tracker's counts): how many videos, each
+ * Reels & Shorts this week (from the tracker's counts): how many videos, each
  * day's bar, the change from last week, about how long each one got, and where they were.
  */
 @Composable

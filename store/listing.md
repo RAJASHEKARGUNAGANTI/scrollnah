@@ -8,7 +8,7 @@ ScrollNah: Scroll Less
 ## Short description (66/80)
 Set limits on scrolling apps. A cute mascot nudges you to look up.
 
-## Full description (2788/4000)
+## Full description (3257/4000)
 ```
 Spending more time scrolling than you meant to? ScrollNah helps you cut back, without guilt trips. Pick the apps that eat your day, give each one a daily budget, and let a friendly mascot keep you company.
 
@@ -40,6 +40,9 @@ YOUR WEEK, IN DETAIL
 • Your mascot's verdict on the week
 • Week in review: swipeable cards you can share as a picture
 
+REELS, SHORTS AND WEBSITES (OPTIONAL)
+Limit just the endless-video part of Instagram and YouTube, or a daily number of Reels and Shorts, and see how many you scrolled each day and week. This optional tracker uses Android's Accessibility service, is off until you turn it on, and ScrollNah explains exactly what it reads first. It only saves minutes and a count, on your phone.
+
 MORE
 • Focus mode: lock your apps for 30 minutes to 2 hours, also from a Quick Settings tile
 • Bedtime: pause your time-sinks at night
@@ -56,6 +59,7 @@ PERMISSIONS, IN PLAIN WORDS
 • Notifications: for reminders
 • Display over other apps: to show the Pause screen and the mascot bubble
 • Run in the background: so reminders show up on time
+• Accessibility (optional, off by default): only for the Reels, Shorts and website tracker
 
 ScrollNah is not affiliated with Instagram, YouTube, Snapchat or any other app it helps you limit.
 ```

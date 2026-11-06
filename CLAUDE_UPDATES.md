@@ -496,6 +496,24 @@ debug gallery (below).
   Verdict: "120 fewer reels than last week. My thumbs say thank you." (+-20) or "412 reels this week. I
   counted every single one." (100+). Sunday note: "...: 7h 34m and 412 reels, 38 min less...". Demo mode
   seeds two weeks of reel counts. Checked on the emulator (demo) at normal size and 360x640dp, font 1.3.
+- **Tracker in the Play version (developer, 2026-11-06):** after first deciding to wait for production access,
+  the developer chose to add it now. `play` gets `TRACKER_AVAILABLE = true` and `src/play/AndroidManifest.xml`
+  no longer removes `FeatureWatchService` / the reel count widget (Play debug APK checked: both in the manifest).
+  Google's checklist (support.google.com/googleplay/android-developer/answer/10964491): in-app disclosure of
+  what's read and how it's used, affirmative consent, a way to decline, and a video showing the disclosure,
+  declining (and the disclosure coming back), agreeing incl. Android's permission, and the core feature. So:
+  `ui/components/TrackerDisclosure.kt` holds one text (now says what's read: Instagram/YouTube screen, video
+  scrolling, browser address bar; what for; the one Back press at the user's own Reels/Shorts limit; only
+  minutes + count saved, nothing sent). The Limits card shows it in full above "Agree & open Settings", plus
+  "Not now" (hides the card until Limits opens again). Settings > Permissions' tracker row used to open
+  Accessibility settings straight away: now it shows `TrackerDisclosureDialog` first (only when the tracker is
+  off). The service description string mentions the Back press too. Privacy policy (no longer "GitHub only"),
+  store listing (an optional-tracker paragraph + Accessibility in the permissions list, 3257/4000 chars) and
+  `store/play-console-answers.md` (Accessibility declaration answers, reviewer steps, data safety note, video
+  steps) updated. Checked on the emulator (Play debug, demo): card, "Not now", card back after reopening Limits,
+  Settings dialog ("Not now" closes; "Agree" opens Accessibility settings with the PiP hint), turning it on.
+  Not recorded yet: the declaration video. The emulator's YouTube can't play Shorts without a Google sign-in,
+  so the core-feature part needs a real phone.
 - **Setup reality check:** new onboarding step (now Step 5): 1-5 h chips -> "About N days a year" (h*365/24) +
   "win back 30 min a day = about 8 days a year", and a switch that turns on the slow-down plan.
 - **Settings hints:** first built as an overlay window, but Android 12+ hides non-system overlays on Settings

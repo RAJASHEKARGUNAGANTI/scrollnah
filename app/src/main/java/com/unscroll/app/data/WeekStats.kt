@@ -33,7 +33,7 @@ data class CalendarDay(val date: LocalDate, val minutes: Int?, val limit: Int?, 
 }
 
 /**
- * Reels & Shorts videos over the last 7 days, from the tracker's counts (GitHub version).
+ * Reels & Shorts videos over the last 7 days, from the tracker's counts.
  * [perDay] is oldest first, today last. [vsLastWeek] = more (+) or fewer (-) videos than the
  * 7 days before (null = the tracker wasn't counting yet then). [byFeature] = feature id to
  * videos, most first. [watchMillis] = time in the Reels/Shorts viewers. [countedDays] = days of

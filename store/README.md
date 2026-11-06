@@ -1,6 +1,6 @@
 # Play Store kit
 
-Everything needed for the Google Play listing of the **Play version** (no Reels/Shorts tracker).
+Everything needed for the Google Play listing of the **Play version** (since 2026-11-06 it includes the optional Reels/Shorts & website tracker, which needs the Accessibility declaration in `play-console-answers.md`).
 
 | File | What it is |
 |---|---|

@@ -38,7 +38,7 @@ class WeekReport(
     val flowerDates: Set<String>,
     val todayMinutes: Int,
     val todayLimit: Int,
-    val reels: ReelWeek?,                // Reels & Shorts videos (GitHub version, once the tracker has counted some)
+    val reels: ReelWeek?,                // Reels & Shorts videos (once the tracker has counted some)
     val reelLimit: Int?,                 // the daily reels limit, if one is on
     val verdictFacts: MascotLines.WeekFacts
 ) {
@@ -97,7 +97,7 @@ suspend fun loadWeekReport(container: AppContainer, apps: List<TrackedApp>): Wee
     val walkedAway = pauseDao.walkedAwayCount(weekStartMs)
     val peakHour = WeekStats.peakHour(hours)
 
-    // Reels & Shorts (GitHub version): the tracker's video counts. A week with none is shown only
+    // Reels & Shorts: the tracker's video counts. A week with none is shown only
     // while the tracker is on (otherwise "0 reels" would just mean it wasn't counting).
     val featureDao = container.database.featureDao()
     val reels = if (!FeatureWatchService.available) null else WeekStats.reelWeek(
