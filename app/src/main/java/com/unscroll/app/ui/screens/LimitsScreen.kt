@@ -1,6 +1,11 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class) // stickyHeader
+
 package com.unscroll.app.ui.screens
 
 import com.unscroll.app.service.SoundFx
+import androidx.compose.foundation.selection.selectableGroup
+import java.time.LocalDate
+import com.unscroll.app.ui.components.countText
 import com.unscroll.app.ui.theme.PillShape
 
 import com.unscroll.app.ui.components.PencilIcon
@@ -154,7 +159,9 @@ fun LimitsScreen(
     onSaved: () -> Unit = {},
     onUnsavedChanges: (Boolean) -> Unit = {}, // tells the app whether leaving needs a prompt
     pendingLeave: (() -> Unit)? = null,       // set by the app when the user tries to leave with unsaved changes
-    onLeaveCancelled: () -> Unit = {}
+    onLeaveCancelled: () -> Unit = {},
+    openReels: Boolean = false,               // open on the "Reels & Shorts" tab (Home's reels card)
+    onReelsOpened: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val container = appContainer()
@@ -196,6 +203,21 @@ fun LimitsScreen(
         watcherEnabled = FeatureWatchService.isEnabled(context)
         onPauseOrDispose { }
     }
+
+    // Two tabs when Reels/Shorts can be limited on this phone: whole apps, and Reels & Shorts.
+    // One "Lock it in" saves both (the edits are kept for both tabs).
+    var tab by rememberSaveable { mutableStateOf(LimitsTab.APPS) }
+    LaunchedEffect(openReels) {
+        if (openReels) {
+            tab = LimitsTab.REELS
+            onReelsOpened()
+        }
+    }
+    val showTabs = features.isNotEmpty()
+    val currentTab = if (showTabs) tab else LimitsTab.APPS
+    // Today's Reels + Shorts, shown on the Reels tab once the tracker counts them.
+    val reelsToday by remember { featureDao.observeUsage(LocalDate.now().toString()) }
+        .collectAsStateWithLifecycle(emptyList())
 
     // Is anything different from what's saved? (Changing a value and changing it back counts as no change.)
     val hasChanges = apps.any { app ->
@@ -350,6 +372,23 @@ fun LimitsScreen(
     ) {
         item { ScreenTitle("Your time-sinks", onBack = { if (hasChanges) askBeforeLeaving = onBack else onBack() }) }
         if (loadedApps == null) return@LazyColumn // still loading
+        if (showTabs) {
+            // Stays at the top while the list scrolls under it.
+            stickyHeader(key = "tabs") {
+                LimitsTabs(
+                    selected = currentTab,
+                    onSelect = { newTab ->
+                        tab = newTab
+                        // Start the other tab from its top (the tabs stay in view).
+                        if (listState.firstVisibleItemIndex > 1) scope.launch { listState.scrollToItem(1) }
+                    },
+                    modifier = Modifier
+                        .background(Neo.colors.background) // covers the list scrolling underneath
+                        .padding(vertical = 4.dp)
+                )
+            }
+        }
+        if (currentTab == LimitsTab.APPS) {
         item {
             Text(
                 if (apps.isEmpty()) "Add the apps that eat your day and give each a daily budget."
@@ -420,45 +459,6 @@ fun LimitsScreen(
             }
         }
 
-        if (features.isNotEmpty()) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 8.dp)) {
-                    Text("Reels & Shorts", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-                    Text(
-                        "Limit just the endless-video part of an app, separately from the app itself.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-            if (!watcherEnabled && !trackerDeclined) {
-                item {
-                    WatcherSetupCard(
-                        onTurnOn = { FeatureWatchService.openAccessibilitySettings(context) },
-                        onNotNow = { trackerDeclined = true }
-                    )
-                }
-            }
-            items(features, key = { it.id }) { feature ->
-                val saved = featureLimits.find { it.featureId == feature.id }
-                val draft = featureDrafts[feature.id]
-                    ?: Draft(saved?.limitMinutes ?: DEFAULT_FEATURE_LIMIT_MINUTES, saved?.enabled ?: false)
-                LimitEditRow(
-                    name = feature.title,
-                    packageName = feature.packageName,
-                    letter = feature.letter,
-                    tileColor = tileColorFor(feature.packageName),
-                    draft = draft,
-                    onChange = { featureDrafts[feature.id] = it },
-                    onRemove = null
-                )
-            }
-            item(key = ReelLimit.ID) {
-                val saved = featureLimits.find { it.featureId == ReelLimit.ID }
-                val draft = featureDrafts[ReelLimit.ID] ?: Draft(saved?.limitMinutes ?: ReelLimit.DEFAULT, saved?.enabled ?: false)
-                ReelLimitRow(draft = draft, onChange = { featureDrafts[ReelLimit.ID] = it })
-            }
-        }
-
         item {
             BedtimeCard(bedtime = bedtime, onChange = { bedtimeDraft = it })
         }
@@ -503,6 +503,80 @@ fun LimitsScreen(
                 settings = breakSettings,
                 onClick = { if (hasChanges) askBeforeLeaving = onOpenBreaks else onOpenBreaks() }
             )
+        }
+        } else {
+        // ---- The "Reels & Shorts" tab ----
+        item {
+            Text(
+                "Limit just the endless-video part of Instagram and YouTube, and see how many Reels and Shorts you scroll.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+        if (watcherEnabled) {
+            item {
+                val count = reelsToday.sumOf { it.views }
+                Text(
+                    if (count == 1) "So far today: 1 Reel or Short" else "So far today: ${countText(count)} Reels & Shorts",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        } else if (!trackerDeclined) {
+            item {
+                WatcherSetupCard(
+                    onTurnOn = { FeatureWatchService.openAccessibilitySettings(context) },
+                    onNotNow = { trackerDeclined = true }
+                )
+            }
+        }
+        item(key = ReelLimit.ID) {
+            val saved = featureLimits.find { it.featureId == ReelLimit.ID }
+            val draft = featureDrafts[ReelLimit.ID] ?: Draft(saved?.limitMinutes ?: ReelLimit.DEFAULT, saved?.enabled ?: false)
+            ReelLimitRow(draft = draft, onChange = { featureDrafts[ReelLimit.ID] = it })
+        }
+        items(features, key = { it.id }) { feature ->
+            val saved = featureLimits.find { it.featureId == feature.id }
+            val draft = featureDrafts[feature.id]
+                ?: Draft(saved?.limitMinutes ?: DEFAULT_FEATURE_LIMIT_MINUTES, saved?.enabled ?: false)
+            LimitEditRow(
+                name = feature.title,
+                packageName = feature.packageName,
+                letter = feature.letter,
+                tileColor = tileColorFor(feature.packageName),
+                draft = draft,
+                onChange = { featureDrafts[feature.id] = it },
+                onRemove = null
+            )
+        }
+        // Strictness, bedtime and work hours are shared: they live on the Apps tab.
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "${strictness.title}: " + when (strictness) {
+                        Strictness.CHILL -> "a notification at your limit."
+                        Strictness.FIRM -> "the Pause screen at your limit."
+                        Strictness.BEAST -> "locked at your limit until midnight."
+                    } + " Bedtime and work hours count here too.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Change on the Apps tab",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(role = Role.Button) {
+                            tab = LimitsTab.APPS
+                            // To the end of the Apps tab, where "How strict should I be?" is
+                            // (a too-big index stops at the last item).
+                            scope.launch { listState.scrollToItem(10_000) }
+                        }
+                        .heightIn(min = 44.dp)
+                        .wrapContentHeight()
+                        .padding(end = 8.dp)
+                )
+            }
+        }
         }
         // Beast mode: show where the cool-down is.
         if (savedStrictness == Strictness.BEAST) {
@@ -839,6 +913,47 @@ private fun TimeChip(text: String, what: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(text, fontWeight = FontWeight.Bold)
+    }
+}
+
+/** The two parts of Limits: whole apps, and Reels & Shorts (only when one of those apps is installed). */
+enum class LimitsTab(val title: String) { APPS("Apps"), REELS("Reels & Shorts") }
+
+/** "Apps | Reels & Shorts" at the top of Limits: the picked one is lime. */
+@Composable
+private fun LimitsTabs(selected: LimitsTab, onSelect: (LimitsTab) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clip(PillShape)
+            .background(Neo.colors.surface, PillShape)
+            .border(BorderWidth, Neo.colors.outline, PillShape)
+            .padding(4.dp)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        LimitsTab.entries.forEach { item ->
+            val picked = item == selected
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
+                    .clip(PillShape)
+                    .background(if (picked) Lime else Neo.colors.surface, PillShape)
+                    .then(if (picked) Modifier.border(BorderWidth, Ink, PillShape) else Modifier)
+                    .selectable(selected = picked, role = Role.Tab, onClick = { onSelect(item) })
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    item.title,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (picked) Ink else Neo.colors.content // Ink on lime, in dark mode too
+                )
+            }
+        }
     }
 }
 

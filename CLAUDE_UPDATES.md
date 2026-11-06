@@ -443,6 +443,31 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
+## Home UX pass (2026-11-06, developer: "is the UI good for UX?"; not released yet)
+- Before: Today's limits came after the reels card, Focus, streak and fun stat, so it was always below the fold;
+  the suggestion card was the biggest thing on the page. Now (see CLAUDE.md, Home): mascot card -> (setup) ->
+  (running Focus) -> Today's limits -> one `SuggestionStrip` -> streak -> fun stat -> one-row Focus.
+- Mascot card: `TimeLeftBar` ("49 min left today", ink bar on white); the reel count is a white pill next to the
+  mood pill (`FlowRow`, wraps on narrow phones) instead of covering the mascot's head. Streak card drops its
+  "(49 min left)". Fun stat leads with "46 min of scrolling today".
+- Emulator (demo mode): light, dark, 360x640 at font 1.3 (Focus's "2 hours" wraps to a 2nd line). Note for
+  tests: `adb shell monkey -p <pkg> 1` launches AND injects one random event (it tapped "Not now" twice);
+  launch with `am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n ...` instead.
+  Screenshots: `design/review/home-new-light.png`, `home-new-dark.png` (before: `home-2026-11-06.png`).
+## Reel counting easier to find: Limits tabs + Home card (2026-11-06, after 2.5.2; not released yet)
+- Developer: "the count reels option is gone into some corner". It was only on Limits, after apps, the slow-down plan
+  and budgets, under a long disclosure; setup and Home never mentioned it.
+- **Limits tabs** (developer's idea): `LimitsTab.APPS` / `REELS`, a sticky `LimitsTabs` pill bar (`stickyHeader`),
+  shown only when Instagram or YouTube is installed. Drafts are shared, so one "Lock it in" saves both tabs.
+  Switching tabs while scrolled jumps to the tab's top; "Change on the Apps tab" jumps to the end (strictness).
+- **Home card** `CountReelsCard` (settings `reel_card_done`): after setup, tracker off, Instagram/YouTube
+  installed. "Show me" -> `UnscrollApp.limitsOpenReels` -> Limits opens on the Reels tab (disclosure there).
+- **Old navigation bug found and fixed:** Limits opened by a Home button (plain `navigate`) came straight back when
+  the Home tab was tapped (also in 2.5.2): `popUpTo(HOME) { saveState }` saved Limits under Home and
+  `restoreState` put it back. Home's buttons now use `openTab`, the tab bar's own navigation.
+- Android 17 emulator (release build): card -> Reels tab; Home/Stats/Limits tabs and Back all work after it;
+  Reels + strictness changes saved by one Lock it in; Not now survives a restart; dark mode; tracker on ->
+  "So far today: 0 Reels & Shorts"; 360x640 at font 1.3 ("Reels & Shorts" wraps to 2 lines, tab bar stays pinned).
 ## 2.5.0 checked on the Nothing phone + 2 fixes (2026-11-06, after the v2.5.0 release; not released yet)
 - **Emulator (released files):** GitHub APK and Play release APK with the stand-in "Instagram" app: open = 1,
   5 swipes = 6, 2 back = 6, leave and return = 6. Reels limit 10 / 20: Pause screen at exactly the 10th / 20th.

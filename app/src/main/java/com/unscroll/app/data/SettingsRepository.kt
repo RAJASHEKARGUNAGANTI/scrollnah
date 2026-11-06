@@ -34,6 +34,7 @@ class SettingsRepository(context: Context) {
     private val timeLeftBubbleKey = booleanPreferencesKey("time_left_bubble")
     private val reelBadgeKey = booleanPreferencesKey("reel_badge")
     private val widgetCardDoneKey = booleanPreferencesKey("widget_card_done")
+    private val reelCardDoneKey = booleanPreferencesKey("reel_card_done")
     private val soundsKey = booleanPreferencesKey("sounds")
     private val slowPlanOnKey = booleanPreferencesKey("slow_plan_on")
     private val slowPlanStepKey = intPreferencesKey("slow_plan_step")
@@ -179,6 +180,13 @@ class SettingsRepository(context: Context) {
 
     suspend fun setWidgetCardDone() {
         store.edit { it[widgetCardDoneKey] = true }
+    }
+
+    /** Home's "Count your Reels & Shorts" card was closed, or the tracker was turned on: it doesn't come back. */
+    val reelCardDone: Flow<Boolean> = store.data.map { it[reelCardDoneKey] ?: false }
+
+    suspend fun setReelCardDone() {
+        store.edit { it[reelCardDoneKey] = true }
     }
 
     /** vivo/iQOO: the user told us they allowed pop-ups in the background (the phone can't be asked). */

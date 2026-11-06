@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,6 +64,7 @@ import com.unscroll.app.data.Feature
 import com.unscroll.app.data.Growth
 import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
+import com.unscroll.app.data.isAppInstalled
 import com.unscroll.app.data.StreakInfo
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.service.BlockerService
@@ -138,7 +141,7 @@ private data class LimitProgress(
 )
 
 @Composable
-fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
+fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}, onCountReels: () -> Unit = {}) {
     val context = LocalContext.current
     val container = appContainer()
     val scope = rememberCoroutineScope()
@@ -158,6 +161,10 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val reelLimit = featureLimits.find { it.featureId == ReelLimit.ID && it.enabled }?.limitMinutes
     // "Put Blobby on your home screen": once, after setup, if no widget is placed yet.
     val widgetCardDone by container.settings.widgetCardDone.collectAsStateWithLifecycle(initialValue = true)
+    // "Count your Reels & Shorts": while the tracker is off, if Instagram or YouTube is on this phone.
+    val reelCardDone by container.settings.reelCardDone.collectAsStateWithLifecycle(initialValue = true)
+    val reelAppsHere = remember { FeatureWatchService.available && Feature.entries.any { isAppInstalled(context, it.packageName) } }
+    LaunchedEffect(trackerOn) { if (trackerOn) container.settings.setReelCardDone() } // found it: no need to show it again
     var widgetPlaced by remember { mutableStateOf(MascotWidgets.anyPlaced(context)) }
     var addingWidget by remember { mutableStateOf(false) }
     var usedMinutes by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
@@ -319,38 +326,32 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             }
         }
         val setupFinished = setupGuide != null && setupGuide.next == null && setupGuide.justDone == null
-        if (hasAccess && appRows.isNotEmpty() && setupFinished && !widgetCardDone && !widgetPlaced) {
-            item {
-                AddWidgetCard(
-                    mascotName = mascotTheme.mascotName,
-                    onAdd = { addingWidget = true },
-                    onNotNow = { scope.launch { container.settings.setWidgetCardDone() } }
-                )
-            }
-        }
-        if (hasAccess && appRows.isNotEmpty()) {
-            item {
-                FocusCard(
-                    focusLeftMs = focusLeftMs,
-                    canEndEarly = strictness != Strictness.BEAST,
-                    onStart = { minutes ->
-                        FocusRules.startFocus(minutes)
-                        focusLeftMs = FocusRules.focusRemainingMs()
-                        BlockerService.startIfNeeded(context)
-                        FocusTileService.refresh(context) // the Quick Settings tile shows it too
-                    },
-                    onEnd = {
-                        withParent {
-                            FocusRules.endFocus()
-                            focusLeftMs = 0
-                            FocusTileService.refresh(context)
-                        }
+        val hasLimits = hasAccess && appRows.isNotEmpty()
+
+        /** Focus: a full card while it runs (high up, it's what's happening now), else one slim row (low down). */
+        @Composable
+        fun Focus() {
+            FocusCard(
+                focusLeftMs = focusLeftMs,
+                canEndEarly = strictness != Strictness.BEAST,
+                onStart = { minutes ->
+                    FocusRules.startFocus(minutes)
+                    focusLeftMs = FocusRules.focusRemainingMs()
+                    BlockerService.startIfNeeded(context)
+                    FocusTileService.refresh(context) // the Quick Settings tile shows it too
+                },
+                onEnd = {
+                    withParent {
+                        FocusRules.endFocus()
+                        focusLeftMs = 0
+                        FocusTileService.refresh(context)
                     }
-                )
-            }
-            streak?.let { item { StreakCard(it) } }
-            item { FunStatCard(totalUsed) }
+                }
+            )
         }
+        if (hasLimits && focusLeftMs > 0) item { Focus() }
+
+        // What people open Home for: how much is left on each app. Right under the mascot.
         if (rows.isNotEmpty()) {
             item {
                 Row(
@@ -370,6 +371,31 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                 }
             }
             items(rows, key = { it.key }) { row -> LimitRow(row) }
+        }
+
+        // One slim suggestion at a time, after the limits: counting reels first, then the widget.
+        val showReelCard = hasAccess && setupFinished && reelAppsHere && !trackerOn && !reelCardDone
+        if (showReelCard) {
+            item {
+                CountReelsCard(
+                    onShow = onCountReels,
+                    onNotNow = { scope.launch { container.settings.setReelCardDone() } }
+                )
+            }
+        }
+        if (hasLimits && setupFinished && !showReelCard && !widgetCardDone && !widgetPlaced) {
+            item {
+                AddWidgetCard(
+                    mascotName = mascotTheme.mascotName,
+                    onAdd = { addingWidget = true },
+                    onNotNow = { scope.launch { container.settings.setWidgetCardDone() } }
+                )
+            }
+        }
+        if (hasLimits) {
+            streak?.let { item { StreakCard(it) } }
+            item { FunStatCard(totalUsed) }
+            if (focusLeftMs <= 0) item { Focus() }
         }
     }
 
@@ -516,27 +542,141 @@ private fun HeaderButton(
 /** Once, after setup: put the mascot widget on the home screen (Android's own "Add" prompt). */
 @Composable
 private fun AddWidgetCard(mascotName: String, onAdd: () -> Unit, onNotNow: () -> Unit) {
-    NeoCard(modifier = Modifier.fillMaxWidth(), shape = CardShapeLarge, contentPadding = PaddingValues(16.dp)) {
-        Text("Put $mascotName on your home screen", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "See today's mood without opening ScrollNah.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
-        )
-        NeoButtonPrimary("Add widget", onClick = onAdd, modifier = Modifier.fillMaxWidth())
-        TextButton(onClick = onNotNow, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)) {
-            Text("Not now", fontWeight = FontWeight.Bold, color = Neo.colors.content)
+    SuggestionStrip(
+        title = "Put $mascotName on your home screen",
+        text = "See today's mood without opening ScrollNah.",
+        action = "Add widget",
+        onAction = onAdd,
+        onNotNow = onNotNow
+    ) {
+        Mascot(mood = MoodLevel.HAPPY, size = 40.dp, animated = false)
+    }
+}
+
+/**
+ * Points people to reel counting, which otherwise sits on Limits' second tab. "Show me" opens that
+ * tab, where the tracker's full disclosure comes before Android's settings (Google Play's rule).
+ */
+@Composable
+private fun CountReelsCard(onShow: () -> Unit, onNotNow: () -> Unit) {
+    SuggestionStrip(
+        title = "Count your Reels & Shorts",
+        text = "See the number while you scroll and set a daily amount. Optional, needs one more switch.",
+        action = "Show me",
+        onAction = onShow,
+        onNotNow = onNotNow,
+        background = Lilac
+    ) {
+        // What the count looks like while scrolling (the lime badge at the top of the screen).
+        Row(
+            Modifier
+                .clip(PillShape)
+                .background(Lime, PillShape)
+                .border(BorderWidth, Ink, PillShape)
+                .padding(start = 4.dp, end = 10.dp, top = 3.dp, bottom = 3.dp)
+                .clearAndSetSemantics { },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Mascot(mood = MoodLevel.HAPPY, size = 26.dp, animated = false)
+            Text("12", fontWeight = FontWeight.ExtraBold, color = Ink, modifier = Modifier.padding(start = 3.dp))
         }
     }
 }
 
-/** "85 reels" (or "32/50 reels" with a daily reels limit) on the mascot's head: Reels + Shorts today. */
+/**
+ * A slim suggestion (counting reels, adding the widget): a small picture, a title and one line,
+ * then "Not now" and the action. Smaller than the cards about today, so it never outranks them.
+ */
+@Composable
+private fun SuggestionStrip(
+    title: String,
+    text: String,
+    action: String,
+    onAction: () -> Unit,
+    onNotNow: () -> Unit,
+    background: Color = Neo.colors.surface,
+    picture: @Composable () -> Unit
+) {
+    NeoCard(modifier = Modifier.fillMaxWidth(), backgroundColor = background, contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            picture()
+            Column(Modifier.padding(start = 12.dp)) {
+                Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                Text(text, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            // Text on a bright card (lilac) stays ink in dark mode too.
+            val quiet = if (background == Neo.colors.surface) Neo.colors.content else Ink
+            TextButton(onClick = onNotNow) { Text("Not now", fontWeight = FontWeight.Bold, color = quiet) }
+            Box(
+                Modifier
+                    .padding(start = 4.dp, top = 4.dp, bottom = 6.dp)
+                    .clip(PillShape)
+                    .background(Lime, PillShape)
+                    .border(BorderWidth, Ink, PillShape)
+                    .clickable(role = Role.Button, onClick = onAction)
+                    .heightIn(min = 44.dp)
+                    .padding(horizontal = 18.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(action, fontWeight = FontWeight.Bold, color = Ink)
+            }
+        }
+    }
+}
+
+/** "85 reels" (or "32/50 reels" with a daily reels limit) next to the mood pill: Reels + Shorts today. */
 @Composable
 private fun ReelCountSticker(reels: Int, limit: Int?, modifier: Modifier = Modifier) {
     val number = remember(reels) { java.text.NumberFormat.getIntegerInstance().format(reels) }
     val spoken = (if (reels == 1) "1 reel today" else "$number reels today") + (if (limit != null) " of $limit" else "")
-    Box(modifier.clearAndSetSemantics { contentDescription = spoken }) {
-        NeoPill(if (reels == 1 && limit == null) "1 reel" else "${ReelLimit.progress(number, limit)} reels")
+    // White with an ink line, so it doesn't look like a second mood pill.
+    Text(
+        (if (reels == 1 && limit == null) "1 reel" else "${ReelLimit.progress(number, limit)} reels").uppercase(),
+        color = Ink,
+        fontWeight = FontWeight.Bold,
+        fontSize = MaterialTheme.typography.labelSmall.fontSize,
+        letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
+        modifier = modifier
+            .clearAndSetSemantics { contentDescription = spoken }
+            .clip(PillShape)
+            .background(White, PillShape)
+            .border(BorderWidth, Ink, PillShape)
+            .padding(horizontal = 9.dp, vertical = 2.dp)
+    )
+}
+
+/** "49 min left today" with a bar (or "12 min over") for all limited apps together, on the mascot card. */
+@Composable
+private fun TimeLeftBar(used: Int, limit: Int, modifier: Modifier = Modifier) {
+    if (limit <= 0) return
+    val left = limit - used
+    val label = when {
+        left > 0 -> "${duration(left)} left today"
+        left == 0 -> "No time left today"
+        else -> "${duration(-left)} over today"
+    }
+    Row(
+        modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = "${spokenDuration(used)} used of ${spokenDuration(limit)}. $label" },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .weight(1f)
+                .height(12.dp)
+                .clip(PillShape)
+                .background(White, PillShape)
+                .border(BorderWidth, Ink, PillShape)
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth((used.toFloat() / limit).coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(Ink, PillShape)
+            )
+        }
+        Text(label, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(start = 10.dp))
     }
 }
 
@@ -558,28 +698,34 @@ private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?,
         shadowOffset = ShadowOffsetLarge,
         contentPadding = PaddingValues(18.dp)
     ) {
-        if (pillOnTop) NeoPill(text.pill, modifier = Modifier.padding(bottom = 10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(contentAlignment = Alignment.TopCenter) {
-                Mascot(
-                    mood = mood,
-                    size = 110.dp,
-                    onOrange = overLimit,
-                    contentDescription = LocalMascot.current.theme.mascotName,
-                    pokeable = true // tap for a jump and a wiggle
-                )
-                // Today's Reels/Shorts count sits on top, like the badge while scrolling.
-                reelsToday?.let { ReelCountSticker(it, reelLimit, Modifier.offset(y = (-10).dp)) }
+        // The mood pill, with today's Reels/Shorts count next to it (it wraps below on narrow phones).
+        @Composable
+        fun Pills(modifier: Modifier = Modifier) {
+            FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                NeoPill(text.pill, onLineCount = { if (it > 1) pillOnTop = true })
+                reelsToday?.let { ReelCountSticker(it, reelLimit) }
             }
+        }
+        if (pillOnTop) Pills(Modifier.padding(bottom = 10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Mascot(
+                mood = mood,
+                size = 110.dp,
+                onOrange = overLimit,
+                contentDescription = LocalMascot.current.theme.mascotName,
+                pokeable = true // tap for a jump and a wiggle
+            )
             Column(
                 modifier = Modifier.padding(start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (!pillOnTop) NeoPill(text.pill, onLineCount = { if (it > 1) pillOnTop = true })
+                if (!pillOnTop) Pills()
                 Text(text.headline, style = MaterialTheme.typography.headlineSmall, lineHeight = 24.sp)
                 Text(text.line, style = MaterialTheme.typography.bodyMedium)
             }
         }
+        // What's left today, at a glance (all limited apps together).
+        TimeLeftBar(totalUsed, totalLimit, Modifier.padding(top = 14.dp))
         // Bloomy: how close the next flower is (the bud on the plant grows with these days).
         val look = LocalMascot.current
         if (look.theme == MascotTheme.BLOOMY && look.flowers < Growth.MAX_FLOWERS) {
@@ -676,7 +822,7 @@ private fun NoLimitsCard(onAdd: () -> Unit) {
 @Composable
 private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) -> Unit, onEnd: () -> Unit) {
     val focusOn = focusLeftMs > 0
-    NeoCard(backgroundColor = if (focusOn) Lime else Neo.colors.surface, contentPadding = PaddingValues(14.dp)) {
+    NeoCard(modifier = Modifier.fillMaxWidth(), backgroundColor = if (focusOn) Lime else Neo.colors.surface, contentPadding = PaddingValues(14.dp)) {
         if (focusOn) {
             val minutes = ((focusLeftMs + 59_999L) / 60_000L).toInt()
             Text("Focus mode: ${duration(minutes)} left", style = MaterialTheme.typography.headlineSmall)
@@ -703,15 +849,23 @@ private fun FocusCard(focusLeftMs: Long, canEndEarly: Boolean, onStart: (Int) ->
                 )
             }
         } else {
-            Text("Need to focus?", style = MaterialTheme.typography.headlineSmall)
-            val bed = FocusRules.bedtime()
-            Text(
-                if (FocusRules.bedtimeActive()) "Bedtime is on until ${FocusRules.formatTime(bed.endMinutes)}. Or lock your time-sinks right now:"
-                else "Lock your time-sinks for a while. No extra minutes until it ends.",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
-            )
+            // One slim row: "Focus" and the three lengths (they wrap below on narrow phones).
+            if (FocusRules.bedtimeActive()) {
+                Text(
+                    "Bedtime is on until ${FocusRules.formatTime(FocusRules.bedtime().endMinutes)}.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Focus",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .padding(end = 4.dp)
+                        .semantics { contentDescription = "Focus: lock your time-sinks for a while, no extra minutes until it ends" }
+                )
                 listOf(30 to "30 min", 60 to "1 hour", 120 to "2 hours").forEach { (minutes, label) ->
                     Box(
                         Modifier
@@ -753,9 +907,10 @@ private fun StreakCard(info: StreakInfo) {
                     },
                     style = MaterialTheme.typography.headlineSmall
                 )
+                // (What's left is on the mascot card now.)
                 val today = when {
                     info.todayLimit == 0 -> ""
-                    info.todayOnTrack -> "Today: on track (${duration(info.todayLimit - info.todayUsed)} left)"
+                    info.todayOnTrack -> "Today: on track"
                     else -> "Today: over the limit"
                 }
                 val best = if (info.best > 0) "Best: ${info.best} ${if (info.best == 1) "day" else "days"}" else "Stay under today to start one"
@@ -866,11 +1021,13 @@ private fun FunStatCard(totalMinutes: Int) {
             ) {
                 CompositionLocalProvider(LocalContentColor provides Ink) { UpArrowIcon() } // ink on orange
             }
-            Text(
-                text,
-                modifier = Modifier.padding(start = 14.dp),
-                style = MaterialTheme.typography.bodyLarge
-            )
+            // The number first, so "That's a walk to the park" says what "that" is.
+            Column(Modifier.padding(start = 14.dp)) {
+                if (totalMinutes > 0) {
+                    Text("${duration(totalMinutes)} of scrolling today", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                }
+                Text(text, style = MaterialTheme.typography.bodyLarge)
+            }
         }
     }
 }

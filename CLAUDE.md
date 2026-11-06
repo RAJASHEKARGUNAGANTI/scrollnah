@@ -74,9 +74,12 @@ Based on the share of today's total limit used (summed across enabled limited ap
 
 ### 1. Home
 - Header: "Hey [name]" + "scrollnah" wordmark, light/dark button (Settings is a tab, not a header button).
-- Lime mascot card (turns orange when over the limit): mascot in today's mood, signed mood pill ("Blobby · thriving"), headline like "Only 38 min of scrolling today!", short encouraging line.
-- Fun stat card: today's minutes turned into something silly (songs, sitcom episodes; scroll distance can't be measured).
+- **Order (UX pass, 2026-11-06):** mascot card, the setup card (if any), a running Focus, **Today's limits**, one slim suggestion, streak, fun stat, the one-row Focus. What people open Home for (what's left) comes first; suggestions never outrank it.
+- Lime mascot card (turns orange when over the limit): mascot in today's mood, signed mood pill ("Blobby · thriving") with today's reel count beside it (a white "46 reels" pill, when the tracker counts), headline like "Only 38 min of scrolling today!", short encouraging line, and a bar with "49 min left today" / "12 min over today" (all limited apps together).
 - "Today's limits" list: each app with a letter tile, name, "used / limit min", and a progress bar (orange when close to the limit). "Edit" opens Limits.
+- Slim suggestion strips (`SuggestionStrip`: small picture, title, one line, "Not now" + action), one at a time: "Count your Reels & Shorts" (lilac, a mini count badge; after setup while the tracker is off and Instagram or YouTube is installed; "Show me" opens Limits on the Reels & Shorts tab, where the disclosure is; "Not now" or turning the tracker on hides it for good), then "Put [mascot] on your home screen". Home's buttons open Limits like the tab bar does (`openTab` in `UnscrollApp`).
+- Fun stat card: "46 min of scrolling today" + today's minutes turned into something silly (songs, sitcom episodes; scroll distance can't be measured).
+- Focus: one row ("Focus" + 30 min / 1 hour / 2 hours) at the end; while focus runs, a full lime card near the top with the countdown.
 - Bottom nav: Home, Limits, Stats, Settings (decided 2026-10-30: the Pause tab was only a preview, so Settings took its place).
 
 ### 2. Pause screen (shown when a limited app is over its limit and the strictness mode is Firm or Beast)
@@ -92,7 +95,8 @@ Based on the share of today's total limit used (summed across enabled limited ap
 - "How strict should I be?" (3 cards): Chill = gentle nudge notification, Firm = pause screen, Beast = hard lock until midnight.
 - "See the Pause screen" link under the strictness cards (Firm and Beast): a full-screen preview of the Pause screen. **The preview never saves anything** (no Pause answer, so Stats don't change) and doesn't open the app; its buttons just show "Just a preview. Nothing was saved." and go back.
 - "Break reminders" row ("After 20 min on one app") that opens screen 7.
-- "Lock it in" orange button saves.
+- **Two tabs** (2026-11-06, developer's idea) when Instagram or YouTube is installed (and the version has the tracker): **Apps** (everything above, with bedtime, work hours, strictness and break reminders) and **Reels & Shorts** (the tracker's disclosure card until it's on, then "So far today: N Reels & Shorts"; "Reels & Shorts a day"; the Reels/Shorts minute limits; a line with the current strictness and "Change on the Apps tab"). The tab bar sticks to the top while scrolling. No tabs without those apps.
+- "Lock it in": an orange bar under the list that slides in only while something is unsaved (one save for both tabs). Coming back to the app with unsaved changes asks "Lock it in first?".
 
 ### 4. Weekly report ("Your week")
 - Total social time this week + badge comparing with last week ("1h 10m less").

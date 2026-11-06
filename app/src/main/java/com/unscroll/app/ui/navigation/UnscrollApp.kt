@@ -48,6 +48,21 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
     // While Limits has unsaved changes, switching tabs asks first (the prompt lives in LimitsScreen).
     var limitsUnsaved by remember { mutableStateOf(false) }
     var pendingLeave by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // Home's "Count your Reels & Shorts" card opens Limits on its Reels & Shorts tab.
+    var limitsOpenReels by remember { mutableStateOf(false) }
+
+    /**
+     * Opens a tab the way the tab bar does: one copy of each tab, its scroll position kept.
+     * Home's buttons use it too: Limits pushed on top of Home the plain way came straight back
+     * when the Home tab was tapped (its saved state was restored on top of Home).
+     */
+    fun openTab(destination: Destination) {
+        navController.navigate(destination.route) {
+            popUpTo(Destination.HOME.route) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -56,11 +71,7 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
                 UnscrollBottomNav(current = currentDestination) { destination ->
                     val go = {
                         pendingLeave = null
-                        navController.navigate(destination.route) {
-                            popUpTo(Destination.HOME.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        openTab(destination)
                     }
                     if (currentRoute == Destination.LIMITS.route && limitsUnsaved && destination != Destination.LIMITS) {
                         pendingLeave = go
@@ -83,8 +94,12 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
             composable(Destination.HOME.route) {
                 ReadableWidth {
                     HomeScreen(
-                        onEditLimits = { navController.navigate(Destination.LIMITS.route) },
-                        onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
+                        onEditLimits = { openTab(Destination.LIMITS) },
+                        onOpenGarden = { navController.navigate(GARDEN_ROUTE) },
+                        onCountReels = {
+                            limitsOpenReels = true
+                            openTab(Destination.LIMITS)
+                        }
                     )
                 }
             }
@@ -99,7 +114,9 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
                         onSaved = { navController.popBackStack() },
                         onUnsavedChanges = { limitsUnsaved = it },
                         pendingLeave = pendingLeave,
-                        onLeaveCancelled = { pendingLeave = null }
+                        onLeaveCancelled = { pendingLeave = null },
+                        openReels = limitsOpenReels,
+                        onReelsOpened = { limitsOpenReels = false }
                     )
                 } }
             }
