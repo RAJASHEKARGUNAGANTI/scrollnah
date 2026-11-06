@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.0 (code 13) = 2.3.0 + Parent lock + reel counting (GitHub version) + "Add widget", rebuilt 2026-11-06 as `release/ScrollNah-2.4.0-play.aab` (Play APK 1.58 MB) and released on GitHub as v2.4.0; the developer will upload the bundle to Play after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.1 (code 14) = 2.3.0 + Parent lock + reel counting that works on real YouTube + reel count widget (GitHub version) + "Add widget", built 2026-11-06 as `release/ScrollNah-2.4.1-play.aab` and released on GitHub as v2.4.1 (v2.4.0's counter didn't count real YouTube Shorts); the developer will upload the bundle to Play after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -443,7 +443,30 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
+## 2.4.1: reel counting that works with real YouTube, reel count widget (2026-11-06)
+- **Real-phone finding (Nothing Phone (2a), Android 16, YouTube 21.43):** YouTube's Shorts pager
+  (`reel_recycler`, a RecyclerView) reports scrollable=false and sends almost no scroll events (one in
+  ~30 s, fromIndex/toIndex -1), so 2.4.0's counting (scroll events) counted nothing on real YouTube.
+- **Now:** `checkScreen` (runs on every screen event from the app, and every 2 s) looks at the pager's child
+  views: the one covering >= 60% of the pager is "the page". A different view than before = a new video
+  (`ReelCounter.onPage`, keyed by `AccessibilityNodeInfo.hashCode()`, i.e. which view; nothing on screen is
+  read). Pagers reuse a few views, but two videos never share one at the same time, so each swipe changes it.
+  Swiping back is skipped when two pages were seen during the swipe (`onBetween`, upper/lower); YouTube only
+  exposes one child, so there going back counts again. Scroll events are no longer used for counting.
+- Verified on the Nothing phone by the developer: the count matched the Shorts swiped (log: "page
+  youtube_shorts: view ... -> +1" once per swipe; coming back within a minute continues the visit).
+- **Badge mascot fix:** the badge used `container.mascot`, which starts as Blobby until the settings load;
+  right after a restart it drew Blobby and kept it 5 min. Now it reads the theme from the settings
+  (`WidgetData.load`) and redraws when the mascot changes.
+- **Reel count widget** (`ReelCountWidgetReceiver`, `layout/widget_reels.xml`, `xml/reels_widget_info.xml`):
+  "12 / REELS TODAY", `MascotLines.reelWidgetLine`, mascot in today's mood. First in the "Add widget" picker
+  (`MascotWidgets.available` hides it in the Play version, whose manifest removes the receiver).
+- The Nothing phone had the Play 2.2.3 and an old GitHub 2.2.2 (`com.unscroll.app`) installed side by side;
+  both were removed at the developer's request and the test copy `app.scrollnah.test` installed by adb
+  (adb install works on that phone).
+
 ## Reel counting + "Add widget" button (2026-11-06, developer request after looking at BrainPal)
+- (Superseded in 2.4.1, see above: counting by page view, not scroll events.)
 - **Reel counting (tracker only, so GitHub version for now):** `FeatureWatchService` now also listens to
   `typeViewScrolled`. While the Reels/Shorts viewer is open (a "visit"), scroll events from the pager
   (`clips_viewer_view_pager`, `reel_recycler`) go to `ReelCounter`: the opening video counts 1, then each

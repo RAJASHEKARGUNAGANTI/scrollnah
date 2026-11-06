@@ -12,6 +12,7 @@ import com.unscroll.app.MainActivity
 import com.unscroll.app.R
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.MascotTheme
+import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.durationPair
 import com.unscroll.app.ui.mascot.MascotBitmap
@@ -47,6 +48,9 @@ abstract class MascotWidgetProvider : AppWidgetProvider() {
 
 /** Medium widget (4x2). Keeps the old class name so widgets people already placed keep working. */
 class BlobbyWidget : MascotWidgetProvider()
+
+/** Reel count widget (2x2, GitHub version only): "12 reels today" with the mascot. */
+class ReelCountWidgetReceiver : MascotWidgetProvider()
 
 /** Small widget (2x2): mascot + "4 min left" + "on Instagram today". */
 class SmallMascotWidgetReceiver : MascotWidgetProvider()
@@ -87,6 +91,7 @@ object MascotWidgets {
         val mascot by lazy { MascotBitmap.render(state.theme, state.mood, state.flowers, MASCOT_PX, budDays = state.budDays, reward = state.reward) }
         update(BlobbyWidget::class.java) { mediumViews(context, state, mascot) }
         update(SmallMascotWidgetReceiver::class.java) { smallViews(context, state, mascot) }
+        update(ReelCountWidgetReceiver::class.java) { reelViews(context, state, mascot) }
         update(MascotOnlyWidgetReceiver::class.java) {
             MascotFrames.remoteViews(context, state, MascotFrames.animationsOn(context)).apply {
                 setOnClickPendingIntent(R.id.mascot_frames, openApp(context))
@@ -94,19 +99,44 @@ object MascotWidgets {
         }
     }
 
+    /**
+     * A new Reels/Shorts count: redraws only the reel count widget (cheap: today's other numbers
+     * are reused from the last full redraw). Called by the tracker while the user scrolls.
+     */
+    suspend fun updateReelCount(context: Context) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(ComponentName(context, ReelCountWidgetReceiver::class.java))
+        if (ids.isEmpty()) return
+        val state = withContext(Dispatchers.IO) {
+            val today = java.time.LocalDate.now().toString()
+            val reels = (context.applicationContext as UnscrollApplication).container.database.featureDao().totalViews(today)
+            val before = last?.takeIf { it.date == today } ?: WidgetData.load(context)
+            before.copy(reels = reels, trackerOn = FeatureWatchService.isEnabled(context))
+        }
+        last = state
+        val mascot = MascotBitmap.render(state.theme, state.mood, state.flowers, MASCOT_PX, budDays = state.budDays, reward = state.reward)
+        manager.updateAppWidget(ids, reelViews(context, state, mascot))
+    }
+
     /** True if any ScrollNah widget is on the home screen. */
     fun anyPlaced(context: Context): Boolean {
         val manager = AppWidgetManager.getInstance(context)
-        return listOf(BlobbyWidget::class.java, SmallMascotWidgetReceiver::class.java, MascotOnlyWidgetReceiver::class.java)
-            .any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
+        return listOf(
+            BlobbyWidget::class.java, SmallMascotWidgetReceiver::class.java,
+            MascotOnlyWidgetReceiver::class.java, ReelCountWidgetReceiver::class.java
+        ).any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
     }
 
-    /** The widgets, for the "Add widget" picker. */
+    /** The widgets, for the "Add widget" picker ([REELS] only where the tracker exists: [available]). */
     enum class Kind(val title: String, val size: String, val receiver: Class<out MascotWidgetProvider>) {
+        REELS("Reels & Shorts count", "2 × 2", ReelCountWidgetReceiver::class.java),
         MASCOT("Just the mascot", "2 × 2", MascotOnlyWidgetReceiver::class.java),
         SMALL("Mascot and time left", "2 × 2", SmallMascotWidgetReceiver::class.java),
         MEDIUM("Mood, top app and streak", "4 × 2", BlobbyWidget::class.java)
     }
+
+    /** The widgets this version offers (the Play version has no tracker, so no reel count widget). */
+    val available: List<Kind> get() = Kind.entries.filter { it != Kind.REELS || FeatureWatchService.available }
 
     /** True if this phone's home screen lets apps add a widget for the user (most do; some Xiaomi phones don't). */
     fun canPin(context: Context): Boolean = AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported
@@ -184,6 +214,18 @@ private fun smallViews(context: Context, state: WidgetState, mascot: android.gra
     views.setViewVisibility(R.id.time_left, View.VISIBLE)
     views.setTextViewText(R.id.time_left, if (left > 0) "${duration(left)} left" else "Time's up")
     views.setTextViewText(R.id.detail, "on ${state.topApp} today")
+    return views
+}
+
+/** "12 / reels today" with the mascot and a line from it. */
+private fun reelViews(context: Context, state: WidgetState, mascot: android.graphics.Bitmap): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.widget_reels)
+    views.setOnClickPendingIntent(R.id.widget_root, openApp(context))
+    views.setImageViewBitmap(R.id.mascot, mascot)
+    views.setContentDescription(R.id.mascot, spokenMood(state))
+    views.setTextViewText(R.id.reels_count, java.text.NumberFormat.getIntegerInstance().format(state.reels))
+    views.setTextViewText(R.id.reels_label, if (state.reels == 1) "reel today" else "reels today")
+    views.setTextViewText(R.id.reels_line, MascotLines.reelWidgetLine(state.reels, state.trackerOn))
     return views
 }
 

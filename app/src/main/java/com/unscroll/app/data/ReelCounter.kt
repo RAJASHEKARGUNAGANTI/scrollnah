@@ -1,33 +1,24 @@
 package com.unscroll.app.data
 
 /**
- * Counts Reels and Shorts from the tracker's scroll events. Plain Kotlin (no Android), so it's
- * tested in ReelCounterTest.
+ * Counts Reels and Shorts. Plain Kotlin (no Android), so it's tested in ReelCounterTest.
  *
- * Instagram and YouTube show one video per page in a vertical pager. Each time the pager
- * scrolls, Android tells the tracker which pages are showing (fromIndex..toIndex): two while a
- * swipe is in progress, one when it settles. A page counts the first time it shows up during a
- * visit to Reels/Shorts, so swiping back up to a video doesn't count it again.
+ * Instagram and YouTube show one video per page in a vertical pager. The tracker looks at which
+ * page fills the pager (a page = one of the pager's child views, known by a number Android gives
+ * each view, [onPage]). When a different page fills it, the user swiped to a new video.
  *
- * Android hands scroll events over in batches (at most one every 0.3 s), so after a quick swipe
- * the tracker may only see the "between two videos" moment, never the settled one. That's why
- * the next video already counts when it starts to show. (A swipe that snaps back counts it a
- * little early; going to it later doesn't count it again.)
+ * This works even though YouTube's Shorts pager hides its scrolling from Accessibility services
+ * (no page numbers, almost no scroll events), as seen on a Nothing Phone in Nov 2026. Nothing on
+ * the screen is read: only which view is showing.
  *
- * If an app doesn't say which page is showing (index -1), a swipe that moves at least
- * [SWIPE_SHARE] of the page counts as one video instead.
- *
- * It's an estimate: a video skipped very quickly or an ad can make it a little off.
+ * Swiping back up to the video before doesn't count, when the tracker caught the moment both
+ * pages were on screen ([onBetween]) and the new one was above. It's an estimate: ads count as
+ * videos, and a very fast swipe through several videos may count as one.
  */
 class ReelCounter {
 
-    private val seenPages = HashSet<Int>()
-    private var knowsStartPage = false // the page showing when the visit started is known
-
-    // Fallback without page numbers: one count per swipe gesture.
-    private var lastScrollAt = 0L
-    private var burstMoved = 0
-    private var burstCounted = false
+    private var currentPage: Int? = null           // the page filling the pager right now
+    private var between: Pair<Int, Int>? = null     // (upper, lower) seen while two pages shared the screen
 
     /**
      * A visit to Reels/Shorts starts. The video on screen counts as one, unless the user is
@@ -35,61 +26,31 @@ class ReelCounter {
      * Returns how many videos to add (0 or 1).
      */
     fun startVisit(resumed: Boolean): Int {
-        if (!resumed) seenPages.clear()
-        knowsStartPage = resumed && seenPages.isNotEmpty()
-        burstMoved = 0
-        burstCounted = false
-        lastScrollAt = 0L
+        if (!resumed) currentPage = null
+        between = null
         return if (resumed) 0 else 1
     }
 
-    /**
-     * One scroll event from the pager. [deltaY] is how far it moved (0 if unknown) and
-     * [pageHeight] the screen height in pixels. Returns how many new videos it showed (0 or 1).
-     */
-    fun onScroll(fromIndex: Int, toIndex: Int, deltaY: Int, pageHeight: Int, now: Long): Int {
-        if (fromIndex >= 0 && toIndex >= 0) return onPage(fromIndex, toIndex)
-        return onMove(deltaY, pageHeight, now)
+    /** Two pages share the screen (a swipe in progress): [upper] is above [lower]. */
+    fun onBetween(upper: Int, lower: Int) {
+        between = upper to lower
     }
 
-    private fun onPage(from: Int, to: Int): Int {
-        if (!knowsStartPage) {
-            // The first page we hear about is the video that was showing when the visit started
-            // (already counted). If a swipe is already under way, the other page is a new one.
-            knowsStartPage = true
-            seenPages.add(from)
-        }
-        // A pager shows one or two pages at a time; more would be some other kind of list.
-        val last = if (to - from in 0..MAX_PAGES_AT_ONCE) to else from
-        var added = 0
-        for (page in from..last) if (seenPages.add(page)) added++
-        return added
-    }
-
-    private fun onMove(deltaY: Int, pageHeight: Int, now: Long): Int {
-        if (deltaY == 0 || pageHeight <= 0) return 0
-        if (now - lastScrollAt > SWIPE_GAP_MS) { // a new swipe gesture
-            burstMoved = 0
-            burstCounted = false
-        }
-        lastScrollAt = now
-        burstMoved += kotlin.math.abs(deltaY)
-        if (!burstCounted && burstMoved >= pageHeight * SWIPE_SHARE) {
-            burstCounted = true
-            return 1
-        }
-        return 0
+    /** One page fills the pager. Returns how many new videos that is (0 or 1). */
+    fun onPage(page: Int): Int {
+        val before = currentPage
+        val swipe = between
+        currentPage = page
+        between = null
+        if (before == null || before == page) return 0 // the opening video, or nothing changed
+        // Swiped back up: the new page came down from above the old one.
+        if (swipe != null && swipe.first == page && swipe.second == before) return 0
+        return 1
     }
 
     companion object {
-        /** Pages that can show at once in a pager (more = not a pager; only the top one is used). */
-        const val MAX_PAGES_AT_ONCE = 2
-
-        /** Part of the page a swipe must move to count, when the app gives no page numbers. */
-        const val SWIPE_SHARE = 0.4f
-
-        /** Scroll events closer together than this belong to the same swipe. */
-        const val SWIPE_GAP_MS = 600L
+        /** A page "fills" the pager when it covers at least this part of it. */
+        const val FILLED_SHARE = 0.6f
 
         /** Back in Reels/Shorts within this long = the same visit continues. */
         const val RESUME_MS = 60_000L

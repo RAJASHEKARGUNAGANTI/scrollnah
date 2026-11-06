@@ -5,4 +5,5 @@
     <string name="widget_description">Your mascot\'s mood, the app closest to its limit and your streak.</string>
     <string name="widget_mascot_description">Your mascot in today\'s mood, moving about on your home screen.</string>
     <string name="widget_small_description">Your mascot and the minutes left today.</string>
+    <string name="widget_reels_description">How many Reels and Shorts you scrolled today, with your mascot.</string>
 </resources>

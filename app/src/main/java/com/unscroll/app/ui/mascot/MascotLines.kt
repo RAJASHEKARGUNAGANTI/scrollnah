@@ -253,6 +253,15 @@ object MascotLines {
         if (minutesLeft <= 5) "Only ${duration(minutesLeft)} of $appName left today!"
         else "${duration(minutesLeft)} of $appName left today."
 
+    /** The reel count widget's line, in the mascot's voice. */
+    fun reelWidgetLine(reels: Int, trackerOn: Boolean): String = when {
+        !trackerOn && reels == 0 -> "Turn on the tracker so I can count"
+        reels == 0 -> "None yet. Nice!"
+        reels < 25 -> "I'm counting!"
+        reels < 75 -> "That's a lot of reels."
+        else -> "My thumbs hurt."
+    }
+
     /** The bubble's speech text, e.g. "20 min straight! My eyes hurt." */
     fun bubbleText(theme: MascotTheme, mood: MoodLevel, minutes: Int): String = when {
         mood < MoodLevel.OVER -> "${duration(minutes)} straight! My eyes hurt."

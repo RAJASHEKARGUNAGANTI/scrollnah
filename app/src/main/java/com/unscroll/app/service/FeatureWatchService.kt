@@ -5,7 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.os.Build
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -15,17 +15,20 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.Feature
+import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.ReelCounter
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.Websites
 import com.unscroll.app.data.db.FeatureLimit
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.ui.mascot.MascotBitmap
+import com.unscroll.app.widget.MascotWidgets
 import com.unscroll.app.widget.WidgetData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -39,9 +42,9 @@ import java.time.LocalDate
  * and at a limit acts on the user's strictness (Chill nudge, Firm Pause screen
  * with +5 min, Beast locked Pause screen).
  *
- * In the Reels/Shorts viewer it also counts about how many videos were scrolled, from the
- * pager's scroll events (see [ReelCounter]; only the number is saved), and shows the count
- * with the mascot at the top of the screen ([ReelBadge]).
+ * In the Reels/Shorts viewer it also counts about how many videos were scrolled: each time a
+ * different page fills the video pager (see [ReelCounter]; only the number is saved), and shows
+ * the count with the mascot at the top of the screen ([ReelBadge]) and on the reel widget.
  */
 class FeatureWatchService : AccessibilityService() {
 
@@ -64,7 +67,9 @@ class FeatureWatchService : AccessibilityService() {
     private var visitFeature: Feature? = null      // the Reels/Shorts viewer open right now
     private var lastVisitFeature: Feature? = null
     private var visitEndedAt = 0L
-    @Volatile private var badgeMascot: Pair<Bitmap, Long>? = null // (picture, drawn at)
+    @Volatile private var badgeMascot: Triple<Bitmap, Long, MascotTheme>? = null // (picture, drawn at, for which mascot)
+    @Volatile private var widgetDrawnAt = 0L
+    private var loggedPage: Int? = null
 
     private var seen: Seen? = null
     private var lastCheckAt = 0L
@@ -113,10 +118,6 @@ class FeatureWatchService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: return
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
-            onScrolled(event, pkg) // only used to count videos
-            return
-        }
         // Only react to the apps/browsers we care about, or when leaving one of them.
         if (seen != null || Feature.entries.any { it.packageName == pkg } || pkg in Websites.browserUrlBars) {
             checkScreen()
@@ -147,6 +148,7 @@ class FeatureWatchService : AccessibilityService() {
         if (detected != seen) debug("now showing: $detected")
         seen = detected
         updateVisit(detected?.takeIf { it.webAppPackage == null }?.feature, now)
+        visitFeature?.let { feature -> root?.let { checkPage(it, feature) } }
 
         // Keep checking every 2 s only while something we count is on screen (screen off = nothing).
         if (seen != null && !heartbeatScheduled) {
@@ -164,6 +166,7 @@ class FeatureWatchService : AccessibilityService() {
             lastVisitFeature = it
             visitEndedAt = now
             ReelBadge.hide()
+            updateReelWidget(force = true)
         }
         visitFeature = feature
         if (feature == null) return
@@ -172,21 +175,35 @@ class FeatureWatchService : AccessibilityService() {
         countVideos(feature, reelCounter.startVisit(resumed))
     }
 
-    /** A scroll event: if it's the Reels/Shorts pager moving to a new video, count it. */
-    private fun onScrolled(event: AccessibilityEvent, pkg: String) {
-        val feature = visitFeature ?: return
-        if (feature.packageName != pkg) return
-        val id = event.source?.viewIdResourceName
-        val deltaY = if (Build.VERSION.SDK_INT >= 28) event.scrollDeltaY else 0
-        if (id != "$pkg:id/${feature.pagerId}") {
-            debug("scroll ignored: $id (${event.className}) from=${event.fromIndex} to=${event.toIndex} dy=$deltaY")
-            return
+    /**
+     * Which page fills the Reels/Shorts pager right now. A different page = a new video
+     * (see [ReelCounter]). Only the pages' positions are looked at, never what they show.
+     */
+    private fun checkPage(root: AccessibilityNodeInfo, feature: Feature) {
+        val pkg = feature.packageName
+        val pager = root.findAccessibilityNodeInfosByViewId("$pkg:id/${feature.pagerId}")
+            .firstOrNull { it.isVisibleToUser } ?: return
+        val pagerBox = Rect()
+        pager.getBoundsInScreen(pagerBox)
+        if (pagerBox.height() <= 0) return
+        // The pages on screen, top to bottom: (which view, top, visible height).
+        val pages = (0 until pager.childCount).mapNotNull { i ->
+            val child = pager.getChild(i) ?: return@mapNotNull null
+            val box = Rect()
+            child.getBoundsInScreen(box)
+            if (!box.intersect(pagerBox) || box.height() <= 0) null else Triple(child.hashCode(), box.top, box.height())
+        }.sortedBy { it.second }
+        val filled = pages.firstOrNull { it.third >= pagerBox.height() * ReelCounter.FILLED_SHARE }
+        if (filled != null) {
+            val added = reelCounter.onPage(filled.first)
+            if (filled.first != loggedPage) {
+                loggedPage = filled.first
+                debug("page ${feature.id}: view ${filled.first} of ${pager.childCount} -> +$added")
+            }
+            if (added > 0) countVideos(feature, added)
+        } else if (pages.size >= 2) {
+            reelCounter.onBetween(upper = pages[0].first, lower = pages[1].first) // a swipe in progress
         }
-        val added = reelCounter.onScroll(
-            event.fromIndex, event.toIndex, deltaY, resources.displayMetrics.heightPixels, SystemClock.elapsedRealtime()
-        )
-        debug("scroll ${feature.id}: from=${event.fromIndex} to=${event.toIndex} items=${event.itemCount} dy=$deltaY -> +$added")
-        if (added > 0) countVideos(feature, added)
     }
 
     /** Saves [added] videos (0 = just show the count) and updates the badge. */
@@ -195,7 +212,16 @@ class FeatureWatchService : AccessibilityService() {
             val today = LocalDate.now().toString()
             val total = if (added > 0) featureDao.addViews(today, feature.id, added) else featureDao.totalViews(today)
             showBadge(feature, total)
+            if (added > 0) updateReelWidget()
         }
+    }
+
+    /** The reel count widget follows along, at most every 3 s while scrolling (and when Reels/Shorts close). */
+    private fun updateReelWidget(force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && now - widgetDrawnAt < 3_000L) return
+        widgetDrawnAt = now
+        container.appScope.launch { MascotWidgets.updateReelCount(this@FeatureWatchService) }
     }
 
     /** Shows the count with the mascot, while that viewer is still open. */
@@ -213,16 +239,22 @@ class FeatureWatchService : AccessibilityService() {
         countVideos(feature, 0)
     }
 
-    /** The mascot in today's mood, redrawn at most every 5 minutes (the mood changes slowly). */
+    /**
+     * The chosen mascot (Blobby or Bloomy, read from the settings) in today's mood. Redrawn when
+     * the mascot is changed, otherwise at most every 5 minutes (the mood changes slowly).
+     */
     private suspend fun mascotForBadge(): Bitmap {
         val now = SystemClock.elapsedRealtime()
-        badgeMascot?.let { (bitmap, drawnAt) -> if (now - drawnAt < 5 * 60_000L) return bitmap }
-        val mood = WidgetData.load(this).mood
+        val theme = container.settings.mascotTheme.first()
+        badgeMascot?.let { (bitmap, drawnAt, drawnFor) ->
+            if (drawnFor == theme && now - drawnAt < 5 * 60_000L) return bitmap
+        }
+        val state = WidgetData.load(this) // theme, mood, flowers, bud and reward, all from the saved settings
         val sizePx = (ReelBadge.MASCOT_DP * resources.displayMetrics.density).toInt()
         val bitmap = MascotBitmap.render(
-            container.mascot, mood, container.flowers, sizePx, budDays = container.budDays, reward = container.reward
+            state.theme, state.mood, state.flowers, sizePx, budDays = state.budDays, reward = state.reward
         )
-        badgeMascot = bitmap to now
+        badgeMascot = Triple(bitmap, now, state.theme)
         return bitmap
     }
 

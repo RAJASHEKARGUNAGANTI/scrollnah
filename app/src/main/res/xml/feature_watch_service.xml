@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Settings for the Reels/Shorts watcher (FeatureWatchService).
      flagReportViewIds lets us look up views by ID, e.g. YouTube's "reel_recycler".
-     typeViewScrolled: the Reels/Shorts pager scrolling to the next video (to count videos). -->
+     typeViewScrolled: a swipe in Reels/Shorts, so the tracker checks right away which video page shows (to count videos). -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewScrolled"
     android:accessibilityFeedbackType="feedbackGeneric"

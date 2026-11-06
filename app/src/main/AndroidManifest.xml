@@ -114,6 +114,17 @@
                 android:resource="@xml/mascot_only_widget_info" />
         </receiver>
         <receiver
+            android:name=".widget.ReelCountWidgetReceiver"
+            android:exported="true"
+            android:label="Reel count">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/reels_widget_info" />
+        </receiver>
+        <receiver
             android:name=".widget.SmallMascotWidgetReceiver"
             android:exported="true"
             android:label="Mascot mood (small)">

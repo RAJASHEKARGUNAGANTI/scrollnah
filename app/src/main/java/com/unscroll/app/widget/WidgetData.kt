@@ -8,6 +8,7 @@ import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.StreakRepository
 import com.unscroll.app.data.Websites
+import com.unscroll.app.service.FeatureWatchService
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
@@ -27,7 +28,9 @@ data class WidgetState(
     val topApp: String? = null,    // the limited app closest to its limit
     val topUsed: Int = 0,
     val topLimit: Int = 0,
-    val streak: Int = 0
+    val streak: Int = 0,
+    val reels: Int = 0,            // Reels + Shorts scrolled today (counted by the tracker)
+    val trackerOn: Boolean = false // the Reels & Shorts tracker is switched on
 )
 
 object WidgetData {
@@ -40,7 +43,9 @@ object WidgetData {
         val today = LocalDate.now()
         val base = WidgetState(
             today.toString(), theme, pot.flowers, MoodLevel.HAPPY,
-            budDays = pot.daysTowardNext, reward = container.settings.activeReward.first()
+            budDays = pot.daysTowardNext, reward = container.settings.activeReward.first(),
+            reels = container.database.featureDao().totalViews(today.toString()),
+            trackerOn = FeatureWatchService.isEnabled(context)
         )
 
         if (!container.usage.hasUsageAccess()) {

@@ -52,7 +52,7 @@ fun AddWidgetDialog(onDismiss: () -> Unit, onAdded: () -> Unit = {}) {
             ) {
                 if (canPin) {
                     Text("$name on your home screen, in today's mood. Pick one, then your phone asks where to put it.")
-                    MascotWidgets.Kind.entries.forEach { kind ->
+                    MascotWidgets.available.forEach { kind ->
                         WidgetOption(kind) {
                             if (MascotWidgets.pin(context, kind)) {
                                 onAdded()
