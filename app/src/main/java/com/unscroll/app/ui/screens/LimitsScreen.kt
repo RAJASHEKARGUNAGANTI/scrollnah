@@ -1248,7 +1248,8 @@ private fun WatcherSetupCard(onTurnOn: () -> Unit, onNotNow: () -> Unit) {
             modifier = Modifier.padding(top = 14.dp)
         )
         TextButton(onClick = onNotNow, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp)) {
-            Text(TrackerDisclosure.DECLINE, fontWeight = FontWeight.Bold, color = Neo.colors.content)
+            // Ink: the lilac card stays light in dark mode too.
+            Text(TrackerDisclosure.DECLINE, fontWeight = FontWeight.Bold, color = Ink)
         }
     }
 }

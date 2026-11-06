@@ -443,6 +443,24 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
+## 2.5.0 checked on the Nothing phone + 2 fixes (2026-11-06, after the v2.5.0 release; not released yet)
+- **Emulator (released files):** GitHub APK and Play release APK with the stand-in "Instagram" app: open = 1,
+  5 swipes = 6, 2 back = 6, leave and return = 6. Reels limit 10 / 20: Pause screen at exactly the 10th / 20th.
+- **Nothing Phone (2a), GitHub 2.5.0 from the release page, real YouTube 21.43:** tracker turned on through the
+  Limits disclosure card ("Agree & open Settings" -> Accessibility page + the PiP Settings hint, which works here);
+  the developer flipped the switch. Counting 12/20 -> 19/20, one per Short; Pause screen at exactly 20; after
+  "Open for 5 minutes" the count goes on (25/20) and the Pause screen came back ~2 s after the 5 minutes. A 40 s
+  screen recording: one swipe = +1 about 1.5 s later; scene changes inside a Short don't count. Instagram not
+  installed there, so real Reels are still untested.
+- **Fix: black small window over the Pause screen.** At the reels/Shorts limit the tracker pressed Back and opened
+  the Pause screen at the same moment; YouTube was still on the Short when covered and shrank it into
+  picture-in-picture (paused, black) that floated over the Pause screen and everything after. Now `act` presses
+  Back and opens the Pause screen `BACK_SETTLE_MS` (500 ms) later; `onDestroy` clears all handler callbacks.
+  Phone, release build installed over 2.5.0 (data kept): Shorts -> YouTube Home -> Pause screen 0.58 s later,
+  YouTube stopped, nothing pinned (twice, once recorded).
+- **Fix: "Not now" on the tracker card** was light text on the always-light lilac card in dark mode: now Ink.
+- Noticed, not changed: with every limited app switched off, Home shows the "Which apps eat your day?" setup card
+  and Stats "Add some apps", so someone using only the reels limit sees their count only on the badge.
 ## Next batch (2026-11-06, developer: "do all this"): fixes + 5 features, not yet released
 - **Setup note no longer moves the button:** `SetupDoneNote` keeps its space while it fades (alpha, not
   shrinking), so "Open settings" stays under the finger. Checked on the emulator (same position before/after).

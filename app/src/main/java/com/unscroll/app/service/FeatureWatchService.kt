@@ -133,9 +133,7 @@ class FeatureWatchService : AccessibilityService() {
 
     override fun onDestroy() {
         if (running === this) running = null
-        handler.removeCallbacks(heartbeat)
-        handler.removeCallbacks(watchdog)
-        handler.removeCallbacks(settleCheck)
+        handler.removeCallbacksAndMessages(null) // heartbeat, watchdog, settle check, a waiting Pause screen
         ReelBadge.hide()
         scope.cancel()
         super.onDestroy()
@@ -418,7 +416,13 @@ class FeatureWatchService : AccessibilityService() {
             }
             return
         }
-        if (pressBack && strictness != Strictness.CHILL) performGlobalAction(GLOBAL_ACTION_BACK)
+        if (pressBack && strictness != Strictness.CHILL) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            // Give the app a moment to leave Reels/Shorts first. Covered while a video is still
+            // open, YouTube shrinks it into a small (black, paused) window over the Pause screen.
+            handler.postDelayed({ LimitActions.onLimitReached(this, target, strictness) }, BACK_SETTLE_MS)
+            return
+        }
         LimitActions.onLimitReached(this, target, strictness)
     }
 
@@ -427,6 +431,8 @@ class FeatureWatchService : AccessibilityService() {
         val available: Boolean = com.unscroll.app.BuildConfig.TRACKER_AVAILABLE
 
         private const val HEARTBEAT_MS = 2_000L
+        /** How long after pressing Back the Pause screen opens (see [act]). */
+        private const val BACK_SETTLE_MS = 500L
         private const val MAX_CREDIT_MS = 5_000L
         private const val WATCHDOG_MS = 60_000L
 
