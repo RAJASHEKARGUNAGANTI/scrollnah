@@ -13,6 +13,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.Feature
 import com.unscroll.app.data.MascotTheme
@@ -50,8 +51,9 @@ class FeatureWatchService : AccessibilityService() {
 
     /** What's on screen, as far as we care. */
     private data class Seen(
-        val feature: Feature?,     // Reels/Shorts (in the app or on its website)
-        val webAppPackage: String? // set when it's an app's website in a browser
+        val feature: Feature?,          // Reels/Shorts (in the app or on its website)
+        val webAppPackage: String?,     // set when it's an app's website in a browser
+        val floating: Boolean = false   // in a small window: picture-in-picture, split screen or a pop-up window
     )
 
     private val handler = Handler(Looper.getMainLooper())
@@ -70,6 +72,7 @@ class FeatureWatchService : AccessibilityService() {
     @Volatile private var badgeMascot: Triple<Bitmap, Long, MascotTheme>? = null // (picture, drawn at, for which mascot)
     @Volatile private var widgetDrawnAt = 0L
     private var loggedPage: Int? = null
+    private var badgeAway = false // the badge is hidden while Reels/Shorts play in a small window
 
     private var seen: Seen? = null
     private var lastCheckAt = 0L
@@ -139,7 +142,15 @@ class FeatureWatchService : AccessibilityService() {
         val now = SystemClock.elapsedRealtime()
         val screenOn = getSystemService(PowerManager::class.java).isInteractive
         val root = if (screenOn) rootInActiveWindow else null
-        val detected = root?.let { detect(it) }
+        // All windows on screen, to also find Reels/Shorts in a small window: YouTube shrinks Shorts
+        // into picture-in-picture (with a Next button) when you go to the home screen.
+        val windowList = if (screenOn) try { windows } catch (e: Exception) { emptyList() } else emptyList()
+        val activeIsPip = windowList.any { it.isActive && it.isInPictureInPictureMode }
+        var found: Pair<Seen, AccessibilityNodeInfo>? = root?.let { r ->
+            detect(r)?.let { s -> (if (activeIsPip && s.webAppPackage == null) s.copy(floating = true) else s) to r }
+        }
+        if (found == null) found = detectFloating(windowList)
+        val detected = found?.first
 
         // Credit the time since the last check to whatever was showing then.
         // Capped so a long gap (phone asleep, service paused) can't add fake minutes.
@@ -148,7 +159,13 @@ class FeatureWatchService : AccessibilityService() {
         if (detected != seen) debug("now showing: $detected")
         seen = detected
         updateVisit(detected?.takeIf { it.webAppPackage == null }?.feature, now)
-        visitFeature?.let { feature -> root?.let { checkPage(it, feature) } }
+        visitFeature?.let { feature -> found?.second?.let { checkPage(it, feature) } }
+        // No badge over other apps while Reels/Shorts play in a small window (they're still counted).
+        val away = detected?.floating == true
+        if (away != badgeAway) {
+            badgeAway = away
+            if (away) ReelBadge.hide() else refreshBadge()
+        }
 
         // Keep checking every 2 s only while something we count is on screen (screen off = nothing).
         if (seen != null && !heartbeatScheduled) {
@@ -229,7 +246,7 @@ class FeatureWatchService : AccessibilityService() {
         if (!reelBadgeOn) return
         val mascot = mascotForBadge()
         handler.post {
-            if (visitFeature == feature && reelBadgeOn) ReelBadge.show(this@FeatureWatchService, total, mascot)
+            if (visitFeature == feature && reelBadgeOn && !badgeAway) ReelBadge.show(this@FeatureWatchService, total, mascot)
         }
     }
 
@@ -256,6 +273,22 @@ class FeatureWatchService : AccessibilityService() {
         )
         badgeMascot = Triple(bitmap, now, state.theme)
         return bitmap
+    }
+
+    /**
+     * Reels/Shorts in a window the user isn't using right now: picture-in-picture, the other half of
+     * split screen, or a pop-up window. Only Instagram and YouTube windows are looked at (not websites).
+     */
+    private fun detectFloating(windowList: List<AccessibilityWindowInfo>): Pair<Seen, AccessibilityNodeInfo>? {
+        for (window in windowList) {
+            if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION || window.isActive) continue
+            val root = window.root ?: continue
+            val pkg = root.packageName?.toString() ?: continue
+            if (Feature.entries.none { it.packageName == pkg }) continue
+            val seen = detect(root)?.takeIf { it.webAppPackage == null } ?: continue
+            return seen.copy(floating = true) to root
+        }
+        return null
     }
 
     private fun detect(root: AccessibilityNodeInfo): Seen? {
@@ -295,8 +328,14 @@ class FeatureWatchService : AccessibilityService() {
                         feature.id, feature.title, feature.packageName, limit!!.limitMinutes,
                         openCount = null, reason = if (ruleApplies) rule!! else PauseReason.LIMIT
                     )
-                    // In the app we press Back to leave Shorts; in a browser we just cover the page.
-                    handler.post { act(target, stillShowing = { seen?.feature == feature }, pressBack = what.webAppPackage == null) }
+                    // In the app we press Back to leave Shorts; in a browser we just cover the page;
+                    // in a small window we pause the video.
+                    handler.post {
+                        act(
+                            target, stillShowing = { seen?.feature == feature },
+                            pressBack = what.webAppPackage == null && !what.floating, floating = what.floating
+                        )
+                    }
                     return@launch
                 }
             }
@@ -333,7 +372,7 @@ class FeatureWatchService : AccessibilityService() {
     }
 
     /** A limit was used up while it was on screen. */
-    private fun act(target: PauseTarget, stillShowing: () -> Boolean, pressBack: Boolean) {
+    private fun act(target: PauseTarget, stillShowing: () -> Boolean, pressBack: Boolean, floating: Boolean = false) {
         if (!stillShowing()) {
             debug("${target.key} over limit but no longer on screen")
             return
@@ -344,6 +383,14 @@ class FeatureWatchService : AccessibilityService() {
         lastActionAt[target.key] = now
         debug("${target.key} over limit, strictness=$strictness, pauseShowing=${com.unscroll.app.PauseActivity.isShowing} -> acting")
 
+        // In a small window: pause the video and say why, instead of a Pause screen over another app.
+        if (floating && strictness != Strictness.CHILL) {
+            if (MediaPauser.isPlaying(this)) {
+                MediaPauser.pausePlayback(this)
+                LimitActions.showFloatingPaused(this, target.name, target.reason)
+            }
+            return
+        }
         if (pressBack && strictness != Strictness.CHILL) performGlobalAction(GLOBAL_ACTION_BACK)
         LimitActions.onLimitReached(this, target, strictness)
     }

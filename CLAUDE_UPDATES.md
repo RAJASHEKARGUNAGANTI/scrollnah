@@ -461,6 +461,14 @@ debug gallery (below).
 - **Reel count widget** (`ReelCountWidgetReceiver`, `layout/widget_reels.xml`, `xml/reels_widget_info.xml`):
   "12 / REELS TODAY", `MascotLines.reelWidgetLine`, mascot in today's mood. First in the "Add widget" picker
   (`MascotWidgets.available` hides it in the Play version, whose manifest removes the receiver).
+- **Picture-in-picture (developer report: "not tracking when YouTube was in a floating window"):** pressing
+  Home during Shorts puts it in PiP (`mode=pinned`, aspect 9/16, actions Previous|Play/Pause|Next), and the
+  tracker only looked at `rootInActiveWindow` (the launcher). Now `checkScreen` also searches `windows`
+  (needs `flagRetrieveInteractiveWindows`) for Instagram/YouTube windows: active window in PiP, or a
+  non-active app window (split screen, pop-up) -> `Seen(floating = true)`. Time and videos keep counting
+  (pressing Next in the PiP window shows a new page view), the badge hides (`badgeAway`), and at the limit
+  `act` pauses playback (`MediaPauser`) with `LimitActions.showFloatingPaused` instead of Back + Pause screen.
+  Tested on the Nothing phone: Home -> PiP, no false count when it shrank, Next x3 -> +3, back to full screen.
 - The Nothing phone had the Play 2.2.3 and an old GitHub 2.2.2 (`com.unscroll.app`) installed side by side;
   both were removed at the developer's request and the test copy `app.scrollnah.test` installed by adb
   (adb install works on that phone).

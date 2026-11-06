@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Settings for the Reels/Shorts watcher (FeatureWatchService).
      flagReportViewIds lets us look up views by ID, e.g. YouTube's "reel_recycler".
-     typeViewScrolled: a swipe in Reels/Shorts, so the tracker checks right away which video page shows (to count videos). -->
+     typeViewScrolled: a swipe in Reels/Shorts, so the tracker checks right away which video page shows (to count videos).
+     flagRetrieveInteractiveWindows: lets it see all windows, to find Shorts in picture-in-picture or split screen. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewScrolled"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagReportViewIds"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="false"
     android:notificationTimeout="300"
