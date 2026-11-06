@@ -73,6 +73,7 @@ class FeatureWatchService : AccessibilityService() {
     @Volatile private var widgetDrawnAt = 0L
     private var loggedPage: Int? = null
     private var badgeAway = false // the badge is hidden while Reels/Shorts play in a small window
+    private val settleCheck = Runnable { checkScreen() } // look again once a new video has settled
 
     private var seen: Seen? = null
     private var lastCheckAt = 0L
@@ -133,6 +134,7 @@ class FeatureWatchService : AccessibilityService() {
         if (running === this) running = null
         handler.removeCallbacks(heartbeat)
         handler.removeCallbacks(watchdog)
+        handler.removeCallbacks(settleCheck)
         ReelBadge.hide()
         scope.cancel()
         super.onDestroy()
@@ -212,12 +214,20 @@ class FeatureWatchService : AccessibilityService() {
         }.sortedBy { it.second }
         val filled = pages.firstOrNull { it.third >= pagerBox.height() * ReelCounter.FILLED_SHARE }
         if (filled != null) {
-            val added = reelCounter.onPage(filled.first)
+            val added = reelCounter.onPage(filled.first, SystemClock.elapsedRealtime())
             if (filled.first != loggedPage) {
                 loggedPage = filled.first
-                debug("page ${feature.id}: view ${filled.first} of ${pager.childCount} -> +$added")
+                debug("page ${feature.id}: view ${filled.first}, pages " + pages.joinToString { "${it.first}@${it.second}+${it.third}" })
             }
-            if (added > 0) countVideos(feature, added)
+            if (added > 0) {
+                debug("counted a new video in ${feature.id}")
+                countVideos(feature, added)
+            }
+            // A new video waits [ReelCounter.SETTLE_MS] before it counts: check again right then.
+            if (reelCounter.waitingToSettle) {
+                handler.removeCallbacks(settleCheck)
+                handler.postDelayed(settleCheck, ReelCounter.SETTLE_MS + 100)
+            }
         } else if (pages.size >= 2) {
             reelCounter.onBetween(upper = pages[0].first, lower = pages[1].first) // a swipe in progress
         }

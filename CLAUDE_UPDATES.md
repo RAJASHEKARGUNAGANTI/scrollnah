@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.1 (code 14) = 2.3.0 + Parent lock + reel counting that works on real YouTube + reel count widget (GitHub version) + "Add widget", built 2026-11-06 as `release/ScrollNah-2.4.1-play.aab` and released on GitHub as v2.4.1 (v2.4.0's counter didn't count real YouTube Shorts); the developer will upload the bundle to Play after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.2 (code 15) = 2.3.0 + Parent lock + reel counting that works on real YouTube (also in picture-in-picture, no double counts) + reel count widget (GitHub version) + "Add widget", built 2026-11-06 as `release/ScrollNah-2.4.2-play.aab` and released on GitHub as v2.4.2 (v2.4.0 didn't count real YouTube Shorts; v2.4.1 could count a swipe-and-back twice); the developer will upload the bundle to Play after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -443,7 +443,7 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
-## 2.4.1: reel counting that works with real YouTube, reel count widget (2026-11-06)
+## 2.4.1 / 2.4.2: reel counting that works with real YouTube, reel count widget (2026-11-06)
 - **Real-phone finding (Nothing Phone (2a), Android 16, YouTube 21.43):** YouTube's Shorts pager
   (`reel_recycler`, a RecyclerView) reports scrollable=false and sends almost no scroll events (one in
   ~30 s, fromIndex/toIndex -1), so 2.4.0's counting (scroll events) counted nothing on real YouTube.
@@ -461,6 +461,13 @@ debug gallery (below).
 - **Reel count widget** (`ReelCountWidgetReceiver`, `layout/widget_reels.xml`, `xml/reels_widget_info.xml`):
   "12 / REELS TODAY", `MascotLines.reelWidgetLine`, mascot in today's mood. First in the "Add widget" picker
   (`MascotWidgets.available` hides it in the Play version, whose manifest removes the receiver).
+- **Double counts (developer report "double count on one swipe", after 2.4.1):** YouTube reports the next
+  page as soon as it covers most of the screen, so a swipe forward and straight back (or a drag that
+  springs back) counted +2 (A -> B -> A within a second, seen in the log). Now a new page only counts once
+  it has stayed `ReelCounter.SETTLE_MS` (800 ms); `settleCheck` re-checks right then, so the badge still
+  updates within ~1 s. Tested on the Nothing phone with real YouTube: 5 swipes = +5, a short slow drag that
+  really moved on = +1 (YouTube advances after ~1/5 of the screen), a tiny drag that sprang back = +0,
+  forward then straight back = +0 (same video, badge unchanged). Videos skipped in under 0.8 s don't count.
 - **Picture-in-picture (developer report: "not tracking when YouTube was in a floating window"):** pressing
   Home during Shorts puts it in PiP (`mode=pinned`, aspect 9/16, actions Previous|Play/Pause|Next), and the
   tracker only looked at `rootInActiveWindow` (the launcher). Now `checkScreen` also searches `windows`
