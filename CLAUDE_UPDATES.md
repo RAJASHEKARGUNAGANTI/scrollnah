@@ -459,6 +459,16 @@ debug gallery (below).
   Phone, release build installed over 2.5.0 (data kept): Shorts -> YouTube Home -> Pause screen 0.58 s later,
   YouTube stopped, nothing pinned (twice, once recorded).
 - **Fix: "Not now" on the tracker card** was light text on the always-light lilac card in dark mode: now Ink.
+- **Unsaved Limits after leaving the app (developer report after 2.5.1: "edit the reel count and exit without
+  saving, it was not prompting").** Every way out inside the app already asked (tabs, the arrow, Back, also the
+  predictive Back swipe on Android 17), but leaving the app (Home, another app) can't be stopped, and on return
+  Limits still showed the new numbers while the old limits were in force. Now: (1) `LimitsScreen` watches the
+  activity: stopped with unsaved changes -> on return the "Lock it in first?" dialog shows at once (`{}` = stay;
+  Discard resets the drafts); (2) "Lock it in" is a bar under the list that slides in only while something is
+  unsaved (the old button at the very end of the list is gone; Beast's cool-down line stays in the list), and the
+  list scrolls up by the bar's height (`LOCK_BAR_HEIGHT`) so the edited card stays in view. Android 17 emulator:
+  YouTube for 8 s -> back = dialog; Discard / Lock it in from it; the bar saves; 360x640 at font 1.3 fits. (A
+  Home-and-back within ~5 s doesn't stop the activity there, so no dialog: nothing was left.)
 - Noticed, not changed: with every limited app switched off, Home shows the "Which apps eat your day?" setup card
   and Stats "Add some apps", so someone using only the reels limit sees their count only on the badge.
 ## Next batch (2026-11-06, developer: "do all this"): fixes + 5 features, not yet released

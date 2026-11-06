@@ -31,6 +31,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
+import android.content.ContextWrapper
+import androidx.activity.ComponentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -56,6 +61,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -266,6 +273,29 @@ fun LimitsScreen(
     BackHandler(enabled = hasChanges) { askBeforeLeaving = onBack }
     val leaveAction = pendingLeave ?: askBeforeLeaving
 
+    // Leaving the app (Home, another app) can't be stopped or asked about. So if changes are still
+    // unsaved when the user comes back, ask right then: the screen shows the new numbers, but the
+    // old limits are the ones in force until "Lock it in". ({} = stay here after answering.)
+    val currentHasChanges by rememberUpdatedState(hasChanges)
+    val activity = remember(context) {
+        generateSequence(context) { (it as? ContextWrapper)?.baseContext }.filterIsInstance<ComponentActivity>().firstOrNull()
+    }
+    DisposableEffect(activity) {
+        var leftWithChanges = false
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> leftWithChanges = currentHasChanges
+                Lifecycle.Event.ON_START -> {
+                    if (leftWithChanges && currentHasChanges && askBeforeLeaving == null) askBeforeLeaving = {}
+                    leftWithChanges = false
+                }
+                else -> Unit
+            }
+        }
+        activity?.lifecycle?.addObserver(observer)
+        onDispose { activity?.lifecycle?.removeObserver(observer) }
+    }
+
     // Writes every changed row (and the strictness) to storage.
     suspend fun saveDrafts() {
         val changedApps = apps.mapNotNull { app ->
@@ -292,8 +322,29 @@ fun LimitsScreen(
         strictnessDraft = null
     }
 
+    /** "Lock it in": saves everything (Beast mode may ask for its cool-down first). */
+    fun lockIn() {
+        guarded {
+            scope.launch {
+                saveDrafts()
+                BlockerService.startIfNeeded(context)
+                Toast.makeText(context, "Locked in!", Toast.LENGTH_SHORT).show()
+                SoundFx.play(context, SoundFx.Sfx.HAPPY)
+                onSaved()
+            }
+        }
+    }
+
+    // When the "Lock it in" bar slides in, the list gets shorter from the bottom: scroll it up by
+    // the bar's height, so the card being edited (often near the bottom) stays where it was.
+    val listState = rememberLazyListState()
+    val barHeight = with(LocalDensity.current) { LOCK_BAR_HEIGHT.toPx() }
+    LaunchedEffect(hasChanges) { if (hasChanges) listState.animateScrollBy(barHeight) }
+
+    Column(Modifier.fillMaxSize()) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        state = listState,
+        modifier = Modifier.weight(1f).fillMaxWidth(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -453,33 +504,30 @@ fun LimitsScreen(
                 onClick = { if (hasChanges) askBeforeLeaving = onOpenBreaks else onOpenBreaks() }
             )
         }
-        item {
-            NeoButtonPrimary(
-                if (hasChanges) "Lock it in" else "Nothing to lock in yet",
-                backgroundColor = Orange,
-                enabled = hasChanges,
-                onClick = {
-                guarded {
-                    scope.launch {
-                        saveDrafts()
-                        BlockerService.startIfNeeded(context)
-                        Toast.makeText(context, "Locked in!", Toast.LENGTH_SHORT).show()
-                        SoundFx.play(context, SoundFx.Sfx.HAPPY)
-                        onSaved()
-                    }
-                }
-            }
-            )
-            // Beast mode: show where the cool-down is.
-            if (savedStrictness == Strictness.BEAST) {
+        // Beast mode: show where the cool-down is.
+        if (savedStrictness == Strictness.BEAST) {
+            item {
                 val status = when (val s = guardState) {
                     is BeastGuard.State.Waiting -> "Cool-down: ${minutesUp(s.msLeft)} min left before you can give yourself more time."
                     is BeastGuard.State.Open -> "Cool-down done: you can loosen limits for the next ${minutesUp(s.msLeft)} min."
                     BeastGuard.State.Locked -> "Beast mode: giving yourself more time needs a 10-minute cool-down."
                 }
-                Text(status, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 10.dp))
+                Text(status, style = MaterialTheme.typography.bodyMedium)
             }
         }
+    }
+    // "Lock it in" stays in sight below the list while something is unsaved: the list is long,
+    // and a change in the middle of it is easy to leave without saving.
+    AnimatedVisibility(visible = hasChanges) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Neo.colors.background)
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 14.dp)
+        ) {
+            NeoButtonPrimary("Lock it in", backgroundColor = Orange, onClick = ::lockIn)
+        }
+    }
     }
 
     if (showGuard) {
@@ -793,6 +841,9 @@ private fun TimeChip(text: String, what: String, onClick: () -> Unit) {
         Text(text, fontWeight = FontWeight.Bold)
     }
 }
+
+/** About how tall the "Lock it in" bar under the list is (56dp button + its padding and shadow). */
+private val LOCK_BAR_HEIGHT = 82.dp
 
 /** "You changed things but didn't lock them in" prompt. */
 @Composable
