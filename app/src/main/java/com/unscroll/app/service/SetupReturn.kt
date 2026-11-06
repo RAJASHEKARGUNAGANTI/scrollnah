@@ -33,11 +33,13 @@ object SetupReturn {
 
     /** Called when ScrollNah is in front again (the user came back by themselves). */
     fun stop() {
+        SettingsHint.hide()
         watching?.cancel()
         watching = null
     }
 
     private fun bringBack(context: Context) {
+        SettingsHint.hide()
         try {
             // Reuses the open ScrollNah screen and closes the Settings page above it.
             context.startActivity(

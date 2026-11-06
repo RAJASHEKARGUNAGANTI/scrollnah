@@ -11,6 +11,7 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.TextView
 import com.unscroll.app.R
+import com.unscroll.app.data.ReelLimit
 import java.text.NumberFormat
 
 /**
@@ -29,8 +30,9 @@ object ReelBadge {
     private var shown: View? = null
     private var shownCount = -1
 
+    /** Shows today's [count] ("32", or "32/50" with a daily reels [limit]). */
     @SuppressLint("InflateParams") // a window has no parent view
-    fun show(service: AccessibilityService, count: Int, mascot: Bitmap) {
+    fun show(service: AccessibilityService, count: Int, limit: Int?, mascot: Bitmap) {
         val view = shown ?: try {
             LayoutInflater.from(service).inflate(R.layout.overlay_reel_badge, null).also { add(service, it) }
         } catch (e: Exception) {
@@ -39,8 +41,10 @@ object ReelBadge {
         shown = view
         view.findViewById<ImageView>(R.id.reel_badge_mascot).setImageBitmap(mascot)
         // "1,234" with the phone's grouping (en-IN phones: "1,23,456").
-        view.findViewById<TextView>(R.id.reel_badge_count).text = NumberFormat.getIntegerInstance().format(count)
-        view.contentDescription = if (count == 1) "1 reel today" else "$count reels today"
+        view.findViewById<TextView>(R.id.reel_badge_count).text =
+            ReelLimit.progress(NumberFormat.getIntegerInstance().format(count), limit)
+        view.contentDescription = (if (count == 1) "1 reel today" else "$count reels today") +
+            (if (limit != null) " of $limit" else "")
         // A small hop when the number goes up.
         if (count > shownCount && shownCount >= 0) {
             view.animate().cancel()

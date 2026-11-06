@@ -65,6 +65,7 @@ import com.unscroll.app.data.REPO_URL
 import com.unscroll.app.data.feedbackUrl
 import com.unscroll.app.service.Allowances
 import com.unscroll.app.service.FeatureWatchService
+import com.unscroll.app.service.SoundFx
 import com.unscroll.app.ui.components.AddWidgetDialog
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
@@ -105,6 +106,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val darkMode by container.settings.darkMode.collectAsStateWithLifecycle(null)
     val timeLeftBubble by container.settings.timeLeftBubble.collectAsStateWithLifecycle(true)
     val reelBadge by container.settings.reelBadge.collectAsStateWithLifecycle(true)
+    val sounds by container.settings.sounds.collectAsStateWithLifecycle(true)
     var addingWidget by remember { mutableStateOf(false) }
     val weekReadyNote by container.settings.weekReadyNote.collectAsStateWithLifecycle(true)
     val insteadIdeas by container.settings.insteadIdeas.collectAsStateWithLifecycle(emptyList())
@@ -239,6 +241,20 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                         )
                     }
                 }
+                SwitchRow(
+                    "Sounds",
+                    "${mascot.theme.mascotName}'s little sounds when you tap it, finish something or get a nudge. Quiet when your phone is on silent.",
+                    checked = sounds,
+                    onToggle = {
+                        scope.launch {
+                            container.settings.setSounds(!sounds)
+                            if (!sounds) {
+                                SoundFx.enabled = true
+                                SoundFx.play(context, SoundFx.Sfx.HAPPY) // a little sample
+                            }
+                        }
+                    }
+                )
                 SettingRow(
                     title = "Home-screen widget",
                     detail = "${mascot.theme.mascotName} on your home screen, in today's mood",

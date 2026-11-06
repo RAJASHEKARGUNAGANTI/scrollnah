@@ -54,6 +54,18 @@
             android:taskAffinity="${applicationId}.pause"
             android:theme="@style/Theme.Unscroll" />
 
+        <!-- Settings hint: a tiny picture-in-picture window over Android's Settings pages (see SettingsHint). -->
+        <activity
+            android:name=".HintActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:taskAffinity="${applicationId}.hint"
+            android:theme="@style/Theme.Unscroll" />
+
         <!-- "Take a break" on a break reminder: invisible, records the choice and goes home. -->
         <activity
             android:name=".BreakActionActivity"

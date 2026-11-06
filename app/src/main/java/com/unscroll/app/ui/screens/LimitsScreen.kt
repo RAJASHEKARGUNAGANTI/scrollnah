@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.service.SoundFx
 import com.unscroll.app.ui.theme.PillShape
 
 import com.unscroll.app.ui.components.PencilIcon
@@ -70,6 +71,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.draw.rotate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +85,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.BreakSettings
 import com.unscroll.app.data.DEFAULT_FEATURE_LIMIT_MINUTES
+import com.unscroll.app.data.ReelLimit
+import com.unscroll.app.data.SlowPlan
+import com.unscroll.app.data.SlowDownPlan
 import com.unscroll.app.data.Feature
 import com.unscroll.app.data.LIMIT_STEP_MINUTES
 import com.unscroll.app.data.MAX_LIMIT_MINUTES
@@ -190,7 +198,10 @@ fun LimitsScreen(
         featureDrafts[f.id]?.let {
             it.minutes != (saved?.limitMinutes ?: DEFAULT_FEATURE_LIMIT_MINUTES) || it.enabled != (saved?.enabled ?: false)
         } == true
-    } || (strictnessDraft != null && strictnessDraft != savedStrictness) ||
+    } || (features.isNotEmpty() && featureDrafts[ReelLimit.ID]?.let {
+        val saved = featureLimits.find { l -> l.featureId == ReelLimit.ID }
+        it.minutes != (saved?.limitMinutes ?: ReelLimit.DEFAULT) || it.enabled != (saved?.enabled ?: false)
+    } == true) || (strictnessDraft != null && strictnessDraft != savedStrictness) ||
         (bedtimeDraft != null && bedtimeDraft != savedBedtime) ||
         (workDraft != null && workDraft != savedWork) ||
         groups.any { g -> groupDrafts[g.id]?.let { it != g.toDraft() } == true }
@@ -211,7 +222,10 @@ fun LimitsScreen(
             featureDrafts[f.id]?.let {
                 BeastGuard.limitLoosened(saved?.limitMinutes ?: DEFAULT_FEATURE_LIMIT_MINUTES, saved?.enabled ?: false, null, it.minutes, it.enabled, null)
             } == true
-        } || (strictnessDraft?.let { BeastGuard.strictnessLoosened(savedStrictness, it) } == true) ||
+        } || featureDrafts[ReelLimit.ID]?.let {
+            val saved = featureLimits.find { l -> l.featureId == ReelLimit.ID }
+            BeastGuard.limitLoosened(saved?.limitMinutes ?: ReelLimit.DEFAULT, saved?.enabled ?: false, null, it.minutes, it.enabled, null)
+        } == true || (strictnessDraft?.let { BeastGuard.strictnessLoosened(savedStrictness, it) } == true) ||
             (bedtimeDraft?.let { BeastGuard.bedtimeLoosened(savedBedtime, it) } == true) ||
             (workDraft?.let { BeastGuard.workHoursLoosened(savedWork, it) } == true) ||
             groups.any { g ->
@@ -316,6 +330,9 @@ fun LimitsScreen(
             // Save pending edits first, otherwise they'd be lost while the picker is open.
             AddAppButton(onClick = { guarded { scope.launch { saveDrafts(); onAddApp() } } })
         }
+        if (apps.isNotEmpty()) {
+            item { SlowDownPlanCard() }
+        }
 
         // Shared budgets: a few apps with one limit together.
         if (apps.size >= 2 || groups.isNotEmpty()) {
@@ -376,6 +393,11 @@ fun LimitsScreen(
                     onRemove = null
                 )
             }
+            item(key = ReelLimit.ID) {
+                val saved = featureLimits.find { it.featureId == ReelLimit.ID }
+                val draft = featureDrafts[ReelLimit.ID] ?: Draft(saved?.limitMinutes ?: ReelLimit.DEFAULT, saved?.enabled ?: false)
+                ReelLimitRow(draft = draft, onChange = { featureDrafts[ReelLimit.ID] = it })
+            }
         }
 
         item {
@@ -434,6 +456,7 @@ fun LimitsScreen(
                         saveDrafts()
                         BlockerService.startIfNeeded(context)
                         Toast.makeText(context, "Locked in!", Toast.LENGTH_SHORT).show()
+                        SoundFx.play(context, SoundFx.Sfx.HAPPY)
                         onSaved()
                     }
                 }
@@ -560,6 +583,65 @@ internal fun BeastGuardDialog(
         },
         dismissButton = { TextButton(onClick = onKeepStrict) { Text("Keep it strict", color = Neo.colors.content) } }
     )
+}
+
+/**
+ * The slow-down plan: every week each app's limit goes down a little until it reaches the goal
+ * (see [SlowDownPlan]; the blocker applies it). Saves right away: it only ever lowers limits.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun SlowDownPlanCard() {
+    val container = appContainer()
+    val scope = rememberCoroutineScope()
+    val plan by container.settings.slowPlan.collectAsStateWithLifecycle(SlowPlan())
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+        Text("Slow-down plan", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+        NeoCard(
+            modifier = Modifier.alpha(if (plan.on) 1f else 0.7f),
+            contentPadding = PaddingValues(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Lower my limits a little each week", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Every week each app's limit goes down by ${duration(plan.stepMinutes)}, until it reaches your goal.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                NeoSwitch(
+                    checked = plan.on,
+                    onToggle = { scope.launch { container.settings.setSlowPlanOn(!plan.on) } },
+                    label = "Slow-down plan"
+                )
+            }
+            if (plan.on) {
+                Text("Each week", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SlowDownPlan.STEP_CHOICES.forEach { step ->
+                        ChoicePill("${duration(step)} less", selected = plan.stepMinutes == step) {
+                            scope.launch { container.settings.setSlowPlanStep(step) }
+                        }
+                    }
+                }
+                Text("Goal", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+                Stepper(
+                    minutes = plan.goalMinutes,
+                    onDecrease = { scope.launch { container.settings.setSlowPlanGoal((plan.goalMinutes - 5).coerceAtLeast(SlowDownPlan.MIN_GOAL)) } },
+                    onIncrease = { scope.launch { container.settings.setSlowPlanGoal((plan.goalMinutes + 5).coerceAtMost(SlowDownPlan.MAX_GOAL)) } },
+                    what = "goal"
+                )
+                val next = plan.lastStep?.let { runCatching { SlowDownPlan.nextStep(java.time.LocalDate.parse(it)) }.getOrNull() }
+                if (next != null) {
+                    Text(
+                        "Next step: ${next.format(java.time.format.DateTimeFormatter.ofPattern("EEE, d MMM"))}. Changes here save right away.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 10.dp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 /** Bedtime schedule: switch + start/end times (tap a time to change it). */
@@ -842,6 +924,45 @@ private fun LimitEditRow(
     }
 }
 
+/** "Reels & Shorts a day": the daily reels limit, both apps together (see [ReelLimit]). */
+@Composable
+private fun ReelLimitRow(draft: Draft, onChange: (Draft) -> Unit) {
+    NeoCard(
+        modifier = Modifier.alpha(if (draft.enabled) 1f else 0.55f),
+        contentPadding = PaddingValues(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("Reels & Shorts a day", fontWeight = FontWeight.Bold)
+                Text(
+                    "Both apps together. The Pause screen comes after this many videos.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Stepper(
+                    minutes = draft.minutes,
+                    onDecrease = { onChange(draft.copy(minutes = (draft.minutes - ReelLimit.STEP).coerceAtLeast(ReelLimit.MIN))) },
+                    onIncrease = { onChange(draft.copy(minutes = (draft.minutes + ReelLimit.STEP).coerceAtMost(ReelLimit.MAX))) },
+                    what = "reels a day",
+                    text = { "$it reels" },
+                    spoken = { "$it reels" }
+                )
+            }
+            Box(Modifier.padding(top = 6.dp)) {
+                NeoSwitch(
+                    checked = draft.enabled,
+                    onToggle = { onChange(draft.copy(enabled = !draft.enabled)) },
+                    label = "Limit Reels and Shorts a day"
+                )
+            }
+        }
+    }
+}
+
 /** "+ Limit opens" link, or the "Opens a day" stepper once there is an open limit ([maxOpens] null = none). */
 @Composable
 private fun OpensLimit(name: String, maxOpens: Int?, onChange: (Int?) -> Unit) {
@@ -1081,25 +1202,55 @@ internal fun AddAppButton(onClick: () -> Unit) {
  */
 @Composable
 private fun WatcherSetupCard(onTurnOn: () -> Unit) {
+    // Compact by default: the heading, the key facts and the button. The chevron shows the rest
+    // (the payment-app note and where the switch is). The key facts sit right above the button,
+    // which is the "prominent disclosure + consent" Google asks for before Accessibility.
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val chevronTurn by animateFloatAsState(if (expanded) -90f else 90f, label = "chevron")
     NeoCard(shape = CardShapeLarge, backgroundColor = Lilac, contentPadding = PaddingValues(16.dp)) {
-        NeoPill("Optional")
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(role = Role.Button, onClickLabel = if (expanded) "Show less" else "Show more") { expanded = !expanded }
+                .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                NeoPill("Optional")
+                Text(
+                    "Limit Reels, Shorts & websites",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                ForwardChevronIcon(Modifier.rotate(chevronTurn), size = 24.dp)
+            }
+        }
         Text(
-            "Limit Reels, Shorts & websites",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        Text(
-            "To spot Reels, Shorts and sites like youtube.com, and count how many Reels and Shorts you scroll, " +
-                "ScrollNah needs Accessibility access. It only checks which screen is open in Instagram and YouTube, " +
-                "when their videos scroll, and your browser's address bar. It never reads messages, passwords or other apps. " +
-                "Only minutes and the count are saved, on this phone.\n\n" +
-                "Note: some UPI and bank apps (like BHIM) won't open while any app uses Accessibility. " +
-                "Turn this off while you pay; your other limits keep working.\n\n" +
-                "In Settings: Downloaded apps > ScrollNah > turn on.",
+            "Uses Accessibility only to spot Reels, Shorts and limited websites, and count the videos. " +
+                "Never reads messages or passwords. Nothing leaves your phone.",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 6.dp, bottom = 14.dp)
+            modifier = Modifier.padding(top = 6.dp)
         )
-        NeoButtonPrimary("Open Settings", onClick = onTurnOn, backgroundColor = Lime)
+        AnimatedVisibility(visible = expanded) {
+            Text(
+                "It only checks which screen is open in Instagram and YouTube, when their videos scroll, " +
+                    "and your browser's address bar. Only minutes and the count are saved, on this phone.\n\n" +
+                    "Note: some UPI and bank apps (like BHIM) won't open while any app uses Accessibility. " +
+                    "Turn this off while you pay; your other limits keep working.\n\n" +
+                    "In Settings: Downloaded apps > ScrollNah > turn on.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        NeoButtonPrimary(
+            "Agree & open Settings",
+            onClick = onTurnOn,
+            backgroundColor = Lime,
+            modifier = Modifier.padding(top = 14.dp)
+        )
     }
 }
 

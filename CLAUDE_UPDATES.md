@@ -443,6 +443,62 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
+## Next batch (2026-11-06, developer: "do all this"): fixes + 5 features, not yet released
+- **Setup note no longer moves the button:** `SetupDoneNote` keeps its space while it fades (alpha, not
+  shrinking), so "Open settings" stays under the finger. Checked on the emulator (same position before/after).
+- **Bubble steps aside:** the time-left/break bubble hides as soon as a touch on it moves past the touch slop
+  (`BubbleOverlay.SwipeAway`); taps still dismiss/open. Making it pass touches through isn't possible: Android
+  12+ blocks touches under another app's opaque window. The swipe that starts on it is lost, the next works.
+- **Daily reels limit:** `data/ReelLimit.kt` (FeatureLimit row `reel_count`, count in limitMinutes, so it
+  saves with "Lock it in", backs up and gets the Beast cool-down). Limits > Reels & Shorts > "Reels & Shorts a
+  day" (10-500, step 10, default 50). Tracker: `addTime` checks `totalViews >= limit` in Reels/Shorts (apps
+  only) -> `PauseReason.REELS` (pill "50 reels today", "That's your 50 reels for today. Breathe with me, then
+  choose.", Chill nudge "Blobby: that's 50 reels", small-window pause). "Open for 5 minutes" = pass key
+  "reels". Badge, Home sticker and widget show "32/50"; widget line "That's all for today!" at the limit.
+  Emulator: limit 10 -> Pause screen right after the 10th video.
+- **Slow-down plan:** `data/SlowDownPlan.kt` (+ SlowDownPlanTest): weekly steps since `lastStep`, never under
+  the goal, never raised; settings in DataStore (`slow_plan_*`). `BlockerService.planWork` (in streakWork, every
+  30 min while the screen is on) lowers enabled apps' limits (and weekend limits), moves lastStep by whole
+  weeks, and sends "Bloomy: a little less this week" / "we made it". Limits card (switch, 5/10 min, goal
+  5-120, "Next step: Fri, 20 Nov"). Emulator: date moved +8 days -> "1 step, 2 limits lowered", 30 -> 25 min.
+- **Display over other apps first (developer, 2026-11-06):** a new optional onboarding page (Step 2, before
+  usage access; "Open settings" / "Skip for now") asks for it, so the Settings hints can already help with
+  usage access and every switch after it. Skipped = the last step asks again (only if the choices need it).
+  Onboarding now has 10 dots: name, overlay, usage, apps, reality check, strictness, Parent lock, switches.
+- **Tracker card in Limits (developer):** compact by default: heading, a 2-line key disclosure and the
+  "Agree & open Settings" button; the chevron shows the rest (where it looks, the UPI note, where the switch
+  is). The key facts stay right above the button (Google's prominent disclosure + consent).
+- **Mascot sounds (developer idea):** `tools/make_sounds.py` synthesises 8 sounds (4 per mascot, ~41 KB in
+  all, Ogg Vorbis stereo because ffmpeg's built-in Vorbis encoder needs 2 channels). `SoundFx` (SoundPool,
+  USAGE_ASSISTANCE_SONIFICATION) plays them on: mascot poke (Home), celebrations, the setup "...is on" note,
+  "Lock it in", the Pause screen (sad when it opens, happy on "Nah, I'm good"). Skipped on silent/vibrate
+  and with the switch off. Notifications: `SoundFx.channel` makes "nudges_blobby" / "nudges_bloomy" (and
+  "breaks_*", "*_plain" when sounds are off) with the mascot's nudge sound, and deletes the old "nudges" /
+  "breaks" channels. Not over other apps (badge, bubble).
+- **Mascot sounds, take 2 (2026-11-06):** the developer found the synthesised tones too "computer generated",
+  didn't like free CC0 picks, and made 4 creature sounds with AI (`design/sounds/`: tap, happy, Pause_screen,
+  notification; 2.04 s each with up to 0.8 s of silence first). `tools/make_sounds.py` was replaced by
+  `tools/prepare_sounds.py`: finds where the sound starts/ends (10 ms steps, -50 dB, 3 loud steps in a row so
+  a stray click after the end is cut), high-pass 120 Hz, 8 ms fade in / short fade out, gentle compressor,
+  volume to a target (tap softest, notification loudest), the same soft echo (aecho 90/190/300 ms), limiter,
+  32 kHz mono libvorbis q3 (~51 KB for 4 files) + WAV previews in `design/sounds/preview/`. Both mascots share
+  the set for now (`SoundFx.rawId`). Notification channels are now "nudges_blobby_2" etc. (`SOUND_SET`, raise
+  it when the nudge sound changes; older ones are deleted) and the sound URI uses the resource name
+  (`android.resource://pkg/raw/mascot_nudge`), since resource numbers can shift between app versions.
+- **Setup reality check:** new onboarding step (now Step 5): 1-5 h chips -> "About N days a year" (h*365/24) +
+  "win back 30 min a day = about 8 days a year", and a switch that turns on the slow-down plan.
+- **Settings hints:** first built as an overlay window, but Android 12+ hides non-system overlays on Settings
+  pages (Accessibility, special app access, device admin), so it's a picture-in-picture `HintActivity`
+  (own task, excluded from recents, `makeLaunchIntoPip` on Android 13+, enterPictureInPictureMode before).
+  Shown for usage access, Xiaomi/vivo pop-ups, battery, uninstall protection and the tracker's Accessibility
+  page; closed by `SetupReturn` / MainActivity.onRestart, by the user, or after 60 s. Starting it while
+  Settings is in front relies on "Display over other apps" (background activity start). Emulator: shown on
+  the Accessibility page, closed on return.
+- **Sleeping mascot at night** on all widgets (see CLAUDE.md, widgets). Emulator: Blobby and Bloomy asleep
+  with a whole-day bedtime; back to awake when bedtime was turned off.
+- 74 unit tests. Small screen (360x640, font 1.3): the new Limits cards fit. Sizes: GitHub release APK
+  1.62 MB, Play 1.60 MB (+17 KB). Not tested on a real phone yet (PiP hint on MIUI/vivo especially).
+
 ## 2.4.1 / 2.4.2: reel counting that works with real YouTube, reel count widget (2026-11-06)
 - **Real-phone finding (Nothing Phone (2a), Android 16, YouTube 21.43):** YouTube's Shorts pager
   (`reel_recycler`, a RecyclerView) reports scrollable=false and sends almost no scroll events (one in

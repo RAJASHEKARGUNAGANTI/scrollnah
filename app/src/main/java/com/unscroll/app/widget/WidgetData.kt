@@ -7,8 +7,10 @@ import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.StreakRepository
+import com.unscroll.app.data.ReelLimit
 import com.unscroll.app.data.Websites
 import com.unscroll.app.service.FeatureWatchService
+import com.unscroll.app.service.FocusRules
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 
@@ -30,10 +32,16 @@ data class WidgetState(
     val topLimit: Int = 0,
     val streak: Int = 0,
     val reels: Int = 0,            // Reels + Shorts scrolled today (counted by the tracker)
-    val trackerOn: Boolean = false // the Reels & Shorts tracker is switched on
+    val reelLimit: Int? = null,    // the daily reels limit, if one is set
+    val trackerOn: Boolean = false, // the Reels & Shorts tracker is switched on
+    val asleep: Boolean = false     // night: the mascot sleeps on the widgets
 )
 
 object WidgetData {
+
+    /** Night for the widgets: the bedtime schedule if one is set, otherwise 10 pm to 6 am. */
+    fun isNight(now: java.time.LocalTime = java.time.LocalTime.now()): Boolean =
+        if (FocusRules.bedtime().enabled) FocusRules.bedtimeActive(now) else now.hour >= 22 || now.hour < 6
 
     /** Reads today's numbers (app time + website time), the mood, streak and theme. */
     suspend fun load(context: Context): WidgetState {
@@ -45,7 +53,10 @@ object WidgetData {
             today.toString(), theme, pot.flowers, MoodLevel.HAPPY,
             budDays = pot.daysTowardNext, reward = container.settings.activeReward.first(),
             reels = container.database.featureDao().totalViews(today.toString()),
-            trackerOn = FeatureWatchService.isEnabled(context)
+            reelLimit = container.database.featureDao().observeLimits().first()
+                .find { it.featureId == ReelLimit.ID && it.enabled }?.limitMinutes,
+            trackerOn = FeatureWatchService.isEnabled(context),
+            asleep = isNight()
         )
 
         if (!container.usage.hasUsageAccess()) {

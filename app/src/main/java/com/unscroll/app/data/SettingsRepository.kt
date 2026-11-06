@@ -34,6 +34,11 @@ class SettingsRepository(context: Context) {
     private val timeLeftBubbleKey = booleanPreferencesKey("time_left_bubble")
     private val reelBadgeKey = booleanPreferencesKey("reel_badge")
     private val widgetCardDoneKey = booleanPreferencesKey("widget_card_done")
+    private val soundsKey = booleanPreferencesKey("sounds")
+    private val slowPlanOnKey = booleanPreferencesKey("slow_plan_on")
+    private val slowPlanStepKey = intPreferencesKey("slow_plan_step")
+    private val slowPlanGoalKey = intPreferencesKey("slow_plan_goal")
+    private val slowPlanLastKey = stringPreferencesKey("slow_plan_last")
     private val popupsConfirmedKey = booleanPreferencesKey("popups_confirmed")
     private val weekReadyNoteKey = booleanPreferencesKey("week_ready_note")
     private val insteadIdeasKey = stringPreferencesKey("instead_ideas")
@@ -130,6 +135,43 @@ class SettingsRepository(context: Context) {
 
     suspend fun setReelBadge(on: Boolean) {
         store.edit { it[reelBadgeKey] = on }
+    }
+
+    /** The mascot's sounds in the app and on notifications (default on; see SoundFx). */
+    val sounds: Flow<Boolean> = store.data.map { it[soundsKey] ?: true }
+
+    suspend fun setSounds(on: Boolean) {
+        store.edit { it[soundsKey] = on }
+    }
+
+    /** The slow-down plan (limits a little lower every week, see [SlowDownPlan]). */
+    val slowPlan: Flow<SlowPlan> = store.data.map {
+        SlowPlan(
+            on = it[slowPlanOnKey] ?: false,
+            stepMinutes = it[slowPlanStepKey] ?: SlowDownPlan.DEFAULT_STEP,
+            goalMinutes = it[slowPlanGoalKey] ?: SlowDownPlan.DEFAULT_GOAL,
+            lastStep = it[slowPlanLastKey]
+        )
+    }
+
+    /** Switching the plan on starts the week from [today]; off forgets the date. */
+    suspend fun setSlowPlanOn(on: Boolean, today: java.time.LocalDate = java.time.LocalDate.now()) {
+        store.edit {
+            it[slowPlanOnKey] = on
+            if (on) it[slowPlanLastKey] = today.toString() else it.remove(slowPlanLastKey)
+        }
+    }
+
+    suspend fun setSlowPlanStep(minutes: Int) {
+        store.edit { it[slowPlanStepKey] = minutes }
+    }
+
+    suspend fun setSlowPlanGoal(minutes: Int) {
+        store.edit { it[slowPlanGoalKey] = minutes }
+    }
+
+    suspend fun setSlowPlanLastStep(day: java.time.LocalDate) {
+        store.edit { it[slowPlanLastKey] = day.toString() }
     }
 
     /** Home's "Put me on your home screen" card was used or closed, so it doesn't come back. */

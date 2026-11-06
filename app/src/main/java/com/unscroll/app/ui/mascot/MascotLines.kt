@@ -153,6 +153,11 @@ object MascotLines {
         if (maxOpens == null) "Take one slow breath with me before you decide."
         else "You said $maxOpens ${if (maxOpens == 1) "open" else "opens"} a day was plenty. Breathe with me, then choose."
 
+    /** Pause screen at the daily reels limit. */
+    fun reelsSubtitle(maxReels: Int?): String =
+        if (maxReels == null) "Take one slow breath with me before you decide."
+        else "That's your $maxReels reels for today. Breathe with me, then choose."
+
     fun lockedSubtitle(appName: String): String = listOf(
         "You picked Beast mode, so $appName is locked until midnight. I believe in you.",
         "Beast mode says no. $appName unlocks at midnight. You've got this.",
@@ -254,8 +259,9 @@ object MascotLines {
         else "${duration(minutesLeft)} of $appName left today."
 
     /** The reel count widget's line, in the mascot's voice. */
-    fun reelWidgetLine(reels: Int, trackerOn: Boolean): String = when {
+    fun reelWidgetLine(reels: Int, trackerOn: Boolean, limit: Int? = null): String = when {
         !trackerOn && reels == 0 -> "Turn on the tracker so I can count"
+        limit != null && reels >= limit -> "That's all for today!"
         reels == 0 -> "None yet. Nice!"
         reels < 25 -> "I'm counting!"
         reels < 75 -> "That's a lot of reels."

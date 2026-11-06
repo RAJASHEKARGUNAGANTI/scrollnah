@@ -1,5 +1,8 @@
 package com.unscroll.app.ui.components
 
+import com.unscroll.app.service.SoundFx
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -236,8 +239,18 @@ fun SetupDoneNote(guide: SetupGuide, modifier: Modifier = Modifier) {
     // Keeps the last step while the note fades out.
     var shown by remember { mutableStateOf(guide.justDone) }
     if (guide.justDone != null) shown = guide.justDone
-    AnimatedVisibility(visible = guide.justDone != null, modifier = modifier, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-        val step = shown ?: return@AnimatedVisibility
+    val context = LocalContext.current
+    LaunchedEffect(guide.justDone) { if (guide.justDone != null) SoundFx.play(context, SoundFx.Sfx.HAPPY) }
+    val step = shown ?: return // nothing done yet: takes no space
+    val visible = guide.justDone != null
+    val alpha by animateFloatAsState(if (visible) 1f else 0f, label = "done note")
+    // Once shown, the note keeps its space while it fades, so the button below doesn't jump
+    // up under the user's finger.
+    Box(
+        modifier
+            .graphicsLayer { this.alpha = alpha }
+            .then(if (visible) Modifier else Modifier.clearAndSetSemantics { })
+    ) {
         Row(
             Modifier
                 .clip(RoundedCornerShape(14.dp))

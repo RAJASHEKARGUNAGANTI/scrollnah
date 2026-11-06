@@ -2,6 +2,8 @@
 
 package com.unscroll.app.ui.screens
 
+import androidx.compose.ui.platform.LocalContext
+import com.unscroll.app.service.SoundFx
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -87,7 +89,9 @@ fun PauseScreen(
     // 3, 2, 1 breathing countdown. "Open for 5 minutes" only works once it's done.
     var secondsLeft by remember { mutableIntStateOf(3) }
     var breathingDone by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     LaunchedEffect(Unit) {
+        SoundFx.play(context, SoundFx.Sfx.SAD) // the mascot's little "uh-oh"
         while (secondsLeft > 1) {
             delay(1000)
             secondsLeft -= 1
@@ -104,6 +108,7 @@ fun PauseScreen(
         reason == PauseReason.BEDTIME -> "Bedtime"
         reason == PauseReason.WORK -> "Work hours"
         locked -> "Locked till tomorrow"
+        reason == PauseReason.REELS -> if (maxOpens != null) "$maxOpens reels today" else "Reel limit reached"
         openCount == null -> "Limit reached"
         openCount <= 1 -> "1st time today"
         else -> "${ordinal(openCount)} time today"
@@ -131,6 +136,8 @@ fun PauseScreen(
         }
         PauseReason.OPENS ->
             if (locked) MascotLines.lockedSubtitle(appName) else MascotLines.opensSubtitle(maxOpens)
+        PauseReason.REELS ->
+            if (locked) MascotLines.lockedSubtitle(appName) else MascotLines.reelsSubtitle(maxOpens)
     }
 
     // Layout depends on the screen: sideways phones get two columns; shorter phones
@@ -227,7 +234,10 @@ fun PauseScreen(
         ) {
             NeoButtonPrimary(
                 if (locked) "Take me home" else "Nah, I'm good",
-                onClick = { onDecline(selectedReason) },
+                onClick = {
+                    SoundFx.play(context, SoundFx.Sfx.HAPPY)
+                    onDecline(selectedReason)
+                },
                 backgroundColor = Lime
             )
             if (!locked && onAllowFiveMinutes != null) {

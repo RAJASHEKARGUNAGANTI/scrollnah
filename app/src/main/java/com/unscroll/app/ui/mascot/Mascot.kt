@@ -1,5 +1,6 @@
 package com.unscroll.app.ui.mascot
 
+import com.unscroll.app.service.SoundFx
 import androidx.compose.ui.graphics.drawscope.scale
 
 import com.unscroll.app.data.MascotReward
@@ -107,6 +108,7 @@ fun DrawScope.drawMascot(
             }
             MascotTheme.BLOOMY -> drawBloomy(s, mood, flowers, onOrange, pose, budDays, potColorOf(reward))
         }
+        if (pose.asleep) sleepyZs(s)
     }
 }
 
@@ -263,11 +265,13 @@ private fun AnimatedMascot(
     // Poke: 0 -> 1 over 700 ms; drives a jump and a wiggle that fades out.
     val poke = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    val pokeContext = LocalContext.current
     val tapModifier = if (!pokeable) Modifier else Modifier.clickable(
         interactionSource = remember { MutableInteractionSource() },
         indication = null, // no grey ripple box around the mascot
         onClickLabel = "poke"
     ) {
+        SoundFx.play(pokeContext, SoundFx.Sfx.POKE)
         scope.launch {
             poke.snapTo(0f)
             poke.animateTo(1f, tween(700, easing = LinearEasing))
@@ -327,10 +331,12 @@ object MascotBitmap {
         badge: Boolean = false,
         onOrange: Boolean = false,
         budDays: Int = 0,
-        reward: MascotReward? = null
+        reward: MascotReward? = null,
+        asleep: Boolean = false // night on the widgets
     ): Bitmap {
         val image = ImageBitmap(sizePx, sizePx)
         val area = Size(sizePx.toFloat(), sizePx.toFloat())
+        val pose = MascotPose(asleep = asleep)
         CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(image), area) {
             if (badge) {
                 val shadow = size.minDimension * 0.04f
@@ -348,10 +354,10 @@ object MascotBitmap {
                     right = size.width - (c.x + r - pad),
                     bottom = size.height - (c.y + r - pad)
                 ) {
-                    drawMascot(theme, mood, flowers, onOrange, budDays = budDays, reward = reward)
+                    drawMascot(theme, mood, flowers, onOrange, pose = pose, budDays = budDays, reward = reward)
                 }
             } else {
-                drawMascot(theme, mood, flowers, onOrange, budDays = budDays, reward = reward)
+                drawMascot(theme, mood, flowers, onOrange, pose = pose, budDays = budDays, reward = reward)
             }
         }
         return image.asAndroidBitmap()
@@ -364,11 +370,11 @@ object MascotBitmap {
      */
     fun frame(
         theme: MascotTheme, mood: MoodLevel, flowers: Int, sizePx: Int, bob: Float, blink: Boolean,
-        budDays: Int = 0, reward: MascotReward? = null
+        budDays: Int = 0, reward: MascotReward? = null, asleep: Boolean = false
     ): Bitmap {
         val image = ImageBitmap(sizePx, sizePx)
         val area = Size(sizePx.toFloat(), sizePx.toFloat())
-        val pose = MascotPose(eyeOpen = if (blink) 0.1f else 1f, sway = bob, twinkle = 0.85f + 0.15f * bob)
+        val pose = MascotPose(eyeOpen = if (blink) 0.1f else 1f, sway = bob, twinkle = 0.85f + 0.15f * bob, asleep = asleep)
         CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(image), area) {
             inset(size.minDimension * 0.05f) {
                 if (theme == MascotTheme.BLOBBY) {

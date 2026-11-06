@@ -25,7 +25,8 @@ data class MascotPose(
     val eyeOpen: Float = 1f,  // 1 = eyes open, 0.1 = mid-blink
     val glance: Float = 0f,   // -1..1, eyes look left/right (OKAY mood)
     val sway: Float = 0f,     // -1..1, Bloomy's stems sway in the breeze
-    val twinkle: Float = 1f   // sparkle size, pulses between about 0.75 and 1
+    val twinkle: Float = 1f,  // sparkle size, pulses between about 0.75 and 1
+    val asleep: Boolean = false // night on the widgets: closed eyes, a calm smile and "z z"
 )
 
 internal fun pt(x: Float, y: Float, s: Float) = Offset(x * s, y * s)
@@ -66,6 +67,21 @@ internal fun DrawScope.sparkle(cx: Float, cy: Float, r: Float, s: Float) {
  * [k] its size: 1 = Blobby's face, about 0.4 = the face on Bloomy's pot.
  * The numbers inside are offsets from the centre at size 1.
  */
+/** Two floating "z"s above the sleeping mascot's right side (same spot for every theme). */
+internal fun DrawScope.sleepyZs(s: Float) {
+    fun zee(x: Float, y: Float, size: Float) = drawPath(
+        Path().apply {
+            moveTo(x * s, y * s)
+            lineTo((x + size) * s, y * s)
+            lineTo(x * s, (y + size) * s)
+            lineTo((x + size) * s, (y + size) * s)
+        },
+        Ink, style = Stroke(3.2f * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    )
+    zee(104f, 22f, 13f)
+    zee(122f, 4f, 9f)
+}
+
 internal fun DrawScope.face(mood: MoodLevel, cx: Float, cy: Float, k: Float, s: Float, pose: MascotPose) {
     fun p(x: Float, y: Float) = Offset((cx + x * k) * s, (cy + y * k) * s)
     val line = Stroke(4f * k * s, cap = StrokeCap.Round, join = StrokeJoin.Round)
@@ -84,6 +100,18 @@ internal fun DrawScope.face(mood: MoodLevel, cx: Float, cy: Float, k: Float, s: 
     fun path(build: Path.() -> Unit) = Path().apply(build)
     fun Path.moveTo(o: Offset) = moveTo(o.x, o.y)
     fun Path.quadTo(c: Offset, e: Offset) = quadraticTo(c.x, c.y, e.x, e.y)
+    fun Path.lineTo(o: Offset) = lineTo(o.x, o.y)
+
+    if (pose.asleep) {
+        // Closed eyes (little downward arcs), rosy cheeks and a calm smile ("z"s: [sleepyZs]).
+        fun closedEye(x: Float, y: Float, w: Float) =
+            drawPath(path { moveTo(p(x - w / 2, y)); quadTo(p(x, y + w * 0.55f), p(x + w / 2, y)) }, Ink, style = line)
+        closedEye(-18f, -10f, 14f)
+        closedEye(18f, -10f, 14f)
+        cheeks(8f, 7f)
+        drawPath(path { moveTo(p(-7f, 15f)); quadTo(p(0f, 21f), p(7f, 15f)) }, Ink, style = line)
+        return
+    }
 
     when (mood) {
         MoodLevel.THRIVING -> {

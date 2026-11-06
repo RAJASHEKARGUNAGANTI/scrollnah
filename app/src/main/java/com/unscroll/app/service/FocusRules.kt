@@ -9,7 +9,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** Why a limited app is paused. OPENS = opened more times today than the user allows. */
-enum class PauseReason { LIMIT, BEDTIME, FOCUS, OPENS, WORK }
+/** Why something is paused. REELS = the daily reels limit (see [com.unscroll.app.data.ReelLimit]). */
+enum class PauseReason { LIMIT, BEDTIME, FOCUS, OPENS, WORK, REELS }
 
 /**
  * Focus sessions ("lock my apps for 1 hour"), the bedtime schedule and work hours.

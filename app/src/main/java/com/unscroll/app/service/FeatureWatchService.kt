@@ -18,6 +18,7 @@ import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.Feature
 import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.ReelCounter
+import com.unscroll.app.data.ReelLimit
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.Websites
 import com.unscroll.app.data.db.FeatureLimit
@@ -255,8 +256,9 @@ class FeatureWatchService : AccessibilityService() {
     private suspend fun showBadge(feature: Feature, total: Int) {
         if (!reelBadgeOn) return
         val mascot = mascotForBadge()
+        val limit = featureLimits[ReelLimit.ID]?.takeIf { it.enabled }?.limitMinutes
         handler.post {
-            if (visitFeature == feature && reelBadgeOn && !badgeAway) ReelBadge.show(this@FeatureWatchService, total, mascot)
+            if (visitFeature == feature && reelBadgeOn && !badgeAway) ReelBadge.show(this@FeatureWatchService, total, limit, mascot)
         }
     }
 
@@ -345,6 +347,21 @@ class FeatureWatchService : AccessibilityService() {
                             target, stillShowing = { seen?.feature == feature },
                             pressBack = what.webAppPackage == null && !what.floating, floating = what.floating
                         )
+                    }
+                    return@launch
+                }
+
+                // The daily reels limit (Reels + Shorts together, counted in the apps only).
+                val reelLimit = featureLimits[ReelLimit.ID]?.takeIf { it.enabled }
+                if (reelLimit != null && what.webAppPackage == null && !passActive(ReelLimit.PASS_KEY) &&
+                    featureDao.totalViews(today) >= reelLimit.limitMinutes
+                ) {
+                    val target = PauseTarget(
+                        ReelLimit.PASS_KEY, feature.title, feature.packageName, 0,
+                        openCount = null, reason = PauseReason.REELS, maxOpens = reelLimit.limitMinutes
+                    )
+                    handler.post {
+                        act(target, stillShowing = { seen?.feature == feature }, pressBack = !what.floating, floating = what.floating)
                     }
                     return@launch
                 }
@@ -439,6 +456,7 @@ class FeatureWatchService : AccessibilityService() {
 
         fun openAccessibilitySettings(context: Context) {
             context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            SettingsHint.show(context, "Tap ScrollNah under Downloaded apps, then turn it on.")
         }
     }
 }

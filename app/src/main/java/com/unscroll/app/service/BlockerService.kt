@@ -19,6 +19,7 @@ import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.BreakSettings
 import com.unscroll.app.data.PaymentApps
 import com.unscroll.app.data.Strictness
+import com.unscroll.app.data.SlowDownPlan
 import com.unscroll.app.data.Websites
 import com.unscroll.app.data.loadWeekReport
 import com.unscroll.app.data.db.AppGroup
@@ -231,11 +232,53 @@ class BlockerService : Service() {
     private fun debug(message: String) = DebugLog.write(this, TAG, message)
 
     /**
+     * The slow-down plan: once a week, lower each limited app's limit a little (see [SlowDownPlan])
+     * and tell the user in the mascot's voice. Weeks missed while the phone was off all count.
+     */
+    private suspend fun planWork() {
+        val plan = container.settings.slowPlan.first()
+        if (!plan.on) return
+        val today = LocalDate.now()
+        val last = plan.lastStep?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        if (last == null) {
+            container.settings.setSlowPlanLastStep(today)
+            return
+        }
+        val steps = SlowDownPlan.stepsDue(last, today)
+        if (steps == 0) return
+        val dao = container.database.trackedAppDao()
+        val changed = dao.getAll().filter { it.enabled }.mapNotNull { app ->
+            val limit = SlowDownPlan.stepped(app.limitMinutes, plan, steps)
+            val weekend = app.weekendLimitMinutes?.let { SlowDownPlan.stepped(it, plan, steps) }
+            if (limit == app.limitMinutes && weekend == app.weekendLimitMinutes) null
+            else app.copy(limitMinutes = limit, weekendLimitMinutes = weekend)
+        }
+        if (changed.isNotEmpty()) dao.upsertAll(changed)
+        container.settings.setSlowPlanLastStep(last.plusDays(steps.toLong() * SlowDownPlan.DAYS_PER_STEP))
+        debug("slow-down plan: $steps step(s), ${changed.size} limit(s) lowered")
+        if (changed.isEmpty()) return
+        val name = container.mascot.mascotName
+        val limitsNow = dao.getAll().filter { it.enabled }.flatMap { listOfNotNull(it.limitMinutes, it.weekendLimitMinutes) }
+        if (SlowDownPlan.reachedGoal(limitsNow, plan)) {
+            LimitActions.showStreakNudge(
+                this, "$name: we made it",
+                "Every limit is down to your goal of ${duration(plan.goalMinutes)}. I'm so proud of you."
+            )
+        } else {
+            LimitActions.showStreakNudge(
+                this, "$name: a little less this week",
+                "Your limits went down by ${duration(plan.stepMinutes * steps)}. Small steps. I'm right here with you."
+            )
+        }
+    }
+
+    /**
      * Saves finished days for streaks, and once an evening (after 9pm) reminds the user
      * to stay under their limit so the streak continues.
      */
     private suspend fun streakWork() {
         container.streaks.recordFinishedDays()
+        planWork()
         container.settings.noteStreak(container.streaks.currentInfo().best) // unlocks rewards
 
         val now = java.time.LocalTime.now()

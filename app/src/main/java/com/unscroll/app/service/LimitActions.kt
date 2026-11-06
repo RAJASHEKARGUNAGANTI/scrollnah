@@ -24,14 +24,13 @@ data class PauseTarget(
     val limitMinutes: Int,
     val openCount: Int?,      // times opened today (null for Reels/Shorts)
     val reason: PauseReason = PauseReason.LIMIT,
-    val maxOpens: Int? = null, // the app's open limit (for PauseReason.OPENS)
+    val maxOpens: Int? = null, // the app's open limit (for PauseReason.OPENS), or the daily reels limit (REELS)
     val groupName: String? = null // set when a shared budget ran out (limitMinutes is then the group's)
 )
 
 /** Decides what happens at the limit, based on the strictness the user picked. */
 object LimitActions {
 
-    private const val CHANNEL_NUDGES = "nudges"
     private const val CHANNEL_WATCHING = "watching"
 
     /**
@@ -55,14 +54,10 @@ object LimitActions {
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_NUDGES, "Limit nudges", NotificationManager.IMPORTANCE_HIGH)
-                .apply { description = "Gentle nudges when you go over a limit (Chill mode)" }
-        )
-        manager.createNotificationChannel(
             NotificationChannel(CHANNEL_WATCHING, "Keeping watch", NotificationManager.IMPORTANCE_MIN)
                 .apply { description = "Shown while ScrollNah keeps an eye on your limits" }
         )
-        BreakReminders.createChannel(context)
+        // Nudges and break reminders get the mascot's sound: their channels are made when needed (SoundFx.channel).
     }
 
     /** "Blobby" or "Bloomy", whichever mascot the user picked. */
@@ -97,13 +92,14 @@ object LimitActions {
             homeIntent(),
             PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+        val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.NUDGES))
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle(
                 when (target.reason) {
                     PauseReason.BEDTIME -> "${mascotName(context)}: it's bedtime"
                     PauseReason.WORK -> "${mascotName(context)}: it's work time"
                     PauseReason.OPENS -> "${mascotName(context)}: ${target.name} again?"
+                    PauseReason.REELS -> "${mascotName(context)}: that's ${target.maxOpens} reels"
                     else -> "${mascotName(context)}: ${target.groupName ?: target.name} time's up"
                 }
             )
@@ -115,6 +111,8 @@ object LimitActions {
                         "Maybe put ${target.name} down until ${FocusRules.formatTime(FocusRules.workHours().endMinutes)}? I'll keep it warm."
                     PauseReason.OPENS ->
                         "That's ${target.openCount ?: "a lot of"} opens today, and you said ${target.maxOpens} was plenty. Maybe leave it for now?"
+                    PauseReason.REELS ->
+                        "You said ${target.maxOpens} Reels and Shorts a day was plenty. Maybe stop here?"
                     else -> if (target.groupName != null) {
                         "${target.groupName} had ${duration(target.limitMinutes)} together today, and ${target.name} is part of it. I think it's a good moment to stop."
                     } else {
@@ -140,7 +138,7 @@ object LimitActions {
     fun showStreakNudge(context: Context, title: String, text: String) {
         val notifications = NotificationManagerCompat.from(context)
         if (!notifications.areNotificationsEnabled()) return
-        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+        val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.NUDGES))
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle(title)
             .setContentText(text)
@@ -168,7 +166,7 @@ object LimitActions {
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+        val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.NUDGES))
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle(title)
             .setContentText(text)
@@ -201,8 +199,9 @@ object LimitActions {
             PauseReason.WORK -> "It's work time, so I paused $appName's little window. Swipe it away when you're ready."
             PauseReason.LIMIT -> "Your $appName time is up for today, so I paused the little window. Swipe it away when you're ready."
             PauseReason.OPENS -> "That's enough $appName opens for today, so I paused the little window. Swipe it away when you're ready."
+            PauseReason.REELS -> "That's your reels for today, so I paused the little window. Swipe it away when you're ready."
         }
-        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+        val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.NUDGES))
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle("${mascotName(context)}: $appName is paused")
             .setContentText(text)
@@ -248,7 +247,7 @@ object LimitActions {
         val text = "$appName and other UPI or bank apps may not open while an app uses Accessibility. " +
             "Turn off ScrollNah's Reels & Shorts tracker while you pay, and turn it back on later in Limits. " +
             "Your limits and reminders keep working."
-        val notification = NotificationCompat.Builder(context, CHANNEL_NUDGES)
+        val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.NUDGES))
             .setSmallIcon(R.drawable.ic_stat_blobby)
             .setContentTitle("$appName not opening?")
             .setContentText(text)

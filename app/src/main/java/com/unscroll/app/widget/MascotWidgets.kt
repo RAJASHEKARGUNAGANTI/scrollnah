@@ -12,6 +12,9 @@ import com.unscroll.app.MainActivity
 import com.unscroll.app.R
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.MascotTheme
+import com.unscroll.app.data.MoodLevel
+import kotlinx.coroutines.flow.first
+import com.unscroll.app.data.ReelLimit
 import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.durationPair
@@ -88,7 +91,7 @@ object MascotWidgets {
             val ids = manager.getAppWidgetIds(ComponentName(context, provider))
             if (ids.isNotEmpty()) manager.updateAppWidget(ids, views())
         }
-        val mascot by lazy { MascotBitmap.render(state.theme, state.mood, state.flowers, MASCOT_PX, budDays = state.budDays, reward = state.reward) }
+        val mascot by lazy { widgetMascot(state) }
         update(BlobbyWidget::class.java) { mediumViews(context, state, mascot) }
         update(SmallMascotWidgetReceiver::class.java) { smallViews(context, state, mascot) }
         update(ReelCountWidgetReceiver::class.java) { reelViews(context, state, mascot) }
@@ -109,13 +112,16 @@ object MascotWidgets {
         if (ids.isEmpty()) return
         val state = withContext(Dispatchers.IO) {
             val today = java.time.LocalDate.now().toString()
-            val reels = (context.applicationContext as UnscrollApplication).container.database.featureDao().totalViews(today)
+            val dao = (context.applicationContext as UnscrollApplication).container.database.featureDao()
             val before = last?.takeIf { it.date == today } ?: WidgetData.load(context)
-            before.copy(reels = reels, trackerOn = FeatureWatchService.isEnabled(context))
+            before.copy(
+                reels = dao.totalViews(today),
+                reelLimit = dao.observeLimits().first().find { it.featureId == ReelLimit.ID && it.enabled }?.limitMinutes,
+                trackerOn = FeatureWatchService.isEnabled(context)
+            )
         }
         last = state
-        val mascot = MascotBitmap.render(state.theme, state.mood, state.flowers, MASCOT_PX, budDays = state.budDays, reward = state.reward)
-        manager.updateAppWidget(ids, reelViews(context, state, mascot))
+        manager.updateAppWidget(ids, reelViews(context, state.copy(asleep = WidgetData.isNight()), widgetMascot(state.copy(asleep = WidgetData.isNight()))))
     }
 
     /** True if any ScrollNah widget is on the home screen. */
@@ -162,8 +168,15 @@ private fun openApp(context: Context): PendingIntent = PendingIntent.getActivity
     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 )
 
-/** "Blobby, happy" for TalkBack. */
-private fun spokenMood(state: WidgetState) = state.theme.moodPill(state.mood).replace(" · ", ", ")
+/** "Blobby, happy" (or "Blobby, asleep" at night) for TalkBack. */
+private fun spokenMood(state: WidgetState) =
+    if (state.asleep) "${state.theme.mascotName}, asleep" else state.theme.moodPill(state.mood).replace(" · ", ", ")
+
+/** The mascot in today's mood, or asleep (calm, eyes closed) at night. */
+private fun widgetMascot(state: WidgetState): android.graphics.Bitmap = MascotBitmap.render(
+    state.theme, if (state.asleep) MoodLevel.HAPPY else state.mood, state.flowers, MASCOT_PX,
+    budDays = state.budDays, reward = state.reward, asleep = state.asleep
+)
 
 private fun mediumViews(context: Context, state: WidgetState, mascot: android.graphics.Bitmap): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.widget_medium)
@@ -183,8 +196,11 @@ private fun mediumViews(context: Context, state: WidgetState, mascot: android.gr
         return views
     }
 
-    views.setTextViewText(R.id.pill, state.theme.moodPill(state.mood).uppercase())
-    views.setTextViewText(R.id.title, MascotLines.widgetTitle(state.theme, state.mood))
+    views.setTextViewText(
+        R.id.pill,
+        (if (state.asleep) "${state.theme.mascotName} · asleep" else state.theme.moodPill(state.mood)).uppercase()
+    )
+    views.setTextViewText(R.id.title, if (state.asleep) "Sleep well. See you tomorrow!" else MascotLines.widgetTitle(state.theme, state.mood))
     views.setTextViewText(R.id.top_app, state.topApp.orEmpty())
     views.setTextViewText(R.id.top_minutes, durationPair(state.topUsed, state.topLimit, " / "))
 
@@ -223,9 +239,9 @@ private fun reelViews(context: Context, state: WidgetState, mascot: android.grap
     views.setOnClickPendingIntent(R.id.widget_root, openApp(context))
     views.setImageViewBitmap(R.id.mascot, mascot)
     views.setContentDescription(R.id.mascot, spokenMood(state))
-    views.setTextViewText(R.id.reels_count, java.text.NumberFormat.getIntegerInstance().format(state.reels))
+    views.setTextViewText(R.id.reels_count, ReelLimit.progress(java.text.NumberFormat.getIntegerInstance().format(state.reels), state.reelLimit))
     views.setTextViewText(R.id.reels_label, if (state.reels == 1) "reel today" else "reels today")
-    views.setTextViewText(R.id.reels_line, MascotLines.reelWidgetLine(state.reels, state.trackerOn))
+    views.setTextViewText(R.id.reels_line, if (state.asleep) "Zzz. Sleep well!" else MascotLines.reelWidgetLine(state.reels, state.trackerOn, state.reelLimit))
     return views
 }
 

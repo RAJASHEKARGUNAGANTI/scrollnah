@@ -36,7 +36,10 @@ internal object MascotFrames {
 
     fun remoteViews(context: Context, state: WidgetState, motion: Boolean): RemoteViews {
         val drawings = listOf(-1f to false, 0f to false, 1f to false, 0f to true).map { (bob, blink) ->
-            MascotBitmap.frame(state.theme, state.mood, state.flowers, FRAME_PX, bob, blink, state.budDays, state.reward)
+            MascotBitmap.frame(
+                state.theme, if (state.asleep) com.unscroll.app.data.MoodLevel.HAPPY else state.mood, state.flowers,
+                FRAME_PX, bob, blink, state.budDays, state.reward, asleep = state.asleep
+            )
         }
         val views = RemoteViews(context.packageName, R.layout.widget_mascot_frames)
         SLOTS.forEachIndexed { i, id ->
@@ -45,7 +48,10 @@ internal object MascotFrames {
             views.setImageViewBitmap(id, drawings[if (motion) SEQUENCE[i] else MID])
         }
         // The frames are hidden from TalkBack; the widget as a whole says who it is and the mood.
-        views.setContentDescription(R.id.mascot_frames, state.theme.moodPill(state.mood).replace(" · ", ", "))
+        views.setContentDescription(
+            R.id.mascot_frames,
+            if (state.asleep) "${state.theme.mascotName}, asleep" else state.theme.moodPill(state.mood).replace(" · ", ", ")
+        )
         return views
     }
 }

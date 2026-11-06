@@ -26,19 +26,12 @@ import kotlinx.coroutines.launch
  */
 object BreakReminders {
 
-    private const val CHANNEL = "breaks"
     const val EXTRA_PACKAGE = "package"
     const val EXTRA_MINUTES = "minutes"
 
     /** Shared by BlockerService (counts the time) and the "5 more min" button (snoozes). */
     val sessions = SessionTracker()
 
-    fun createChannel(context: Context) {
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, "Break reminders", NotificationManager.IMPORTANCE_HIGH)
-                .apply { description = "A reminder after a long time on one app" }
-        )
-    }
 
     /** The 1st reminder is worried (thirsty for Bloomy); later ones are sadder. */
     fun moodFor(reminderNumber: Int): MoodLevel = if (reminderNumber <= 1) MoodLevel.WORRIED else MoodLevel.OVER
@@ -73,7 +66,7 @@ object BreakReminders {
             val openApp = PendingIntent.getActivity(
                 context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
             )
-            val notification = NotificationCompat.Builder(context, CHANNEL)
+            val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.BREAKS))
                 .setSmallIcon(R.drawable.ic_stat_blobby)
                 .setLargeIcon(mascot)
                 .setContentTitle(MascotLines.breakTitle(theme, due.minutes, appName))

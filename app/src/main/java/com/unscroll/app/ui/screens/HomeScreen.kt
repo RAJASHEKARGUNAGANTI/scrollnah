@@ -2,6 +2,7 @@
 
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.service.SoundFx
 import com.unscroll.app.data.MascotReward
 
 import androidx.compose.foundation.shape.CircleShape
@@ -68,6 +69,7 @@ import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.FocusTileService
 import com.unscroll.app.data.StreakRepository
+import com.unscroll.app.data.ReelLimit
 import com.unscroll.app.data.Websites
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.ui.components.FireIcon
@@ -153,6 +155,7 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     // Reels/Shorts scrolled today (counted by the optional tracker; null = don't show a count).
     var trackerOn by remember { mutableStateOf(FeatureWatchService.isEnabled(context)) }
     val reelsToday = featureUsage.sumOf { it.views }.takeIf { FeatureWatchService.available && (trackerOn || it > 0) }
+    val reelLimit = featureLimits.find { it.featureId == ReelLimit.ID && it.enabled }?.limitMinutes
     // "Put Blobby on your home screen": once, after setup, if no widget is placed yet.
     val widgetCardDone by container.settings.widgetCardDone.collectAsStateWithLifecycle(initialValue = true)
     var widgetPlaced by remember { mutableStateOf(MascotWidgets.anyPlaced(context)) }
@@ -303,7 +306,7 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
             when {
                 !hasAccess -> UsageAccessCard(onGrant = { SetupChecks.openUsageAccess(context) })
                 appRows.isEmpty() -> NoLimitsCard(onAdd = onEditLimits)
-                else -> MascotMoodCard(totalUsed, totalLimit, appAtLimit, reelsToday)
+                else -> MascotMoodCard(totalUsed, totalLimit, appAtLimit, reelsToday, reelLimit)
             }
         }
         if (hasAccess && trackedApps.isNotEmpty() && setupGuide != null && (setupGuide.next != null || setupGuide.justDone != null)) {
@@ -527,18 +530,19 @@ private fun AddWidgetCard(mascotName: String, onAdd: () -> Unit, onNotNow: () ->
     }
 }
 
-/** "85 reels" on the mascot's head: Reels + Shorts scrolled today. */
+/** "85 reels" (or "32/50 reels" with a daily reels limit) on the mascot's head: Reels + Shorts today. */
 @Composable
-private fun ReelCountSticker(reels: Int, modifier: Modifier = Modifier) {
+private fun ReelCountSticker(reels: Int, limit: Int?, modifier: Modifier = Modifier) {
     val number = remember(reels) { java.text.NumberFormat.getIntegerInstance().format(reels) }
-    Box(modifier.clearAndSetSemantics { contentDescription = if (reels == 1) "1 reel today" else "$number reels today" }) {
-        NeoPill(if (reels == 1) "1 reel" else "$number reels")
+    val spoken = (if (reels == 1) "1 reel today" else "$number reels today") + (if (limit != null) " of $limit" else "")
+    Box(modifier.clearAndSetSemantics { contentDescription = spoken }) {
+        NeoPill(if (reels == 1 && limit == null) "1 reel" else "${ReelLimit.progress(number, limit)} reels")
     }
 }
 
 /** The mascot's mood comes from today's real usage compared to the user's limits. */
 @Composable
-private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?, reelsToday: Int?) {
+private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?, reelsToday: Int?, reelLimit: Int?) {
     val mood = MoodLevel.from(totalUsed, totalLimit, anyAppAtLimit = appAtLimit != null)
     val overLimit = mood == MoodLevel.OVER
     val cardColor = if (overLimit) Orange else Lime
@@ -565,7 +569,7 @@ private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?,
                     pokeable = true // tap for a jump and a wiggle
                 )
                 // Today's Reels/Shorts count sits on top, like the badge while scrolling.
-                reelsToday?.let { ReelCountSticker(it, Modifier.offset(y = (-10).dp)) }
+                reelsToday?.let { ReelCountSticker(it, reelLimit, Modifier.offset(y = (-10).dp)) }
             }
             Column(
                 modifier = Modifier.padding(start = 12.dp),
@@ -765,6 +769,8 @@ private fun StreakCard(info: StreakInfo) {
 @Composable
 private fun CelebrationDialog(days: Int, onDone: () -> Unit) {
     val name = LocalMascot.current.theme.mascotName
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { SoundFx.play(context, SoundFx.Sfx.HAPPY) }
     AlertDialog(
         onDismissRequest = onDone,
         containerColor = Lime,
@@ -794,7 +800,11 @@ private fun BloomDialog(event: BloomEvent, onDone: () -> Unit, onOpenGarden: () 
     val flowers = if (event == BloomEvent.POT) Growth.MAX_FLOWERS else LocalMascot.current.flowers
     // A little "pop": the plant springs up when the dialog opens.
     val pop = remember { Animatable(0.5f) }
-    LaunchedEffect(Unit) { pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = 250f)) }
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        SoundFx.play(context, SoundFx.Sfx.HAPPY)
+        pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = 250f))
+    }
     AlertDialog(
         onDismissRequest = onDone,
         containerColor = Lime,

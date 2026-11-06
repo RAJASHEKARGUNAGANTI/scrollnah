@@ -60,6 +60,7 @@ class AppContainer(context: Context) {
     init {
         appScope.launch { settings.mascotTheme.collect { mascot = it } }
         appScope.launch { settings.activeReward.collect { reward = it } }
+        appScope.launch { settings.sounds.collect { com.unscroll.app.service.SoundFx.enabled = it } }
         appScope.launch {
             settings.potProgress.collect {
                 flowers = it.flowers
@@ -78,6 +79,7 @@ class UnscrollApplication : Application() {
         if (DemoMode.active) container.appScope.launch { DemoMode.seed(container.database, container.settings) }
         Allowances.init(this)
         FocusRules.init(this)
+        com.unscroll.app.service.SoundFx.init(this)
         BeastGuard.init(this)
         ParentLock.init(this)
         TamperLog.init(this)

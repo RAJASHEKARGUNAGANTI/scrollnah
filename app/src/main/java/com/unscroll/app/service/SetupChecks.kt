@@ -81,22 +81,29 @@ object SetupChecks {
             }
             SetupStep.POPUPS -> if (isXiaomi) {
                 openPopupSettings(context)
+                SettingsHint.show(app, "Find \"Display pop-up windows while running in the background\" and allow it.")
                 SetupReturn.watch(app) { backgroundPopupsAllowed(app) == true }
             } else {
                 openAppInfo(context) // vivo: nothing to watch, the user confirms
+                SettingsHint.show(app, "Find the pop-up or background window setting and allow it.")
             }
             SetupStep.BATTERY -> {
                 openBatterySettings(context)
+                SettingsHint.show(app, "Find ScrollNah and choose \"Don't optimize\" or \"No restrictions\".")
                 SetupReturn.watch(app) { ignoresBatteryOptimizations(app) }
             }
             // Android's own "Activate device admin app?" page; it comes back to ScrollNah by itself.
-            SetupStep.UNINSTALL_GUARD -> context.startActivity(TamperWatch.guardActivationIntent(context))
+            SetupStep.UNINSTALL_GUARD -> {
+                context.startActivity(TamperWatch.guardActivationIntent(context))
+                SettingsHint.show(app, "Tap \"Activate this device admin app\".")
+            }
         }
     }
 
     /** Usage access, with the same automatic way back. */
     fun openUsageAccess(context: Context) {
         UsageRepository.openUsageAccessSettings(context)
+        SettingsHint.show(context, "Find ScrollNah and turn on usage access.")
         val container = (context.applicationContext as UnscrollApplication).container
         SetupReturn.watch(context) { container.usage.hasUsageAccess() }
     }

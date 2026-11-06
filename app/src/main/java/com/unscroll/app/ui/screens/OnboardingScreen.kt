@@ -2,6 +2,9 @@
 
 package com.unscroll.app.ui.screens
 
+import com.unscroll.app.ui.theme.Ink
+import androidx.compose.foundation.layout.FlowRow
+import com.unscroll.app.data.SlowDownPlan
 import androidx.compose.foundation.layout.wrapContentHeight
 import com.unscroll.app.ui.components.AppTile
 import androidx.compose.ui.semantics.heading
@@ -101,9 +104,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val STEPS = 8
+private const val STEPS = 10
 
-/** First-run walkthrough: pick a mascot -> meet it -> name -> usage access -> pick apps -> strictness -> Parent lock -> permissions. */
+/**
+ * First-run walkthrough: pick a mascot -> meet it -> name -> display over other apps (optional;
+ * first, so the Settings hints can help with the switches after it) -> usage access -> pick apps
+ * -> reality check (+ slow-down plan) -> strictness -> Parent lock -> permissions.
+ */
 @Composable
 fun OnboardingScreen(onFinished: () -> Unit) {
     val context = LocalContext.current
@@ -122,6 +129,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
         onPauseOrDispose { }
     }
     val hasUsage = remember(resumeCount) { container.usage.hasUsageAccess() }
+    val hasOverlay = remember(resumeCount) { SetupChecks.canShowPauseScreen(context) }
 
     BackHandler(enabled = step > 0) { step-- }
 
@@ -245,6 +253,22 @@ fun OnboardingScreen(onFinished: () -> Unit) {
 
             3 -> Step(
                 pill = "Step 2",
+                title = "Allow display over other apps",
+                body = "To show the Pause screen, and small hints while you turn on the next switches. " +
+                    "Optional: you can do it later. Find ScrollNah in the list and turn it on.",
+                mood = MoodLevel.HAPPY,
+                button = if (hasOverlay) "Next" else "Skip for now",
+                onNext = { step++ }
+            ) {
+                if (hasOverlay) {
+                    Text("Display over other apps is on. Nice!", fontWeight = FontWeight.Bold)
+                } else {
+                    NeoButtonPrimary("Open settings", onClick = { SetupChecks.openStep(context, SetupStep.OVERLAY) }, backgroundColor = Orange)
+                }
+            }
+
+            4 -> Step(
+                pill = "Step 3",
                 title = "Count your screen time",
                 body = "ScrollNah needs Usage access to count your minutes. Your data stays on this phone.",
                 mood = MoodLevel.HAPPY,
@@ -258,14 +282,16 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 }
             }
 
-            4 -> AppPickerStep(
+            5 -> AppPickerStep(
                 picked = picked,
                 hasUsage = hasUsage,
                 onNext = { step++ }
             )
 
-            5 -> Step(
-                pill = "Step 4",
+            6 -> RealityCheckStep(onNext = { step++ })
+
+            7 -> Step(
+                pill = "Step 6",
                 title = "How strict should I be?",
                 body = when (strictness) {
                     Strictness.CHILL -> "A notification when you hit a limit. You can take 5 more minutes."
@@ -282,7 +308,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 )
             }
 
-            6 -> ParentLockStep(onNext = { step++ })
+            8 -> ParentLockStep(onNext = { step++ })
 
             else -> PermissionsStep(strictness = strictness, resumeCount = resumeCount, onFinish = { finish() })
         }
@@ -320,7 +346,71 @@ private fun ColumnScope.Step(
     NeoButtonPrimary(button, onClick = onNext)
 }
 
-/** Step 3: tick the apps to limit (most used today first). */
+/**
+ * Step 5: "How long do you scroll on a normal day?" A friendly year projection, and an offer to
+ * lower the limits slowly (the slow-down plan). Playful, never a guilt trip.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ColumnScope.RealityCheckStep(onNext: () -> Unit) {
+    val container = appContainer()
+    val scope = rememberCoroutineScope()
+    var hours by remember { mutableStateOf<Int?>(null) }
+    var planOn by remember { mutableStateOf(false) }
+
+    Column(
+        Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        NeoPill("Step 5")
+        Text("How long do you scroll on a normal day?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+        Text("A guess is fine. It stays on this phone.", style = MaterialTheme.typography.bodyLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            (1..5).forEach { h ->
+                ChoicePill(if (h == 5) "5 h+" else "$h h", selected = hours == h) { hours = h }
+            }
+        }
+        hours?.let { h ->
+            val daysAYear = Math.round(h * 365 / 24.0)
+            NeoCard(backgroundColor = Lime, contentPadding = PaddingValues(16.dp)) {
+                Text("About $daysAYear days a year", style = MaterialTheme.typography.headlineSmall, color = Ink)
+                Text(
+                    "That's a lot of thumb workouts. Win back 30 minutes a day and you get about 8 days a year to spend on anything else.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp)
+                ) {
+                    Text("Lower my limits a little each week", fontWeight = FontWeight.Bold)
+                    Text(
+                        "${SlowDownPlan.DEFAULT_STEP} min less every week, until each app is at ${SlowDownPlan.DEFAULT_GOAL} min. Change it anytime in Limits.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                NeoSwitch(checked = planOn, onToggle = { planOn = !planOn }, label = "Lower my limits a little each week")
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    NeoButtonPrimary(
+        text = if (hours == null) "Skip" else "Next",
+        onClick = {
+            if (planOn) scope.launch { container.settings.setSlowPlanOn(true) }
+            onNext()
+        }
+    )
+}
+
+/** Step 4: tick the apps to limit (most used today first). */
 @Composable
 private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsage: Boolean, onNext: () -> Unit) {
     val context = LocalContext.current
@@ -347,7 +437,7 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
     ) {
         item {
             Column {
-                NeoPill("Step 3")
+                NeoPill("Step 4")
                 Text("Which apps eat your day?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 10.dp))
                 Text(
                     "Tick a few. Each gets $DEFAULT_APP_LIMIT_MINUTES min a day to start, and you can change that later.",
@@ -469,7 +559,7 @@ private fun ColumnScope.PermissionsStep(strictness: Strictness, resumeCount: Int
 }
 
 /**
- * Step 5: is this phone for a child? Then a parent sets a PIN or pattern here, and can ask for
+ * Step 7: is this phone for a child? Then a parent sets a PIN or pattern here, and can ask for
  * uninstall protection (switched on in the last step). Off by default; also in Settings later.
  */
 @Composable
@@ -485,7 +575,7 @@ private fun ColumnScope.ParentLockStep(onNext: () -> Unit) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        NeoPill("Step 5")
+        NeoPill("Step 7")
         Text("Is this phone for a child?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
         Text(
             "A Parent lock keeps the limits you set safe. With it on, changing limits or settings, taking extra minutes, " +
