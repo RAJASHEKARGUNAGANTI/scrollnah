@@ -98,8 +98,9 @@ Based on the share of today's total limit used (summed across enabled limited ap
 - Total social time this week + badge comparing with last week ("1h 10m less").
 - 7-day bar chart with a dashed daily-limit line; bars over the limit are orange, today is ink. Tapping a bar shows that day's apps.
 - "Where the time went": each limited app (real icon), minutes, visits, minutes per visit, change vs last week.
-- The mascot's verdict: up to three first-person lines picked on the phone from the week's numbers (`MascotLines.weekVerdict`, no AI).
-- "Your week in review": swipeable cards (total, top app, best/toughest day, scroll o'clock, verdict), each shareable as a picture through Android's share menu (FileProvider, cache only).
+- "Reels & Shorts" (GitHub version, once the tracker has counted a video; a week with 0 shows only while the tracker is on): videos in the last 7 days, change vs last week (only if the tracker was counting when last week began), a bar per day (orange over the daily reels limit), about N a day (over the days since counting started), about N s each, per feature, time watching. `WeekStats.reelWeek` (tested), from `feature_usage.views`.
+- The mascot's verdict: up to three first-person lines picked on the phone from the week's numbers, reels included (`MascotLines.weekVerdict`, no AI).
+- "Your week in review": swipeable cards (total, top app, "My reels" when there are reel counts, best/toughest day, scroll o'clock, verdict), each shareable as a picture through Android's share menu (FileProvider, cache only).
 - Two cards: streak ("5 days under your limit in a row") and time won back ("1 movie").
 - "Your scroll o'clock": minutes per hour, busiest hour, first scroll of the day (after 4 AM).
 - "Did the nudges work?": Pause screen "Nah, I'm good" share (ring) and break reminders taken vs shown.

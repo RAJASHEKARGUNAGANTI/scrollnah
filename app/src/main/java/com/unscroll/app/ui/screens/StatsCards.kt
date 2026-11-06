@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.unscroll.app.data.AppPeriod
+import com.unscroll.app.data.Feature
 import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.WeekReport
@@ -61,6 +62,8 @@ import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.NeoProgressBar
+import com.unscroll.app.ui.components.countText
+import com.unscroll.app.ui.components.reelChangeText
 import com.unscroll.app.ui.components.UpArrowIcon
 import com.unscroll.app.ui.components.duration
 import com.unscroll.app.ui.components.spokenDuration
@@ -268,6 +271,94 @@ internal fun HourBars(hours: IntArray, peak: Int, peakColor: androidx.compose.ui
                     WeekStats.clockTime(hour * 60).replace(":00", ""),
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Reels & Shorts this week (GitHub version, from the tracker's counts): how many videos, each
+ * day's bar, the change from last week, about how long each one got, and where they were.
+ */
+@Composable
+internal fun ReelsCard(report: WeekReport) {
+    val reels = report.reels ?: return
+    NeoCard(contentPadding = PaddingValues(16.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            CardTitle("Reels & Shorts", Modifier.weight(1f))
+            reels.vsLastWeek?.let { NeoPill(reelChangeText(it, short = true)) }
+        }
+        Text(countText(reels.total), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 40.sp), modifier = Modifier.padding(top = 4.dp))
+        Text(
+            if (reels.total == 1) "video scrolled in the last 7 days" else "videos scrolled in the last 7 days",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(Modifier.height(12.dp))
+        DayBars(reels.perDay, report.thisWeek.map { it.dayStart }, report.reelLimit)
+        val perDay = "About ${countText(reels.dailyAverage)} a day" + (report.reelLimit?.let { " (your limit is $it)" } ?: "")
+        Text(
+            listOfNotNull(perDay, reels.secondsEach?.let { "around $it\u00A0s each" }).joinToString(", "),
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 12.dp)
+        )
+        val where = when (reels.byFeature.size) {
+            0 -> null
+            1 -> "All on ${featureTitle(reels.byFeature.first().first)}"
+            else -> reels.byFeature.joinToString(" · ") { (id, count) -> "${featureTitle(id)} ${countText(count)}" }
+        }
+        val watched = (reels.watchMillis / 60_000L).toInt().takeIf { it > 0 }?.let { "${duration(it)} watching them" }
+        listOfNotNull(where, watched).forEach {
+            Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 2.dp))
+        }
+    }
+}
+
+private fun featureTitle(id: String): String = Feature.entries.firstOrNull { it.id == id }?.title ?: id
+
+/** One bar per day (today last, in ink); orange above [limit]. Day letters underneath. */
+@Composable
+internal fun DayBars(values: List<Int>, dayStarts: List<Long>, limit: Int?, height: Dp = 72.dp) {
+    val max = maxOf(values.maxOrNull() ?: 0, limit ?: 0, 1)
+    val barShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+    val letter = SimpleDateFormat("EEEEE", Locale.getDefault())
+    val dayName = SimpleDateFormat("EEEE", Locale.getDefault())
+    val busiest = values.maxOrNull()?.takeIf { it > 0 }?.let { values.indexOf(it) }
+    Column(
+        Modifier.clearAndSetSemantics {
+            contentDescription = busiest?.let { "Most on ${dayName.format(Date(dayStarts[it]))}: ${values[it]}" } ?: "None this week"
+        }
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(height),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            values.forEachIndexed { i, value ->
+                val color = when {
+                    i == values.lastIndex -> Neo.colors.content // today
+                    limit != null && value > limit -> Orange
+                    else -> Lime
+                }
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight((value.toFloat() / max).coerceIn(0.04f, 1f))
+                        .background(color, barShape)
+                        .border(1.dp, Neo.colors.outline, barShape)
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            dayStarts.forEachIndexed { i, day ->
+                Text(
+                    letter.format(Date(day)),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (i == busiest) FontWeight.Black else FontWeight.Bold
                 )
             }
         }

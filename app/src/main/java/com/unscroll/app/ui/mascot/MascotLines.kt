@@ -192,7 +192,9 @@ object MascotLines {
         val peakHour: Int? = null,                 // 0-23
         val streak: Int = 0,
         val pauses: Int = 0,
-        val walkedAway: Int = 0
+        val walkedAway: Int = 0,
+        val reels: Int = 0,                        // Reels & Shorts videos this week
+        val reelsVsLastWeek: Int? = null           // more (+) or fewer (-) videos than last week
     )
 
     /**
@@ -209,6 +211,12 @@ object MascotLines {
                 diff >= 10 -> lines += if (bloomy) "${duration(diff)} more than last week. I could use a bit more sunshine."
                 else "${duration(diff)} more than last week. Let's go a little easier on me."
             }
+        }
+        val reelsDiff = facts.reelsVsLastWeek
+        when {
+            reelsDiff != null && reelsDiff <= -20 -> lines += "${-reelsDiff} fewer reels than last week. My thumbs say thank you."
+            reelsDiff != null && reelsDiff >= 20 -> lines += "$reelsDiff more reels than last week. That's a lot of swiping."
+            facts.reels >= 100 -> lines += "${facts.reels} reels this week. I counted every single one."
         }
         if (facts.streak >= 3) lines += "${facts.streak} days under your limit in a row. Keep it going!"
         val weekday = facts.weekdayAverage
@@ -240,17 +248,19 @@ object MascotLines {
         date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())
 
     /**
-     * The Sunday note: "I put your week together: 7h 34m, 38 min less than last week. Come have a look!"
+     * The Sunday note: "I put your week together: 7h 34m and 412 reels, 38 min less than last week. Come have a look!"
      * [vsLastWeek] is minutes more (+) or less (-) than last week, null if last week isn't known.
+     * [reels] = Reels & Shorts videos this week (null or 0 = not mentioned).
      */
-    fun weekReadyText(totalMinutes: Int, vsLastWeek: Int?): String {
+    fun weekReadyText(totalMinutes: Int, vsLastWeek: Int?, reels: Int? = null): String {
+        val reelPart = if (reels != null && reels > 0) " and $reels ${if (reels == 1) "reel" else "reels"}" else ""
         val change = when {
             vsLastWeek == null -> ""
             vsLastWeek < 0 -> ", ${duration(-vsLastWeek)} less than last week"
             vsLastWeek > 0 -> ", ${duration(vsLastWeek)} more than last week"
             else -> ", the same as last week"
         }
-        return "I put your week together: ${duration(totalMinutes)}$change. Come have a look!"
+        return "I put your week together: ${duration(totalMinutes)}$reelPart$change. Come have a look!"
     }
 
     /** The bubble when a limited app opens: "18 min of YouTube left today." (less than 5: "Only 3 min..."). */

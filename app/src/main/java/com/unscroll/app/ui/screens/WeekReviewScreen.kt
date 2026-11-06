@@ -72,13 +72,16 @@ import com.unscroll.app.ui.components.CloseIcon
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.NeoShadowSurface
+import com.unscroll.app.ui.components.countText
 import com.unscroll.app.ui.components.duration
+import com.unscroll.app.ui.components.reelChangeText
 import com.unscroll.app.ui.mascot.LocalMascot
 import com.unscroll.app.ui.mascot.Mascot
 import com.unscroll.app.ui.mascot.MascotLines
 import com.unscroll.app.ui.theme.Background
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.ButtonShape
+import com.unscroll.app.ui.theme.CheekPink
 import com.unscroll.app.ui.theme.CardShapeLarge
 import com.unscroll.app.ui.theme.Ink
 import com.unscroll.app.ui.theme.Lilac
@@ -233,7 +236,37 @@ private fun reviewCards(report: WeekReport, theme: MascotTheme): List<ReviewCard
         }
     }
 
-    // 3. Best and toughest day.
+    // 3. Reels & Shorts (GitHub version, once the tracker has counted some).
+    report.reels?.let { reels ->
+        cards += ReviewCard(CheekPink) {
+            val short = LocalShortCard.current
+            NeoPill("My reels")
+            BigNumber(countText(reels.total))
+            Text("Reels & Shorts I scrolled this week", style = MaterialTheme.typography.bodyLarge)
+            reels.vsLastWeek?.let {
+                Spacer(Modifier.height(12.dp))
+                NeoPill(reelChangeText(it))
+            }
+            if (!short) {
+                Spacer(Modifier.height(16.dp))
+                DayBars(reels.perDay, report.thisWeek.map { it.dayStart }, report.reelLimit, height = 56.dp)
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                listOfNotNull("About ${countText(reels.dailyAverage)} a day", reels.secondsEach?.let { "around $it\u00A0s each" }).joinToString(", "),
+                fontWeight = FontWeight.Bold
+            )
+            if (!short && reels.total > 0) {
+                Text(
+                    "Stacked up, that's a tower of phone screens about ${WeekStats.screenTower(reels.total)} tall.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+        }
+    }
+
+    // 4. Best and toughest day.
     val best = report.verdictFacts.bestDay
     val toughest = report.verdictFacts.toughestDay
     if (best != null && toughest != null && best.first != toughest.first) {
@@ -250,7 +283,7 @@ private fun reviewCards(report: WeekReport, theme: MascotTheme): List<ReviewCard
         }
     }
 
-    // 4. Scroll o'clock.
+    // 5. Scroll o'clock.
     report.peakHour?.let { peak ->
         cards += ReviewCard(Orange) {
             NeoPill("My scroll o'clock")
@@ -266,7 +299,7 @@ private fun reviewCards(report: WeekReport, theme: MascotTheme): List<ReviewCard
         }
     }
 
-    // 5. The mascot's verdict.
+    // 6. The mascot's verdict.
     cards += ReviewCard(White, mascot = mood) {
         val short = LocalShortCard.current
         NeoPill("${theme.mascotName} · my verdict")

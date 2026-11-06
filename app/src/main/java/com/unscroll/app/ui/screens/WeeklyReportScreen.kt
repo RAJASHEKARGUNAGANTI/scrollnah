@@ -99,6 +99,7 @@ fun WeeklyReportScreen(onBack: () -> Unit = {}, onOpenReview: () -> Unit = {}) {
             else -> {
                 item { WeekSummaryCard(current, selectedDay, onSelectDay = { selectedDay = it }) }
                 item { AppsCard(current, selectedDay, onShowWeek = { selectedDay = null }) }
+                if (current.reels != null) item { ReelsCard(current) }
                 item { VerdictCard(current) }
                 item { ReviewBannerCard(onOpenReview) }
                 item {

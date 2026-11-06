@@ -322,7 +322,7 @@ class BlockerService : Service() {
         LimitActions.showWeekReady(
             this,
             "${container.mascot.mascotName}: your week in review is ready",
-            MascotLines.weekReadyText(report.totalMinutes, report.vsLastWeekMinutes)
+            MascotLines.weekReadyText(report.totalMinutes, report.vsLastWeekMinutes, report.reels?.total)
         )
         debug("week ready note sent (${report.totalMinutes} min)")
     }

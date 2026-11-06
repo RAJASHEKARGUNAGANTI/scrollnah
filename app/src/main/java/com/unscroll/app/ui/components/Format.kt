@@ -61,3 +61,16 @@ fun ordinal(n: Int): String {
     }
     return "$n$suffix"
 }
+
+/** 412 -> "412", 1240 -> "1,240" (in the phone's number style). */
+fun countText(count: Int): String = java.text.NumberFormat.getIntegerInstance().format(count)
+
+/** Reels & Shorts compared with last week: "120 fewer than last week" ([short]: "120 fewer"). */
+fun reelChangeText(diff: Int, short: Boolean = false): String {
+    val tail = if (short) "" else " than last week"
+    return when {
+        diff < 0 -> "${countText(-diff)} fewer$tail"
+        diff > 0 -> "${countText(diff)} more$tail"
+        else -> if (short) "Same" else "Same as last week"
+    }
+}

@@ -84,6 +84,10 @@ interface FeatureDao {
     @Query("UPDATE feature_usage SET views = views + :count WHERE date = :date AND featureId = :featureId")
     suspend fun addViewsOnly(date: String, featureId: String, count: Int)
 
+    /** The first day the tracker counted any Reels/Shorts video ("yyyy-MM-dd"), null = never. */
+    @Query("SELECT MIN(date) FROM feature_usage WHERE views > 0")
+    suspend fun firstCountedDate(): String?
+
     /** Reels + Shorts videos scrolled on [date] (all features together). */
     @Query("SELECT COALESCE(SUM(views), 0) FROM feature_usage WHERE date = :date")
     suspend fun totalViews(date: String): Int

@@ -2,6 +2,7 @@ package com.unscroll.app.data
 
 import com.unscroll.app.data.db.DailySummary
 import com.unscroll.app.data.db.DayAppStat
+import com.unscroll.app.data.db.FeatureUsage
 import com.unscroll.app.ui.mascot.MascotLines
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -156,5 +157,73 @@ class WeekStatsTest {
         )
         assertTrue(MascotLines.weekReadyText(90, 15).contains("1h 30m, 15 min more than last week"))
         assertEquals("I put your week together: 45 min. Come have a look!", MascotLines.weekReadyText(45, null))
+    }
+
+    // ---- Reels & Shorts ----
+
+    private val today = LocalDate.of(2026, 11, 8)
+    private val reelIds = setOf("instagram_reels", "youtube_shorts")
+    private fun reelRow(daysAgo: Long, id: String, views: Int, minutes: Long = 0) =
+        FeatureUsage(today.minusDays(daysAgo).toString(), id, minutes * min, views)
+
+    @Test
+    fun reelWeekAddsUpEachDayAndComparesWithLastWeek() {
+        val rows = listOf(
+            reelRow(0, "instagram_reels", 30, minutes = 10), // today
+            reelRow(0, "youtube_shorts", 10, minutes = 4),
+            reelRow(6, "instagram_reels", 20),               // first day of this week
+            reelRow(7, "instagram_reels", 50),               // last week
+            reelRow(13, "youtube_shorts", 40),               // first day of last week
+            reelRow(14, "instagram_reels", 999),             // too old
+            reelRow(0, "web_youtube", 0, minutes = 30)       // website time: not reel watch time
+        )
+        val week = WeekStats.reelWeek(rows, today, firstCounted = today.minusDays(20), reelIds)!!
+        assertEquals(60, week.total)
+        assertEquals(listOf(20, 0, 0, 0, 0, 0, 40), week.perDay)
+        assertEquals(60 - 90, week.vsLastWeek)
+        assertEquals(listOf("instagram_reels" to 50, "youtube_shorts" to 10), week.byFeature)
+        assertEquals(14 * min, week.watchMillis)
+        assertEquals(14, week.secondsEach) // 14 min over 60 videos
+        assertEquals(9, week.dailyAverage) // 60 / 7, rounded
+        assertEquals(6, week.busiestDay)
+    }
+
+    @Test
+    fun reelWeekStartedThisWeekHasNoComparisonAndAFairAverage() {
+        val rows = listOf(reelRow(1, "youtube_shorts", 30), reelRow(0, "youtube_shorts", 10))
+        val week = WeekStats.reelWeek(rows, today, firstCounted = today.minusDays(1), reelIds)!!
+        assertNull(week.vsLastWeek)
+        assertEquals(2, week.countedDays)
+        assertEquals(20, week.dailyAverage)
+        assertNull(week.secondsEach) // no watch time saved
+    }
+
+    @Test
+    fun noReelWeekBeforeTheTrackerCountedAnything() {
+        assertNull(WeekStats.reelWeek(emptyList(), today, firstCounted = null, reelIds))
+        val quiet = WeekStats.reelWeek(emptyList(), today, firstCounted = today.minusDays(30), reelIds)!!
+        assertEquals(0, quiet.total)
+        assertEquals(0, quiet.vsLastWeek)
+        assertNull(quiet.busiestDay)
+    }
+
+    @Test
+    fun screenTowerInMetresAndKilometres() {
+        assertEquals("62 m", WeekStats.screenTower(412))
+        assertEquals("1 m", WeekStats.screenTower(1))
+        assertEquals("1.5 km", WeekStats.screenTower(10_000))
+    }
+
+    @Test
+    fun verdictAndSundayNoteMentionReels() {
+        val fewer = MascotLines.weekVerdict(MascotTheme.BLOBBY, MascotLines.WeekFacts(reels = 300, reelsVsLastWeek = -120))
+        assertTrue(fewer.first().startsWith("120 fewer reels than last week"))
+        val many = MascotLines.weekVerdict(MascotTheme.BLOOMY, MascotLines.WeekFacts(reels = 412))
+        assertTrue(many.first().startsWith("412 reels this week"))
+        assertEquals(
+            "I put your week together: 1h 30m and 412 reels, 15 min more than last week. Come have a look!",
+            MascotLines.weekReadyText(90, 15, 412)
+        )
+        assertEquals("I put your week together: 45 min. Come have a look!", MascotLines.weekReadyText(45, null, 0))
     }
 }

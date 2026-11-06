@@ -33,6 +33,8 @@ import kotlinx.coroutines.launch
  * and the Accessibility service share the same instances.
  */
 class AppContainer(context: Context) {
+    /** The app's context (not a screen's), for quick checks like "is the tracker on?". */
+    val appContext: Context = context.applicationContext
     val database = UnscrollDatabase.create(context)
     val settings = SettingsRepository(context)
     val usage = UsageRepository(context)

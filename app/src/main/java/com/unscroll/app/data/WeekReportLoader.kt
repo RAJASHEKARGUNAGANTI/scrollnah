@@ -7,9 +7,11 @@ import com.unscroll.app.data.db.DayAppStat
 import com.unscroll.app.data.db.ReasonCount
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.db.isWeekend
+import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.data.db.totalLimitOn
 import com.unscroll.app.ui.mascot.MascotLines
 import java.time.LocalDate
+import kotlinx.coroutines.flow.first
 
 /** Everything the Stats screen and the week-in-review cards show, from real usage history. */
 class WeekReport(
@@ -36,6 +38,8 @@ class WeekReport(
     val flowerDates: Set<String>,
     val todayMinutes: Int,
     val todayLimit: Int,
+    val reels: ReelWeek?,                // Reels & Shorts videos (GitHub version, once the tracker has counted some)
+    val reelLimit: Int?,                 // the daily reels limit, if one is on
     val verdictFacts: MascotLines.WeekFacts
 ) {
     fun appName(packageName: String) = appNames[packageName] ?: packageName.substringAfterLast('.')
@@ -93,6 +97,18 @@ suspend fun loadWeekReport(container: AppContainer, apps: List<TrackedApp>): Wee
     val walkedAway = pauseDao.walkedAwayCount(weekStartMs)
     val peakHour = WeekStats.peakHour(hours)
 
+    // Reels & Shorts (GitHub version): the tracker's video counts. A week with none is shown only
+    // while the tracker is on (otherwise "0 reels" would just mean it wasn't counting).
+    val featureDao = container.database.featureDao()
+    val reels = if (!FeatureWatchService.available) null else WeekStats.reelWeek(
+        rows = featureDao.usageBetween(today.minusDays(13).toString(), today.toString()),
+        today = today,
+        firstCounted = featureDao.firstCountedDate()?.let(LocalDate::parse),
+        reelFeatures = Feature.entries.map { it.id }.toSet()
+    )?.takeIf { it.total > 0 || FeatureWatchService.isEnabled(container.appContext) }
+    val reelLimit = if (reels == null) null
+    else featureDao.observeLimits().first().find { it.featureId == ReelLimit.ID && it.enabled }?.limitMinutes
+
     return WeekReport(
         thisWeek = thisWeek,
         totalMinutes = total,
@@ -120,6 +136,8 @@ suspend fun loadWeekReport(container: AppContainer, apps: List<TrackedApp>): Wee
         flowerDates = Growth.flowerDates(summaries),
         todayMinutes = thisWeek.last().minutes,
         todayLimit = todayLimit,
+        reels = reels,
+        reelLimit = reelLimit,
         verdictFacts = MascotLines.WeekFacts(
             vsLastWeek = vsLast,
             bestDay = finished.minByOrNull { it.second },
@@ -129,7 +147,9 @@ suspend fun loadWeekReport(container: AppContainer, apps: List<TrackedApp>): Wee
             peakHour = peakHour,
             streak = streak.current,
             pauses = pauses,
-            walkedAway = walkedAway
+            walkedAway = walkedAway,
+            reels = reels?.total ?: 0,
+            reelsVsLastWeek = reels?.vsLastWeek
         )
     )
 }

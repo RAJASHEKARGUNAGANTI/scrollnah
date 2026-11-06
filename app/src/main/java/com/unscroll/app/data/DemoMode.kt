@@ -105,6 +105,14 @@ object DemoMode {
         if (BuildConfig.TRACKER_AVAILABLE) { // Reels/Shorts only exist in the GitHub version
             db.featureDao().upsertLimits(listOf(FeatureLimit(Feature.YOUTUBE_SHORTS.id, 15, true)))
             db.featureDao().addAndGet(today.toString(), Feature.YOUTUBE_SHORTS.id, 9 * 60_000L)
+            // Two weeks of Reels/Shorts counts (fewer this week), about 14 s each, for the reel cards.
+            for (daysAgo in 0L..13L) {
+                val date = today.minusDays(daysAgo).toString()
+                val reels = if (daysAgo < 7) 35 + (daysAgo * 17 % 40).toInt() else 60 + (daysAgo * 13 % 35).toInt()
+                db.featureDao().addViews(date, Feature.INSTAGRAM_REELS.id, reels)
+                db.featureDao().addViews(date, Feature.YOUTUBE_SHORTS.id, reels / 3)
+                if (daysAgo > 0) db.featureDao().addAndGet(date, Feature.INSTAGRAM_REELS.id, reels * 14_000L)
+            }
         }
 
         // Pause screen answers this week: mostly boredom, 7 of 10 times "Nah, I'm good".

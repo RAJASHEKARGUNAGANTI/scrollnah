@@ -2,12 +2,15 @@ package com.unscroll.app.data
 
 import com.unscroll.app.data.db.DailySummary
 import com.unscroll.app.data.db.DayAppStat
+import com.unscroll.app.data.db.FeatureUsage
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** One app on one day: minutes, separate visits, first use after 4 AM (minutes after midnight). */
 data class AppDay(val minutes: Int, val opens: Int, val firstUseMinute: Int?)
@@ -27,6 +30,30 @@ data class WeekTrend(val start: LocalDate, val end: LocalDate, val averageMinute
 /** One day on the month calendar ([minutes]/[limit] null = no data that day). */
 data class CalendarDay(val date: LocalDate, val minutes: Int?, val limit: Int?, val newFlower: Boolean) {
     val underLimit: Boolean? get() = if (minutes == null || limit == null) null else minutes <= limit
+}
+
+/**
+ * Reels & Shorts videos over the last 7 days, from the tracker's counts (GitHub version).
+ * [perDay] is oldest first, today last. [vsLastWeek] = more (+) or fewer (-) videos than the
+ * 7 days before (null = the tracker wasn't counting yet then). [byFeature] = feature id to
+ * videos, most first. [watchMillis] = time in the Reels/Shorts viewers. [countedDays] = days of
+ * this week since the tracker first counted (1-7), so the daily average isn't too low.
+ */
+data class ReelWeek(
+    val total: Int,
+    val perDay: List<Int>,
+    val vsLastWeek: Int?,
+    val byFeature: List<Pair<String, Int>>,
+    val watchMillis: Long,
+    val countedDays: Int
+) {
+    val dailyAverage: Int get() = if (countedDays > 0) (total + countedDays / 2) / countedDays else 0
+
+    /** About how long each video got, in seconds (null = no videos or no time). */
+    val secondsEach: Int? get() = if (total > 0 && watchMillis > 0) (watchMillis / 1000 / total).toInt() else null
+
+    /** The day (0-6) with the most videos, null if there were none. */
+    val busiestDay: Int? get() = perDay.max().takeIf { it > 0 }?.let { perDay.indexOf(it) }
 }
 
 /**
@@ -150,6 +177,41 @@ object WeekStats {
             }
         }
         return List(blanks) { null } + days
+    }
+
+    /**
+     * This week's Reels & Shorts from [rows] (feature_usage, the last 14 days is enough).
+     * [firstCounted] = the first day the tracker ever counted a video (null = never: no card).
+     * [reelFeatures] = the ids of the in-app Reels/Shorts viewers (their time is the watch time).
+     */
+    fun reelWeek(rows: List<FeatureUsage>, today: LocalDate, firstCounted: LocalDate?, reelFeatures: Set<String>): ReelWeek? {
+        if (firstCounted == null || firstCounted.isAfter(today)) return null
+        val start = today.minusDays(6)
+        val lastStart = start.minusDays(7)
+        fun inRange(row: FeatureUsage, from: LocalDate, to: LocalDate) = row.date >= from.toString() && row.date <= to.toString()
+        val week = rows.filter { inRange(it, start, today) }
+        val perDay = (0..6L).map { i -> week.filter { it.date == start.plusDays(i).toString() }.sumOf { it.views } }
+        // Compare only if the tracker was already counting when last week began.
+        val vsLast = if (firstCounted.isAfter(lastStart)) null
+        else perDay.sum() - rows.filter { inRange(it, lastStart, start.minusDays(1)) }.sumOf { it.views }
+        return ReelWeek(
+            total = perDay.sum(),
+            perDay = perDay,
+            vsLastWeek = vsLast,
+            byFeature = week.groupBy { it.featureId }.map { (id, list) -> id to list.sumOf { it.views } }
+                .filter { it.second > 0 }.sortedByDescending { it.second },
+            watchMillis = week.filter { it.featureId in reelFeatures }.sumOf { it.millis },
+            countedDays = (ChronoUnit.DAYS.between(maxOf(start, firstCounted), today) + 1).toInt()
+        )
+    }
+
+    /** The videos stacked up as phone screens (about 15 cm each): 412 -> "62 m", 9000 -> "1.4 km". */
+    fun screenTower(videos: Int): String {
+        val metres = videos * 0.15
+        return when {
+            metres >= 1000 -> String.format(Locale.US, "%.1f km", metres / 1000)
+            else -> "${metres.roundToInt().coerceAtLeast(1)} m"
+        }
     }
 
     /** 22 -> "10–11 PM", 23 -> "11 PM–12 AM" (in the phone's language for AM/PM). */

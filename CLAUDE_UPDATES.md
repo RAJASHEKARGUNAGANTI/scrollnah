@@ -485,6 +485,17 @@ debug gallery (below).
   the set for now (`SoundFx.rawId`). Notification channels are now "nudges_blobby_2" etc. (`SOUND_SET`, raise
   it when the nudge sound changes; older ones are deleted) and the sound URI uses the resource name
   (`android.resource://pkg/raw/mascot_nudge`), since resource numbers can shift between app versions.
+- **Reels in the weekly report (developer, 2026-11-06):** `WeekStats.reelWeek` (5 new tests) adds up
+  `feature_usage.views` for the last 7 days (per day, per feature, watch time of the in-app viewers) and
+  compares with the 7 days before only if the tracker's first counted day (`FeatureDao.firstCountedDate`) is
+  on or before last week's start. The average divides by the days since counting started. Shown when the
+  tracker is available and has counted something (0 this week only while it's on). Stats: "Reels & Shorts"
+  card after "Where the time went" (`ReelsCard`, `DayBars`). Week in review: pink "My reels" card (3rd):
+  number, change pill, 7 bars, "About 69 a day, around 10 s each", "Stacked up, that's a tower of phone
+  screens about 72 m tall" (15 cm a screen, `WeekStats.screenTower`); short cards drop the bars and tower.
+  Verdict: "120 fewer reels than last week. My thumbs say thank you." (+-20) or "412 reels this week. I
+  counted every single one." (100+). Sunday note: "...: 7h 34m and 412 reels, 38 min less...". Demo mode
+  seeds two weeks of reel counts. Checked on the emulator (demo) at normal size and 360x640dp, font 1.3.
 - **Setup reality check:** new onboarding step (now Step 5): 1-5 h chips -> "About N days a year" (h*365/24) +
   "win back 30 min a day = about 8 days a year", and a switch that turns on the slow-down plan.
 - **Settings hints:** first built as an overlay window, but Android 12+ hides non-system overlays on Settings
