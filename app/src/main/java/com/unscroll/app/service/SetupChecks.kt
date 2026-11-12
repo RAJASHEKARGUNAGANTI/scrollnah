@@ -58,7 +58,8 @@ object SetupChecks {
         overlay = canShowPauseScreen(context),
         popups = backgroundPopupsAllowed(context) ?: if (isVivo) popupsConfirmed else null,
         battery = if (isPixel) null else ignoresBatteryOptimizations(context),
-        uninstallGuard = if (ParentLock.isOn && ParentLock.uninstallProtection) TamperWatch.isGuardActive(context) else null
+        uninstallGuard = if (ParentLock.isOn && ParentLock.uninstallProtection) TamperWatch.isGuardActive(context) else null,
+        tracker = if (FeatureWatchService.available) FeatureWatchService.isEnabled(context) else null
     )
 
     /** True on vivo/iQOO, where the user has to tell us they allowed pop-ups. */
@@ -91,6 +92,11 @@ object SetupChecks {
                 openBatterySettings(context)
                 SettingsHint.show(app, "Find ScrollNah and choose \"Don't optimize\" or \"No restrictions\".")
                 SetupReturn.watch(app) { ignoresBatteryOptimizations(app) }
+            }
+            // Only after the step showed the tracker's disclosure and the user tapped "Agree & open Settings".
+            SetupStep.TRACKER -> {
+                FeatureWatchService.openAccessibilitySettings(context) // also shows the Settings hint
+                SetupReturn.watch(app) { FeatureWatchService.isEnabled(app) }
             }
             // Android's own "Activate device admin app?" page; it comes back to ScrollNah by itself.
             SetupStep.UNINSTALL_GUARD -> {

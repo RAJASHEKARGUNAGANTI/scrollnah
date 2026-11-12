@@ -17,6 +17,8 @@ import android.view.accessibility.AccessibilityWindowInfo
 import com.unscroll.app.UnscrollApplication
 import com.unscroll.app.data.Feature
 import com.unscroll.app.data.MascotTheme
+import com.unscroll.app.data.MascotReward
+import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.ReelCounter
 import com.unscroll.app.data.ReelLimit
 import com.unscroll.app.data.Strictness
@@ -70,7 +72,7 @@ class FeatureWatchService : AccessibilityService() {
     private var visitFeature: Feature? = null      // the Reels/Shorts viewer open right now
     private var lastVisitFeature: Feature? = null
     private var visitEndedAt = 0L
-    @Volatile private var badgeMascot: Triple<Bitmap, Long, MascotTheme>? = null // (picture, drawn at, for which mascot)
+    @Volatile private var badgeMascot: Pair<Bitmap, BadgeLook>? = null // the picture, and what it shows
     @Volatile private var widgetDrawnAt = 0L
     private var loggedPage: Int? = null
     private var badgeAway = false // the badge is hidden while Reels/Shorts play in a small window
@@ -253,7 +255,8 @@ class FeatureWatchService : AccessibilityService() {
     /** Shows the count with the mascot, while that viewer is still open. */
     private suspend fun showBadge(feature: Feature, total: Int) {
         if (!reelBadgeOn) return
-        val mascot = mascotForBadge()
+        // The badge's mascot reacts to reels only (the count against the daily number), not to time.
+        val mascot = mascotForBadge(WidgetData.reelStatus(this).mood)
         val limit = featureLimits[ReelLimit.ID]?.takeIf { it.enabled }?.limitMinutes
         handler.post {
             if (visitFeature == feature && reelBadgeOn && !badgeAway) ReelBadge.show(this@FeatureWatchService, total, limit, mascot)
@@ -266,22 +269,18 @@ class FeatureWatchService : AccessibilityService() {
         countVideos(feature, 0)
     }
 
-    /**
-     * The chosen mascot (Blobby or Bloomy, read from the settings) in today's mood. Redrawn when
-     * the mascot is changed, otherwise at most every 5 minutes (the mood changes slowly).
-     */
-    private suspend fun mascotForBadge(): Bitmap {
-        val now = SystemClock.elapsedRealtime()
-        val theme = container.settings.mascotTheme.first()
-        badgeMascot?.let { (bitmap, drawnAt, drawnFor) ->
-            if (drawnFor == theme && now - drawnAt < 5 * 60_000L) return bitmap
-        }
-        val state = WidgetData.load(this) // theme, mood, flowers, bud and reward, all from the saved settings
+    /** What the badge's mascot looks like: redrawn only when one of these changes (e.g. the reels mood). */
+    private data class BadgeLook(val theme: MascotTheme, val mood: MoodLevel, val flowers: Int, val budDays: Int, val reward: MascotReward?)
+
+    /** The chosen mascot (Blobby or Bloomy, read from the settings) in the reels [mood]. */
+    private suspend fun mascotForBadge(mood: MoodLevel): Bitmap {
+        val settings = container.settings
+        val pot = settings.potProgress.first()
+        val look = BadgeLook(settings.mascotTheme.first(), mood, pot.flowers, pot.daysTowardNext, settings.activeReward.first())
+        badgeMascot?.let { (bitmap, drawnFor) -> if (drawnFor == look) return bitmap }
         val sizePx = (ReelBadge.MASCOT_DP * resources.displayMetrics.density).toInt()
-        val bitmap = MascotBitmap.render(
-            state.theme, state.mood, state.flowers, sizePx, budDays = state.budDays, reward = state.reward
-        )
-        badgeMascot = Triple(bitmap, now, state.theme)
+        val bitmap = MascotBitmap.render(look.theme, look.mood, look.flowers, sizePx, budDays = look.budDays, reward = look.reward)
+        badgeMascot = bitmap to look
         return bitmap
     }
 

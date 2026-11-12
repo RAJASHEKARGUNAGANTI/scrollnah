@@ -321,7 +321,8 @@ fun HomeScreen(onEditLimits: () -> Unit = {}, onOpenGarden: () -> Unit = {}, onC
                 SetupStepCard(
                     guide = setupGuide,
                     onOpen = openSetupStep,
-                    onConfirm = { scope.launch { container.settings.setPopupsConfirmed() } }
+                    onConfirm = { scope.launch { container.settings.setPopupsConfirmed() } },
+                    onSkipTracker = { scope.launch { container.settings.setTrackerSetupSkipped() } }
                 )
             }
         }
@@ -628,10 +629,12 @@ private fun SuggestionStrip(
 
 /** "85 reels" (or "32/50 reels" with a daily reels limit) next to the mood pill: Reels + Shorts today. */
 @Composable
-private fun ReelCountSticker(reels: Int, limit: Int?, modifier: Modifier = Modifier) {
+private fun ReelCountSticker(reels: Int, limit: Int?, onOrangeCard: Boolean, modifier: Modifier = Modifier) {
     val number = remember(reels) { java.text.NumberFormat.getIntegerInstance().format(reels) }
     val spoken = (if (reels == 1) "1 reel today" else "$number reels today") + (if (limit != null) " of $limit" else "")
-    // White with an ink line, so it doesn't look like a second mood pill.
+    // White with an ink line, so it doesn't look like a second mood pill. Orange from 80% of the
+    // daily reels number (the mascot here is about time; the reel badge and widget react to reels).
+    val nearLimit = limit != null && limit > 0 && reels >= limit * 0.8
     Text(
         (if (reels == 1 && limit == null) "1 reel" else "${ReelLimit.progress(number, limit)} reels").uppercase(),
         color = Ink,
@@ -641,7 +644,7 @@ private fun ReelCountSticker(reels: Int, limit: Int?, modifier: Modifier = Modif
         modifier = modifier
             .clearAndSetSemantics { contentDescription = spoken }
             .clip(PillShape)
-            .background(White, PillShape)
+            .background(if (nearLimit && !onOrangeCard) Orange else White, PillShape)
             .border(BorderWidth, Ink, PillShape)
             .padding(horizontal = 9.dp, vertical = 2.dp)
     )
@@ -703,7 +706,7 @@ private fun MascotMoodCard(totalUsed: Int, totalLimit: Int, appAtLimit: String?,
         fun Pills(modifier: Modifier = Modifier) {
             FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 NeoPill(text.pill, onLineCount = { if (it > 1) pillOnTop = true })
-                reelsToday?.let { ReelCountSticker(it, reelLimit) }
+                reelsToday?.let { ReelCountSticker(it, reelLimit, onOrangeCard = overLimit) }
             }
         }
         if (pillOnTop) Pills(Modifier.padding(bottom = 10.dp))

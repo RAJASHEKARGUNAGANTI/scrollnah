@@ -1,26 +1,29 @@
 package com.unscroll.app.data
 
 /** Switches ScrollNah may need turned on, in the order the setup guide asks for them. */
-enum class SetupStep { NOTIFICATIONS, OVERLAY, POPUPS, BATTERY, UNINSTALL_GUARD }
+enum class SetupStep { NOTIFICATIONS, OVERLAY, POPUPS, BATTERY, TRACKER, UNINSTALL_GUARD }
 
 /**
  * Which switches are on right now. null = this phone doesn't need that switch:
  * [popups] only exists on Xiaomi and vivo phones, and Google Pixels don't stop apps in the
  * background, so [battery] is null there. [uninstallGuard] is only asked for when a parent
- * chose Parent lock's uninstall protection.
+ * chose Parent lock's uninstall protection. [tracker] (the Reels & Shorts tracker) is null in a
+ * version without it.
  */
 data class SetupFacts(
     val notifications: Boolean,
     val overlay: Boolean,
     val popups: Boolean?,
     val battery: Boolean?,
-    val uninstallGuard: Boolean? = null
+    val uninstallGuard: Boolean? = null,
+    val tracker: Boolean? = null
 )
 
 /** Which features the user's choices rely on. */
 data class SetupUses(
-    val pauseScreen: Boolean, // Firm, Beast or focus mode
-    val bubbles: Boolean      // "X min left" bubble or break-reminder bubble
+    val pauseScreen: Boolean,          // Firm, Beast or focus mode
+    val bubbles: Boolean,              // "X min left" bubble or break-reminder bubble
+    val reelCounting: Boolean = false  // a reels number or Reels/Shorts limit is on (and the user didn't say "Not now")
 )
 
 /** Decides what the setup guide asks for, so nobody is asked for a switch they don't need. */
@@ -39,6 +42,8 @@ object SetupPlan {
         // The pop-up switch only matters for the Pause screen (bubbles are overlays, not screens).
         if (uses.pauseScreen && facts.popups == false) add(SetupStep.POPUPS)
         if (facts.battery == false) add(SetupStep.BATTERY)
+        // Counting Reels & Shorts needs the tracker (its step shows Google's disclosure first).
+        if (uses.reelCounting && facts.tracker == false) add(SetupStep.TRACKER)
         if (facts.uninstallGuard == false) add(SetupStep.UNINSTALL_GUARD)
     }
 

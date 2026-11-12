@@ -88,6 +88,10 @@ fun rememberSetupGuide(strictness: Strictness?, focusOn: Boolean, refresh: Int):
     val timeLeftBubble = settings.timeLeftBubble.collectAsStateWithLifecycle(initialValue = null).value
     val breaks = settings.breakSettings.collectAsStateWithLifecycle(initialValue = null).value
     val confirmed = settings.popupsConfirmed.collectAsStateWithLifecycle(initialValue = null).value
+    // Counting Reels & Shorts (a reels number or a Reels/Shorts limit is on) needs the tracker,
+    // unless the user said "Not now" to that step.
+    val featureLimits = appContainer().database.featureDao().observeLimits().collectAsStateWithLifecycle(initialValue = null).value
+    val trackerSkipped = settings.trackerSetupSkipped.collectAsStateWithLifecycle(initialValue = null).value
     // Some phones (Xiaomi's battery page) save a switch a moment after you come back,
     // so look again a few times in the first seconds.
     var lateCheck by remember { mutableIntStateOf(0) }
@@ -97,14 +101,19 @@ fun rememberSetupGuide(strictness: Strictness?, focusOn: Boolean, refresh: Int):
             lateCheck++
         }
     }
-    if (strictness == null || timeLeftBubble == null || breaks == null || confirmed == null) return null
+    if (strictness == null || timeLeftBubble == null || breaks == null || confirmed == null ||
+        featureLimits == null || trackerSkipped == null
+    ) return null
 
     val uses = SetupPlan.uses(strictness, focusOn, timeLeftBubble, breaks)
+        .copy(reelCounting = !trackerSkipped && featureLimits.any { it.enabled })
     val missing = remember(refresh, lateCheck, uses, confirmed) { SetupPlan.missing(SetupChecks.facts(context, confirmed), uses) }
     // Every step that was missing while this screen was open, so "Step 2 of 3" stays steady
     // and finished steps keep their tick. (Only ever grows, so updating it here is safe.)
     val seen = remember { mutableSetOf<SetupStep>() }
     seen += missing
+    // "Not now" on the tracker step: it's no longer part of this round (and isn't "done").
+    if (!uses.reelCounting) seen -= SetupStep.TRACKER
     val (number, total) = SetupPlan.position(seen, missing)
     val steps = seen.sortedBy { it.ordinal }
 
@@ -114,7 +123,7 @@ fun rememberSetupGuide(strictness: Strictness?, focusOn: Boolean, refresh: Int):
     var justDone by remember { mutableStateOf<SetupStep?>(null) }
     var lastMissing by remember { mutableStateOf(missing) }
     LaunchedEffect(missing) {
-        val finished = lastMissing.firstOrNull { it !in missing }
+        val finished = lastMissing.firstOrNull { it !in missing && it in seen } // skipped steps aren't "done"
         lastMissing = missing
         if (finished != null) {
             justDone = finished
@@ -181,11 +190,33 @@ fun setupWords(step: SetupStep, uses: SetupUses): SetupWords = when (step) {
         how = "Find ScrollNah and choose \"Don't optimise\" (on some phones \"No restrictions\").",
         button = "Open settings"
     )
+    // Google Play's "prominent disclosure": the same words as the Limits card, before Android's settings.
+    SetupStep.TRACKER -> SetupWords(
+        title = "Count Reels & Shorts",
+        why = TrackerDisclosure.WHAT,
+        how = "In Settings: Downloaded apps > ScrollNah > turn on. Some UPI and bank apps won't open while it's on; " +
+            "you can turn it off there any time.",
+        button = TrackerDisclosure.AGREE
+    )
     SetupStep.UNINSTALL_GUARD -> SetupWords(
         title = "Turn on uninstall protection",
         why = "For Parent lock: Android then asks to turn this off before ScrollNah can be removed, and the lock's report shows it.",
         how = "Tap \"Activate\" on the next page. ScrollNah gets no control over anything else.",
         button = "Continue"
+    )
+}
+
+/** "Not now" under the tracker step (the disclosure needs a way to say no): it isn't asked again. */
+@Composable
+fun SkipTrackerLink(onSkip: () -> Unit, modifier: Modifier = Modifier) {
+    Text(
+        TrackerDisclosure.DECLINE,
+        fontWeight = FontWeight.Bold,
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(role = Role.Button, onClick = onSkip)
+            .heightIn(min = 44.dp)
+            .wrapContentHeight()
     )
 }
 
@@ -271,6 +302,7 @@ private fun doneText(step: SetupStep) = when (step) {
     SetupStep.OVERLAY -> "Display over other apps is on"
     SetupStep.POPUPS -> "Pop-ups in the background are on"
     SetupStep.BATTERY -> "ScrollNah can run in the background"
+    SetupStep.TRACKER -> "Reels & Shorts counting is on"
     SetupStep.UNINSTALL_GUARD -> "Uninstall protection is on"
 }
 
@@ -279,7 +311,7 @@ private fun doneText(step: SetupStep) = when (step) {
  * says "All set" for a moment before it goes away.
  */
 @Composable
-fun SetupStepCard(guide: SetupGuide, onOpen: (SetupStep) -> Unit, onConfirm: () -> Unit) {
+fun SetupStepCard(guide: SetupGuide, onOpen: (SetupStep) -> Unit, onConfirm: () -> Unit, onSkipTracker: () -> Unit = {}) {
     val step = guide.next
     NeoCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -305,5 +337,6 @@ fun SetupStepCard(guide: SetupGuide, onOpen: (SetupStep) -> Unit, onConfirm: () 
         if (step == SetupStep.POPUPS && SetupChecks.popupsNeedConfirming) {
             ConfirmPopupsLink(onConfirm, Modifier.padding(top = 6.dp))
         }
+        if (step == SetupStep.TRACKER) SkipTrackerLink(onSkipTracker, Modifier.padding(top = 6.dp))
     }
 }

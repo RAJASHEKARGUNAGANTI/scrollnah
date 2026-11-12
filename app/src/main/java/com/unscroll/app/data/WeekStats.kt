@@ -205,9 +205,12 @@ object WeekStats {
         )
     }
 
+    /** How tall one phone screen is, about 15 cm (for "stacked up, your reels would be ... tall"). */
+    const val SCREEN_METRES = 0.15
+
     /** The videos stacked up as phone screens (about 15 cm each): 412 -> "62 m", 9000 -> "1.4 km". */
     fun screenTower(videos: Int): String {
-        val metres = videos * 0.15
+        val metres = videos * SCREEN_METRES
         return when {
             metres >= 1000 -> String.format(Locale.US, "%.1f km", metres / 1000)
             else -> "${metres.roundToInt().coerceAtLeast(1)} m"

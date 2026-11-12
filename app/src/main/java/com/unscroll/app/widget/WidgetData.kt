@@ -4,6 +4,7 @@ import com.unscroll.app.data.MascotReward
 
 import android.content.Context
 import com.unscroll.app.UnscrollApplication
+import com.unscroll.app.data.Feature
 import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.StreakRepository
@@ -33,9 +34,18 @@ data class WidgetState(
     val streak: Int = 0,
     val reels: Int = 0,            // Reels + Shorts scrolled today (counted by the tracker)
     val reelLimit: Int? = null,    // the daily reels limit, if one is set
+    val reelTimeUp: Boolean = false, // Instagram Reels or YouTube Shorts used up its own minute limit
     val trackerOn: Boolean = false, // the Reels & Shorts tracker is switched on
     val asleep: Boolean = false     // night: the mascot sleeps on the widgets
-)
+) {
+    /** The reel count widget's mood: reels only, separate from [mood] (time) on the other widgets. */
+    val reelMood: MoodLevel get() = MoodLevel.forReels(reels, reelLimit, reelTimeUp)
+}
+
+/** Today's Reels & Shorts numbers, for the places that react to reels (reel widget, the badge). */
+class ReelStatus(val count: Int, val limit: Int?, val timeUp: Boolean) {
+    val mood: MoodLevel get() = MoodLevel.forReels(count, limit, timeUp)
+}
 
 object WidgetData {
 
@@ -43,18 +53,32 @@ object WidgetData {
     fun isNight(now: java.time.LocalTime = java.time.LocalTime.now()): Boolean =
         if (FocusRules.bedtime().enabled) FocusRules.bedtimeActive(now) else now.hour >= 22 || now.hour < 6
 
+    /** Today's Reels + Shorts count, the daily reels number, and whether a Reels/Shorts minute limit is used up. */
+    suspend fun reelStatus(context: Context): ReelStatus {
+        val dao = (context.applicationContext as UnscrollApplication).container.database.featureDao()
+        val today = LocalDate.now().toString()
+        val limits = dao.observeLimits().first().filter { it.enabled }
+        val usage = dao.usageBetween(today, today)
+        val timeUp = limits.any { l ->
+            Feature.byId(l.featureId) != null && // Instagram Reels / YouTube Shorts (not the reels number)
+                (usage.find { it.featureId == l.featureId }?.millis ?: 0L) >= l.limitMinutes * 60_000L
+        }
+        return ReelStatus(dao.totalViews(today), limits.find { it.featureId == ReelLimit.ID }?.limitMinutes, timeUp)
+    }
+
     /** Reads today's numbers (app time + website time), the mood, streak and theme. */
     suspend fun load(context: Context): WidgetState {
         val container = (context.applicationContext as UnscrollApplication).container
         val theme = container.settings.mascotTheme.first()
         val pot = container.settings.potProgress.first()
         val today = LocalDate.now()
+        val reels = reelStatus(context)
         val base = WidgetState(
             today.toString(), theme, pot.flowers, MoodLevel.HAPPY,
             budDays = pot.daysTowardNext, reward = container.settings.activeReward.first(),
-            reels = container.database.featureDao().totalViews(today.toString()),
-            reelLimit = container.database.featureDao().observeLimits().first()
-                .find { it.featureId == ReelLimit.ID && it.enabled }?.limitMinutes,
+            reels = reels.count,
+            reelLimit = reels.limit,
+            reelTimeUp = reels.timeUp,
             trackerOn = FeatureWatchService.isEnabled(context),
             asleep = isNight()
         )

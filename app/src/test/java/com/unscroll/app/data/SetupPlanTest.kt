@@ -4,6 +4,7 @@ import com.unscroll.app.data.SetupStep.BATTERY
 import com.unscroll.app.data.SetupStep.NOTIFICATIONS
 import com.unscroll.app.data.SetupStep.OVERLAY
 import com.unscroll.app.data.SetupStep.POPUPS
+import com.unscroll.app.data.SetupStep.TRACKER
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -54,6 +55,17 @@ class SetupPlanTest {
         // Break reminders by notification only don't need the overlay.
         val notificationOnly = BreakSettings(style = ReminderStyle.NOTIFICATION)
         assertEquals(false, SetupPlan.uses(Strictness.CHILL, false, false, notificationOnly).bubbles)
+    }
+
+    @Test
+    fun aReelsNumberAsksForTheTrackerLast() {
+        val reels = everything.copy(reelCounting = true)
+        val pixel = nothingOn.copy(popups = null, battery = null, tracker = false)
+        assertEquals(listOf(NOTIFICATIONS, OVERLAY, TRACKER), SetupPlan.missing(pixel, reels))
+        // Already on, not wanted ("Not now" / no reels limit), or a version without the tracker: not asked.
+        assertEquals(listOf(NOTIFICATIONS, OVERLAY), SetupPlan.missing(pixel.copy(tracker = true), reels))
+        assertEquals(listOf(NOTIFICATIONS, OVERLAY), SetupPlan.missing(pixel, everything))
+        assertEquals(listOf(NOTIFICATIONS, OVERLAY), SetupPlan.missing(pixel.copy(tracker = null), reels))
     }
 
     @Test

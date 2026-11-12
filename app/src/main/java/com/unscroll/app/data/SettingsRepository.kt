@@ -35,6 +35,7 @@ class SettingsRepository(context: Context) {
     private val reelBadgeKey = booleanPreferencesKey("reel_badge")
     private val widgetCardDoneKey = booleanPreferencesKey("widget_card_done")
     private val reelCardDoneKey = booleanPreferencesKey("reel_card_done")
+    private val trackerSetupSkippedKey = booleanPreferencesKey("tracker_setup_skipped")
     private val soundsKey = booleanPreferencesKey("sounds")
     private val slowPlanOnKey = booleanPreferencesKey("slow_plan_on")
     private val slowPlanStepKey = intPreferencesKey("slow_plan_step")
@@ -187,6 +188,13 @@ class SettingsRepository(context: Context) {
 
     suspend fun setReelCardDone() {
         store.edit { it[reelCardDoneKey] = true }
+    }
+
+    /** "Not now" on the setup guide's "Count Reels & Shorts" step: it isn't asked again (Limits still offers it). */
+    val trackerSetupSkipped: Flow<Boolean> = store.data.map { it[trackerSetupSkippedKey] ?: false }
+
+    suspend fun setTrackerSetupSkipped() {
+        store.edit { it[trackerSetupSkippedKey] = true }
     }
 
     /** vivo/iQOO: the user told us they allowed pop-ups in the background (the phone can't be asked). */

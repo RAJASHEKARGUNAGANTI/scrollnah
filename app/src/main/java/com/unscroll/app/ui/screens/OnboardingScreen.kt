@@ -90,6 +90,18 @@ import com.unscroll.app.ui.components.rememberSetupGuide
 import com.unscroll.app.ui.components.rememberSetupOpener
 import com.unscroll.app.ui.components.setupWords
 import com.unscroll.app.data.SetupStep
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
+import com.unscroll.app.data.Feature
+import com.unscroll.app.data.ReelLimit
+import com.unscroll.app.data.WeekStats
+import com.unscroll.app.data.isAppInstalled
+import com.unscroll.app.data.db.FeatureLimit
+import com.unscroll.app.service.FeatureWatchService
+import com.unscroll.app.ui.components.SkipTrackerLink
+import com.unscroll.app.ui.components.countText
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.letterFor
@@ -104,7 +116,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val STEPS = 10
+/** Keeps the ticked apps when the screen is rebuilt (e.g. turned sideways): saved as package, label, package, label... */
+private val PickedAppsSaver = listSaver<SnapshotStateList<InstalledApp>, String>(
+    save = { list -> list.flatMap { listOf(it.packageName, it.label) } },
+    restore = { saved -> saved.chunked(2).map { (pkg, label) -> InstalledApp(pkg, label) }.toMutableStateList() }
+)
+
+/** Setup's pages in order ([REELS] only where Reels/Shorts can be counted). */
+private enum class SetupPage { BUDDY, HI, NAME, OVERLAY, USAGE, APPS, REALITY, REELS, STRICT, PARENT, SWITCHES }
 
 /**
  * First-run walkthrough: pick a mascot -> meet it -> name -> display over other apps (optional;
@@ -117,10 +136,11 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     val container = appContainer()
     val scope = rememberCoroutineScope()
 
-    var step by remember { mutableIntStateOf(0) }
-    var name by remember { mutableStateOf("") }
-    var strictness by remember { mutableStateOf(Strictness.FIRM) }
-    val picked = remember { mutableStateListOf<InstalledApp>() }
+    // Saveable, so turning the phone sideways (which rebuilds the screen) keeps the page and the answers.
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var strictness by rememberSaveable { mutableStateOf(Strictness.FIRM) }
+    val picked = rememberSaveable(saver = PickedAppsSaver) { mutableStateListOf<InstalledApp>() }
 
     // Permissions are re-checked each time the user comes back from Android Settings.
     var resumeCount by remember { mutableIntStateOf(0) }
@@ -132,6 +152,12 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     val hasOverlay = remember(resumeCount) { SetupChecks.canShowPauseScreen(context) }
 
     BackHandler(enabled = step > 0) { step-- }
+
+    // "How many Reels & Shorts a day?" only if Instagram or YouTube is here (and this version counts them).
+    val showReels = remember { FeatureWatchService.available && Feature.entries.any { isAppInstalled(context, it.packageName) } }
+    val pages = remember(showReels) { SetupPage.entries.filter { it != SetupPage.REELS || showReels } }
+    val page = pages[step.coerceIn(0, pages.lastIndex)]
+    val label = "Step ${step - 1}" // the welcome and "Hi" pages have no number
 
     fun finish() {
         scope.launch {
@@ -158,7 +184,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     ) {
         // Progress dots
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 18.dp)) {
-            repeat(STEPS) { i ->
+            repeat(pages.size) { i ->
                 Box(
                     Modifier
                         .height(8.dp)
@@ -170,8 +196,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
             }
         }
 
-        when (step) {
-            0 -> Step(
+        when (page) {
+            SetupPage.BUDDY -> Step(
                 pill = "Welcome to ScrollNah",
                 title = "Pick your buddy",
                 body = "Your buddy keeps an eye on your scrolling and reacts to it. You can switch later in Settings.",
@@ -220,7 +246,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 }
             }
 
-            1 -> Step(
+            SetupPage.HI -> Step(
                 pill = "Hi there",
                 title = "Hi, I'm ${LocalMascot.current.theme.mascotName}.",
                 body = "I'm your ScrollNah buddy. I keep an eye on your scrolling and give you a nudge when it's time to put the phone down. No guilt trips. Let's set things up in under a minute.",
@@ -229,8 +255,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 onNext = { step++ }
             )
 
-            2 -> Step(
-                pill = "Step 1",
+            SetupPage.NAME -> Step(
+                pill = label,
                 title = "What should I call you?",
                 body = "Just a first name or a nickname. You can change it later.",
                 button = if (name.isBlank()) "Skip" else "Next",
@@ -251,8 +277,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 )
             }
 
-            3 -> Step(
-                pill = "Step 2",
+            SetupPage.OVERLAY -> Step(
+                pill = label,
                 title = "Allow display over other apps",
                 body = "To show the Pause screen, and small hints while you turn on the next switches. " +
                     "Optional: you can do it later. Find ScrollNah in the list and turn it on.",
@@ -267,8 +293,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 }
             }
 
-            4 -> Step(
-                pill = "Step 3",
+            SetupPage.USAGE -> Step(
+                pill = label,
                 title = "Count your screen time",
                 body = "ScrollNah needs Usage access to count your minutes. Your data stays on this phone.",
                 mood = MoodLevel.HAPPY,
@@ -282,16 +308,19 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 }
             }
 
-            5 -> AppPickerStep(
+            SetupPage.APPS -> AppPickerStep(
+                label = label,
                 picked = picked,
                 hasUsage = hasUsage,
                 onNext = { step++ }
             )
 
-            6 -> RealityCheckStep(onNext = { step++ })
+            SetupPage.REALITY -> RealityCheckStep(label = label, onNext = { step++ })
 
-            7 -> Step(
-                pill = "Step 6",
+            SetupPage.REELS -> ReelsStep(label = label, onNext = { step++ })
+
+            SetupPage.STRICT -> Step(
+                pill = label,
                 title = "How strict should I be?",
                 body = when (strictness) {
                     Strictness.CHILL -> "A notification when you hit a limit. You can take 5 more minutes."
@@ -308,9 +337,9 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 )
             }
 
-            8 -> ParentLockStep(onNext = { step++ })
+            SetupPage.PARENT -> ParentLockStep(label = label, onNext = { step++ })
 
-            else -> PermissionsStep(strictness = strictness, resumeCount = resumeCount, onFinish = { finish() })
+            SetupPage.SWITCHES -> PermissionsStep(strictness = strictness, resumeCount = resumeCount, onFinish = { finish() })
         }
     }
 }
@@ -352,11 +381,11 @@ private fun ColumnScope.Step(
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun ColumnScope.RealityCheckStep(onNext: () -> Unit) {
+private fun ColumnScope.RealityCheckStep(label: String, onNext: () -> Unit) {
     val container = appContainer()
     val scope = rememberCoroutineScope()
-    var hours by remember { mutableStateOf<Int?>(null) }
-    var planOn by remember { mutableStateOf(false) }
+    var hours by rememberSaveable { mutableStateOf<Int?>(null) }
+    var planOn by rememberSaveable { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -365,7 +394,7 @@ private fun ColumnScope.RealityCheckStep(onNext: () -> Unit) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        NeoPill("Step 5")
+        NeoPill(label)
         Text("How long do you scroll on a normal day?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
         Text("A guess is fine. It stays on this phone.", style = MaterialTheme.typography.bodyLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -410,14 +439,78 @@ private fun ColumnScope.RealityCheckStep(onNext: () -> Unit) {
     )
 }
 
+/**
+ * "How many Reels & Shorts a day is enough?" (only where Instagram or YouTube is installed): the daily
+ * reels number, with what it adds up to (minutes a day, a year, a stack of phone screens). Counting
+ * needs the tracker, asked for in the last step, after its disclosure.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ColumnScope.ReelsStep(label: String, onNext: () -> Unit) {
+    val container = appContainer()
+    val scope = rememberCoroutineScope()
+    var count by rememberSaveable { mutableStateOf<Int?>(null) }
+
+    Column(
+        Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        NeoPill(label)
+        Text("How many Reels & Shorts a day is enough?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
+        Text(
+            "Instagram Reels and YouTube Shorts together. ScrollNah counts them and steps in at your number. " +
+                "It needs one more switch, at the end.",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ReelLimit.CHOICES.forEach { n -> ChoicePill("$n", selected = count == n) { count = n } }
+        }
+        count?.let { n ->
+            // Any other number, in steps of 10.
+            Stepper(
+                minutes = n,
+                onDecrease = { count = (n - ReelLimit.STEP).coerceAtLeast(ReelLimit.MIN) },
+                onIncrease = { count = (n + ReelLimit.STEP).coerceAtMost(ReelLimit.MAX) },
+                what = "reels a day",
+                text = { "$it a day" },
+                spoken = { "$it reels" }
+            )
+            val c = ReelLimit.compare(n)
+            NeoCard(modifier = Modifier.fillMaxWidth(), backgroundColor = Lime, contentPadding = PaddingValues(16.dp)) {
+                Text("$n a day", style = MaterialTheme.typography.headlineSmall, color = Ink)
+                Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("About ${duration(c.minutesADay)} of videos a day (around ${ReelLimit.SECONDS_EACH} s each)", style = MaterialTheme.typography.bodyMedium, color = Ink)
+                    Text("${countText(c.perYear)} a year", style = MaterialTheme.typography.bodyMedium, color = Ink)
+                    Text(
+                        "Stacked up, $n phone screens would be ${WeekStats.screenTower(n)} tall, ${c.towerLike}.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink
+                    )
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    NeoButtonPrimary(
+        text = if (count == null) "Skip" else "Next",
+        onClick = {
+            count?.let { n -> scope.launch { container.database.featureDao().upsertLimits(listOf(FeatureLimit(ReelLimit.ID, n, true))) } }
+            onNext()
+        }
+    )
+}
+
 /** Step 4: tick the apps to limit (most used today first). */
 @Composable
-private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsage: Boolean, onNext: () -> Unit) {
+private fun ColumnScope.AppPickerStep(label: String, picked: MutableList<InstalledApp>, hasUsage: Boolean, onNext: () -> Unit) {
     val context = LocalContext.current
     val container = appContainer()
     var apps by remember { mutableStateOf<List<InstalledApp>?>(null) }
     var minutes by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    var query by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(hasUsage) {
         withContext(Dispatchers.IO) {
             if (hasUsage) minutes = container.usage.todayUsageMinutes(packages = null)
@@ -437,7 +530,7 @@ private fun ColumnScope.AppPickerStep(picked: MutableList<InstalledApp>, hasUsag
     ) {
         item {
             Column {
-                NeoPill("Step 4")
+                NeoPill(label)
                 Text("Which apps eat your day?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 10.dp))
                 Text(
                     "Tick a few. Each gets $DEFAULT_APP_LIMIT_MINUTES min a day to start, and you can change that later.",
@@ -548,6 +641,8 @@ private fun ColumnScope.PermissionsStep(strictness: Strictness, resumeCount: Int
             if (step == SetupStep.POPUPS && SetupChecks.popupsNeedConfirming) {
                 ConfirmPopupsLink(onConfirm = { scope.launch { container.settings.setPopupsConfirmed() } })
             }
+            // The tracker step shows its disclosure, so it also needs a way to say no.
+            if (step == SetupStep.TRACKER) SkipTrackerLink(onSkip = { scope.launch { container.settings.setTrackerSetupSkipped() } })
         }
     }
     Spacer(Modifier.height(12.dp))
@@ -563,10 +658,10 @@ private fun ColumnScope.PermissionsStep(strictness: Strictness, resumeCount: Int
  * uninstall protection (switched on in the last step). Off by default; also in Settings later.
  */
 @Composable
-private fun ColumnScope.ParentLockStep(onNext: () -> Unit) {
+private fun ColumnScope.ParentLockStep(label: String, onNext: () -> Unit) {
     val lock by ParentLock.state.collectAsStateWithLifecycle()
-    var forChild by remember { mutableStateOf(if (lock.on) true else null) } // null = not answered yet
-    var guardUninstall by remember { mutableStateOf(true) }
+    var forChild by rememberSaveable { mutableStateOf(if (lock.on) true else null) } // null = not answered yet
+    var guardUninstall by rememberSaveable { mutableStateOf(true) }
 
     Column(
         Modifier
@@ -575,7 +670,7 @@ private fun ColumnScope.ParentLockStep(onNext: () -> Unit) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        NeoPill("Step 7")
+        NeoPill(label)
         Text("Is this phone for a child?", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
         Text(
             "A Parent lock keeps the limits you set safe. With it on, changing limits or settings, taking extra minutes, " +

@@ -443,6 +443,33 @@ debug gallery (below).
   synchronously because the restore restarts the app. `BeastGuardDialog` is shared (`why` text). Tested on
   the emulator: Beast -> Settings > Restore a backup shows "Beast mode is on", no file picker; after
   "Start cool-down" it shows the countdown.
+## Reels mood + reels number in setup (2026-11-12, user feedback: "the mascot isn't affected by the reels count"; not released yet)
+- **Reels mood, separate from time** (developer: the reels widget and the floating count should work independently):
+  `MoodLevel.forReels(count, limit, featureAtLimit)` (tested): same 25/50/80/100% steps on the daily reels number;
+  no number = HAPPY; a Reels/Shorts minute limit used up = at least WORRIED. Used by the badge
+  (`FeatureWatchService.mascotForBadge(mood)`, cached by `BadgeLook`, so it redraws when the mood changes instead of
+  every 5 min) and the reel count widget (`WidgetState.reelMood`, `WidgetData.reelStatus`), whose line follows it
+  (`MascotLines.reelWidgetLine(..., timeUp)`: "Halfway there. Easy now." / "Nearly there. I'm dizzy."). Home's mascot,
+  the other widgets, reminders and streaks stay time-only; Home's reel pill turns orange from 80% (white on the
+  orange over-limit card).
+- **Setup step "How many Reels & Shorts a day is enough?"** (`ReelsStep`, only with Instagram/YouTube and the
+  tracker in this version): chips 30/50/100/200/300 + a stepper (10-500), a lime card with minutes a day (15 s each),
+  a year, and the stacked-screens height (`ReelLimit.compare`, `WeekStats.SCREEN_METRES`; "an 11-storey"). Next saves
+  `FeatureLimit(ReelLimit.ID, n, true)`. Setup pages are now `SetupPage` (pill numbers follow: reels = Step 6).
+- **Tracker in the setup guide:** `SetupStep.TRACKER` (`SetupFacts.tracker`, `SetupUses.reelCounting` = any enabled
+  feature limit and not `trackerSetupSkipped`), last before uninstall protection. Its words are the disclosure
+  (`TrackerDisclosure.WHAT` + where the switch is + the UPI note), button "Agree & open Settings", and "Not now"
+  (`SkipTrackerLink`) on the last setup page and Home's "Almost ready" card. A skipped step leaves `seen` (no tick,
+  no "... is on" note). `SetupChecks.openStep(TRACKER)` opens Accessibility + hint and comes back when it's on.
+- **Old bug fixed:** turning the phone sideways during setup restarted it at "Pick your buddy" (the activity is
+  rebuilt). Setup's page and answers are `rememberSaveable` now (ticked apps via `PickedAppsSaver`).
+- Emulator (Android 15, debug): setup reels page (pick 100/200, +/-, comparisons), last step's disclosure -> agree ->
+  switch on -> came back by itself; badge faces 2/10 thriving, 4/10 happy, 5/10 okay, 8/10 worried; reel widget at
+  11/10 "That's all for today!" melting; Home time mascot thriving with an orange "11/10 reels" pill; Home "Almost
+  ready" tracker step -> Not now -> gone; rotation keeps page/number/apps; 360x640 at font 1.3. 85 unit tests.
+  (The stand-in "Instagram" app froze after a few swipes on this emulator; it's the test app, not ScrollNah.)
+- To do with the next Play upload: reviewer steps and the declaration video in `store/play-console-answers.md`
+  should mention the setup step and the Limits tabs.
 ## Home UX pass (2026-11-06, developer: "is the UI good for UX?"; not released yet)
 - Before: Today's limits came after the reels card, Focus, streak and fun stat, so it was always below the fold;
   the suggestion card was the biggest thing on the page. Now (see CLAUDE.md, Home): mascot card -> (setup) ->

@@ -39,6 +39,30 @@ class MoodLevelTest {
     }
 
     @Test
+    fun reelsMoodFollowsTheDailyReelsNumber() {
+        // Same steps as time: 40 of 50 = 80% = worried, 50 of 50 = over.
+        assertEquals(MoodLevel.THRIVING, MoodLevel.forReels(10, 50))
+        assertEquals(MoodLevel.HAPPY, MoodLevel.forReels(13, 50))
+        assertEquals(MoodLevel.OKAY, MoodLevel.forReels(25, 50))
+        assertEquals(MoodLevel.WORRIED, MoodLevel.forReels(40, 50))
+        assertEquals(MoodLevel.OVER, MoodLevel.forReels(50, 50))
+        assertEquals(MoodLevel.OVER, MoodLevel.forReels(80, 50))
+    }
+
+    @Test
+    fun withoutADailyNumberTheReelsMascotStaysCalm() {
+        assertEquals(MoodLevel.HAPPY, MoodLevel.forReels(0, null))
+        assertEquals(MoodLevel.HAPPY, MoodLevel.forReels(300, null))
+    }
+
+    @Test
+    fun reelsOrShortsAtTheirMinuteLimitMakeItAtLeastWorried() {
+        assertEquals(MoodLevel.WORRIED, MoodLevel.forReels(5, null, featureAtLimit = true))
+        assertEquals(MoodLevel.WORRIED, MoodLevel.forReels(5, 50, featureAtLimit = true))
+        assertEquals(MoodLevel.OVER, MoodLevel.forReels(60, 50, featureAtLimit = true))
+    }
+
+    @Test
     fun sadderStopsAtOver() {
         assertEquals(MoodLevel.OVER, MoodLevel.WORRIED.sadder())
         assertEquals(MoodLevel.OVER, MoodLevel.OVER.sadder())

@@ -94,7 +94,8 @@ object MascotWidgets {
         val mascot by lazy { widgetMascot(state) }
         update(BlobbyWidget::class.java) { mediumViews(context, state, mascot) }
         update(SmallMascotWidgetReceiver::class.java) { smallViews(context, state, mascot) }
-        update(ReelCountWidgetReceiver::class.java) { reelViews(context, state, mascot) }
+        // The reel widget's mascot reacts to reels only (the others to time).
+        update(ReelCountWidgetReceiver::class.java) { reelViews(context, state, widgetMascot(state.copy(mood = state.reelMood))) }
         update(MascotOnlyWidgetReceiver::class.java) {
             MascotFrames.remoteViews(context, state, MascotFrames.animationsOn(context)).apply {
                 setOnClickPendingIntent(R.id.mascot_frames, openApp(context))
@@ -112,16 +113,13 @@ object MascotWidgets {
         if (ids.isEmpty()) return
         val state = withContext(Dispatchers.IO) {
             val today = java.time.LocalDate.now().toString()
-            val dao = (context.applicationContext as UnscrollApplication).container.database.featureDao()
             val before = last?.takeIf { it.date == today } ?: WidgetData.load(context)
-            before.copy(
-                reels = dao.totalViews(today),
-                reelLimit = dao.observeLimits().first().find { it.featureId == ReelLimit.ID && it.enabled }?.limitMinutes,
-                trackerOn = FeatureWatchService.isEnabled(context)
-            )
+            val reels = WidgetData.reelStatus(context)
+            before.copy(reels = reels.count, reelLimit = reels.limit, reelTimeUp = reels.timeUp, trackerOn = FeatureWatchService.isEnabled(context))
         }
         last = state
-        manager.updateAppWidget(ids, reelViews(context, state.copy(asleep = WidgetData.isNight()), widgetMascot(state.copy(asleep = WidgetData.isNight()))))
+        val now = state.copy(asleep = WidgetData.isNight())
+        manager.updateAppWidget(ids, reelViews(context, now, widgetMascot(now.copy(mood = now.reelMood))))
     }
 
     /** True if any ScrollNah widget is on the home screen. */
@@ -238,10 +236,10 @@ private fun reelViews(context: Context, state: WidgetState, mascot: android.grap
     val views = RemoteViews(context.packageName, R.layout.widget_reels)
     views.setOnClickPendingIntent(R.id.widget_root, openApp(context))
     views.setImageViewBitmap(R.id.mascot, mascot)
-    views.setContentDescription(R.id.mascot, spokenMood(state))
+    views.setContentDescription(R.id.mascot, spokenMood(state.copy(mood = state.reelMood)))
     views.setTextViewText(R.id.reels_count, ReelLimit.progress(java.text.NumberFormat.getIntegerInstance().format(state.reels), state.reelLimit))
     views.setTextViewText(R.id.reels_label, if (state.reels == 1) "reel today" else "reels today")
-    views.setTextViewText(R.id.reels_line, if (state.asleep) "Zzz. Sleep well!" else MascotLines.reelWidgetLine(state.reels, state.trackerOn, state.reelLimit))
+    views.setTextViewText(R.id.reels_line, if (state.asleep) "Zzz. Sleep well!" else MascotLines.reelWidgetLine(state.reels, state.trackerOn, state.reelLimit, state.reelTimeUp))
     return views
 }
 

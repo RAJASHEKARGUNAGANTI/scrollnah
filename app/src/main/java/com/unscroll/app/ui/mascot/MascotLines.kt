@@ -269,11 +269,15 @@ object MascotLines {
         else "${duration(minutesLeft)} of $appName left today."
 
     /** The reel count widget's line, in the mascot's voice. */
-    fun reelWidgetLine(reels: Int, trackerOn: Boolean, limit: Int? = null): String = when {
+    fun reelWidgetLine(reels: Int, trackerOn: Boolean, limit: Int? = null, timeUp: Boolean = false): String = when {
         !trackerOn && reels == 0 -> "Turn on the tracker so I can count"
         limit != null && reels >= limit -> "That's all for today!"
+        timeUp -> "That's enough Reels time today."
+        // With a daily number the lines follow the reels mood (MoodLevel.forReels).
+        limit != null && reels >= limit * 0.8 -> "Nearly there. I'm dizzy."
+        limit != null && reels >= limit * 0.5 -> "Halfway there. Easy now."
         reels == 0 -> "None yet. Nice!"
-        reels < 25 -> "I'm counting!"
+        limit != null || reels < 25 -> "I'm counting!"
         reels < 75 -> "That's a lot of reels."
         else -> "My thumbs hurt."
     }

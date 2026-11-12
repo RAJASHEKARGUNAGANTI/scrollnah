@@ -31,6 +31,18 @@ enum class MoodLevel {
             }
             return if (anyAppAtLimit && level < WORRIED) WORRIED else level
         }
+
+        /**
+         * The mood for the places that are about Reels & Shorts only (the badge while scrolling,
+         * the reel count widget), separate from the time mood everywhere else. With a daily reels
+         * number it uses the same steps as time ([count] of [limit]); without one there's nothing
+         * to compare with, so the mascot stays calm (HAPPY: "I'm counting!"). If Reels or Shorts
+         * hit their own minute limit ([featureAtLimit]), it's at least WORRIED.
+         */
+        fun forReels(count: Int, limit: Int?, featureAtLimit: Boolean = false): MoodLevel {
+            val level = if (limit == null || limit <= 0) HAPPY else from(count, limit)
+            return if (featureAtLimit && level < WORRIED) WORRIED else level
+        }
     }
 }
 

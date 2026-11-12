@@ -20,4 +20,34 @@ object ReelLimit {
 
     /** "32/50" while there's a limit, else just "32". */
     fun progress(count: String, limit: Int?): String = if (limit == null) count else "$count/$limit"
+
+    /** The numbers offered in setup ("How many Reels & Shorts a day is enough?"). */
+    val CHOICES = listOf(30, 50, 100, 200, 300)
+
+    /** A typical Reel or Short is watched for about this long (for setup's comparison, before we've counted any). */
+    const val SECONDS_EACH = 15
+
+    /**
+     * What [count] videos a day add up to, for setup: about how many minutes a day, how many a
+     * year, and how tall the phone screens would be stacked up (with something that tall).
+     */
+    fun compare(count: Int): Comparison {
+        val metres = count * WeekStats.SCREEN_METRES
+        val like = when {
+            metres < 6 -> "about as tall as a double-decker bus"
+            metres < 10 -> "about as tall as a 2-storey house"
+            else -> Math.round(metres / 3).let { storeys -> "about ${aOrAn(storeys)} $storeys-storey building" }
+        }
+        return Comparison(
+            minutesADay = Math.round(count * SECONDS_EACH / 60.0).toInt(),
+            perYear = count * 365,
+            towerMetres = metres,
+            towerLike = like
+        )
+    }
+
+    /** "an" before numbers said with a vowel sound: an 8-, 11-, 18-, 80-something-storey building. */
+    private fun aOrAn(n: Long): String = if (n == 8L || n == 11L || n == 18L || n.toString().startsWith("8")) "an" else "a"
+
+    class Comparison(val minutesADay: Int, val perYear: Int, val towerMetres: Double, val towerLike: String)
 }
