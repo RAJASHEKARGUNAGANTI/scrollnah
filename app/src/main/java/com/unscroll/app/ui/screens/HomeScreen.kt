@@ -89,6 +89,8 @@ import com.unscroll.app.ui.components.LetterTile
 import com.unscroll.app.ui.components.AddWidgetDialog
 import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.widget.MascotWidgets
+import com.unscroll.app.ui.components.CelebrationPopup
+import com.unscroll.app.ui.components.Confetti
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.components.NeoPill
 import com.unscroll.app.ui.components.NeoProgressBar
@@ -923,36 +925,29 @@ private fun StreakCard(info: StreakInfo) {
     }
 }
 
-/** Shown once when the streak hits 3, 7, 14, 30, 60 or 100 days. */
+/** Shown once when the streak hits 3, 7, 14, 30, 60 or 100 days, with a burst of confetti. */
 @Composable
 private fun CelebrationDialog(days: Int, onDone: () -> Unit) {
     val name = LocalMascot.current.theme.mascotName
     val context = LocalContext.current
     LaunchedEffect(Unit) { SoundFx.play(context, SoundFx.Sfx.HAPPY) }
-    AlertDialog(
-        onDismissRequest = onDone,
-        containerColor = Lime,
-        icon = { Mascot(mood = MoodLevel.THRIVING, size = 96.dp) },
-        title = {
-            Text("$days-day streak!", style = MaterialTheme.typography.headlineMedium, color = Ink)
-        },
-        text = {
-            // A streak milestone can also unlock a hat (Blobby) or a pot colour (Bloomy).
-            val reward = MascotReward.unlockedAt(days).find { it.theme == LocalMascot.current.theme }
-            Text(
-                "$days days in a row under your limits. I'm doing a very wobbly happy dance!" +
-                    (reward?.let { " And I earned a ${it.title.lowercase()}: put it on me in Settings." } ?: "") +
-                    " – $name",
-                color = Ink
-            )
-        },
-        confirmButton = {
+    // A streak milestone can also unlock a hat (Blobby) or a pot colour (Bloomy).
+    val reward = MascotReward.unlockedAt(days).find { it.theme == LocalMascot.current.theme }
+    CelebrationPopup(
+        confetti = Confetti.STREAK,
+        title = "$days-day streak!",
+        text = "$days days in a row under your limits. I'm doing a very wobbly happy dance!" +
+            (reward?.let { " And I earned a ${it.title.lowercase()}: put it on me in Settings." } ?: "") +
+            " – $name",
+        onDismiss = onDone,
+        picture = { modifier -> Mascot(mood = MoodLevel.THRIVING, size = 96.dp, modifier = modifier) },
+        buttons = {
             TextButton(onClick = onDone) { Text("Yay!", fontWeight = FontWeight.Bold, color = Ink) }
         }
     )
 }
 
-/** Bloomy grew a flower or filled a pot: shown once, the next time Home opens. */
+/** Bloomy grew a flower or filled a pot: shown once, the next time Home opens, with petals and confetti. */
 @Composable
 private fun BloomDialog(event: BloomEvent, onDone: () -> Unit, onOpenGarden: () -> Unit) {
     val flowers = if (event == BloomEvent.POT) Growth.MAX_FLOWERS else LocalMascot.current.flowers
@@ -963,50 +958,38 @@ private fun BloomDialog(event: BloomEvent, onDone: () -> Unit, onOpenGarden: () 
         SoundFx.play(context, SoundFx.Sfx.HAPPY)
         pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = 250f))
     }
-    AlertDialog(
-        onDismissRequest = onDone,
-        containerColor = Lime,
-        icon = {
+    val look = LocalMascot.current.copy(theme = MascotTheme.BLOOMY, flowers = flowers) // keeps a pot colour
+    CelebrationPopup(
+        confetti = if (event == BloomEvent.POT) Confetti.FULL_POT else Confetti.FLOWER,
+        title = if (event == BloomEvent.POT) "Full pot!" else "New flower!",
+        text = when {
+            event == BloomEvent.POT ->
+                "Four flowers! This pot is moving to your garden, and I'm starting a new seed. – Bloomy"
+            flowers > 0 ->
+                "A whole week under your limits, so I grew flower number $flowers. Thanks for the sunshine! – Bloomy"
+            else -> "A whole week under your limits, so I grew a new flower. Thanks for the sunshine! – Bloomy"
+        },
+        onDismiss = onDone,
+        picture = { modifier ->
             Mascot(
                 mood = MoodLevel.THRIVING,
-                look = LocalMascot.current.copy(theme = MascotTheme.BLOOMY, flowers = flowers), // keeps a pot colour
+                look = look,
                 size = 112.dp,
-                modifier = Modifier.graphicsLayer {
+                modifier = modifier.graphicsLayer {
                     scaleX = pop.value
                     scaleY = pop.value
                     transformOrigin = TransformOrigin(0.5f, 1f) // grows up out of the pot
                 }
             )
         },
-        title = {
-            Text(
-                if (event == BloomEvent.POT) "Full pot!" else "New flower!",
-                style = MaterialTheme.typography.headlineMedium,
-                color = Ink
-            )
-        },
-        text = {
-            Text(
-                when {
-                    event == BloomEvent.POT ->
-                        "Four flowers! This pot is moving to your garden, and I'm starting a new seed. – Bloomy"
-                    flowers > 0 ->
-                        "A whole week under your limits, so I grew flower number $flowers. Thanks for the sunshine! – Bloomy"
-                    else -> "A whole week under your limits, so I grew a new flower. Thanks for the sunshine! – Bloomy"
-                },
-                color = Ink
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDone) { Text("Yay!", fontWeight = FontWeight.Bold, color = Ink) }
-        },
-        dismissButton = if (event == BloomEvent.POT) {
-            {
+        buttons = {
+            if (event == BloomEvent.POT) {
                 TextButton(onClick = { onDone(); onOpenGarden() }) {
                     Text("See garden", fontWeight = FontWeight.Bold, color = Ink)
                 }
             }
-        } else null
+            TextButton(onClick = onDone) { Text("Yay!", fontWeight = FontWeight.Bold, color = Ink) }
+        }
     )
 }
 

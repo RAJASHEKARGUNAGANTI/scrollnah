@@ -489,6 +489,17 @@ debug gallery (below).
   at launch, alarm 8:00 (Parent lock) -> note at 8:25 with the old 25-min window; Parent lock off -> alarm 9:00 ->
   note at 9:04, tap -> Home "New flower!" pop-up; flower found at 8:35 with Parent lock -> alarm tomorrow 8:00;
   pop-up seen at 7:30 -> 9:09 alarm posted nothing. 89 unit tests.
+## Confetti on the celebrations (2026-11-13, developer: "a confetti feels good while gaining the flower"; not released yet)
+- `ui/components/Celebration.kt`: `CelebrationPopup` (a full-screen `Dialog` so the confetti can fly around the card;
+  the card is a lime `NeoShadowSurface` with the mascot, title, words, `FlowRow` buttons, scrolls on short screens; a
+  tap on the dim space closes it, taps on the card don't) + `ConfettiBurst` (Canvas, positions worked out from the
+  time alone: a fan burst from the mascot that slows down (drag), then drifts down and fades over the last 30%;
+  brand colours with thin ink outlines; Bloomy's petals are pink ovals that rock and flutter). `Confetti.STREAK`
+  (80 pieces, 2.8 s), `FLOWER` (45 + 40 petals, 3.2 s), `FULL_POT` (90 + 60, 3.6 s). Plays once; no confetti with
+  "Remove animations" (ANIMATOR_DURATION_SCALE 0). Home's streak milestone and Bloomy pop-ups use it (same words).
+- Emulator (Android 15, demo mode): new flower, full pot (with "See garden"), 3-day streak, dark mode; card text taps
+  keep it open, a dim-area tap closes it; animations off = still pop-up; 360x640 at font 1.3 fits. On cold starts the
+  emulator stalls ~0.6 s after the pop-up appears, so the burst starts then (time-based, nothing skipped).
 ## Home UX pass (2026-11-06, developer: "is the UI good for UX?"; not released yet)
 - Before: Today's limits came after the reels card, Focus, streak and fun stat, so it was always below the fold;
   the suggestion card was the biggest thing on the page. Now (see CLAUDE.md, Home): mascot card -> (setup) ->
