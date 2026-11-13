@@ -1,6 +1,6 @@
 # Play Console: draft answers for ScrollNah (Play version)
 
-The Play version is built with `./gradlew bundlePlayRelease`. Since 2026-11-06 (version after 2.4.2) it includes the **optional Reels/Shorts & website tracker**, an Accessibility service, so the **Accessibility API declaration** below must be filled in with the first upload that has it. Steps and video plan updated for 2.5.4 (Limits tabs, Home's reels card, the setup reels step). Check each answer against the current wording in Play Console before submitting.
+The Play version is built with `./gradlew bundlePlayRelease`. Since 2026-11-06 (version after 2.4.2) it includes the **optional Reels/Shorts & website tracker**, an Accessibility service, so the **Accessibility API declaration** below must be filled in with the first upload that has it. Steps and video plan updated for 2.5.4 (Limits tabs, Home's reels card, the setup reels step), still right for 2.5.5. Check each answer against the current wording in Play Console before submitting.
 
 ## Policy > App content
 
