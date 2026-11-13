@@ -471,6 +471,24 @@ debug gallery (below).
 - Done 2026-11-12: `store/play-console-answers.md` reviewer steps (every way to the tracker's disclosure: Home card,
   Limits tab, setup step, Settings), the declaration text (also the count badge overlay) and the video plan (Home card ->
   Show me -> Not now -> back -> Agree -> switch on -> "Reels & Shorts a day" 10 -> swipe to the Pause screen).
+## Bloomy's morning flower note (2026-11-13, developer request; not released yet)
+- Before, a new flower or full pot only showed as the Home pop-up the next time the app opened. Now Bloomy also
+  sends a notification the morning after: "Bloomy: I grew a new flower!" / "A whole week under your limits, so
+  flower number 3 opened. Thanks for the sunshine!" (full pot: "Bloomy: my pot is full!"), Bloomy thriving with
+  the new flower as the large icon. Tapping it opens Home, where the pop-up waits.
+- When (`data/BloomNote.sendAt`, tested): from 9:00 am (or right away if the flower is found later in the day,
+  until 9 pm; after that, the next morning). With Parent lock on (a child's phone, developer: before school):
+  only 8:00 to 8:30 am; missed (phone in Doze, flower found later) = the next morning at 8.
+- How (`service/BloomNotice.kt`): `SettingsRepository.setBloomEvent` also sets `bloom_note`; clearing the event
+  (the pop-up was seen) clears it, so the user never gets both. `BloomNotice.check` (from `BlockerService.streakWork`
+  every 30 min with the screen on, and from `BloomNoteReceiver`) sends it inside the window, else sets an inexact
+  `setWindow` alarm (no exact-alarm permission) for the next start with a 10-minute window. Android tends to deliver
+  at the END of the window (a 25-min window came at 8:25), so 10 min, the shortest allowed: 9:00-9:10 / 8:00-8:10.
+  The service's check sets the alarm again after a reboot. Only for Bloomy (the event is only set for Bloomy).
+- Emulator (Android 15, demo mode, pot edited to 6 of 7 days, clock moved with `cmd alarm set-time`): flower 2 -> 3
+  at launch, alarm 8:00 (Parent lock) -> note at 8:25 with the old 25-min window; Parent lock off -> alarm 9:00 ->
+  note at 9:04, tap -> Home "New flower!" pop-up; flower found at 8:35 with Parent lock -> alarm tomorrow 8:00;
+  pop-up seen at 7:30 -> 9:09 alarm posted nothing. 89 unit tests.
 ## Home UX pass (2026-11-06, developer: "is the UI good for UX?"; not released yet)
 - Before: Today's limits came after the reels card, Focus, streak and fun stat, so it was always below the fold;
   the suggestion card was the biggest thing on the page. Now (see CLAUDE.md, Home): mascot card -> (setup) ->

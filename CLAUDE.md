@@ -69,6 +69,7 @@ Based on the share of today's total limit used (summed across enabled limited ap
 - When a pot reaches 4 flowers, it is **saved to the user's garden** (a collection of completed pots, stored in Room) and a **new seed** pot starts at Week 0.
 - **Missing a day** (a recorded day over the limit): the newest flower falls off (drop one stage) and the 7-day count restarts. A day with no data only restarts the count. The pot is never lost entirely, and saved pots in the garden are permanent ("Clear history" keeps them).
 - Growth is tracked for every user, whichever theme is chosen, so switching to Bloomy shows a plant that matches their history.
+- **Morning flower note** (developer, 2026-11-13): besides the Home pop-up, Bloomy sends "Bloomy: I grew a new flower!" (or "my pot is full!") the morning after, at 9:00-9:10 am; with Parent lock on only between 8:00 and 8:30 am (before school; missed = next morning). Not after 9 pm, and not at all if the pop-up was already seen. An inexact alarm, no exact-alarm permission (`service/BloomNotice.kt`, timing in `data/BloomNote.kt`, tested).
 - Blobby has no growth stages in v1 (it only uses moods). The streak is tracked the same way for both themes.
 
 ## Screens

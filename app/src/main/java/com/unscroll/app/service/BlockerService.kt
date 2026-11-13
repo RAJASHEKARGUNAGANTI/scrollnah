@@ -280,6 +280,7 @@ class BlockerService : Service() {
         container.streaks.recordFinishedDays()
         planWork()
         container.settings.noteStreak(container.streaks.currentInfo().best) // unlocks rewards
+        BloomNotice.check(this) // a new flower? the morning note (or its alarm)
 
         val now = java.time.LocalTime.now()
         val today = LocalDate.now().toString()

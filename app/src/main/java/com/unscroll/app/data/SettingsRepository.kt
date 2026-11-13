@@ -31,6 +31,7 @@ class SettingsRepository(context: Context) {
     private val potDaysKey = intPreferencesKey("pot_days")
     private val potLastDateKey = stringPreferencesKey("pot_last_date")
     private val bloomEventKey = stringPreferencesKey("bloom_event")
+    private val bloomNoteKey = booleanPreferencesKey("bloom_note")
     private val timeLeftBubbleKey = booleanPreferencesKey("time_left_bubble")
     private val reelBadgeKey = booleanPreferencesKey("reel_badge")
     private val widgetCardDoneKey = booleanPreferencesKey("widget_card_done")
@@ -225,15 +226,32 @@ class SettingsRepository(context: Context) {
         BloomEvent.entries.find { it.name == prefs[bloomEventKey] }
     }
 
-    /** A full pot beats a flower: never replace a pending POT with FLOWER. null clears it. */
+    /**
+     * A full pot beats a flower: never replace a pending POT with FLOWER. null clears it.
+     * A new event also queues the morning notification (BloomNotice); clearing it (the user
+     * saw the Home pop-up) drops the notification too, so it never says it twice.
+     */
     suspend fun setBloomEvent(event: BloomEvent?) {
         store.edit { prefs ->
             when {
-                event == null -> prefs.remove(bloomEventKey)
+                event == null -> {
+                    prefs.remove(bloomEventKey)
+                    prefs.remove(bloomNoteKey)
+                }
                 event == BloomEvent.FLOWER && prefs[bloomEventKey] == BloomEvent.POT.name -> Unit
-                else -> prefs[bloomEventKey] = event.name
+                else -> {
+                    prefs[bloomEventKey] = event.name
+                    prefs[bloomNoteKey] = true
+                }
             }
         }
+    }
+
+    /** true = Bloomy's "new flower" notification hasn't gone out yet. */
+    val bloomNotePending: Flow<Boolean> = store.data.map { it[bloomNoteKey] ?: false }
+
+    suspend fun setBloomNoteSent() {
+        store.edit { it.remove(bloomNoteKey) }
     }
 
     /** Break reminder choices (defaults: on, 20 min, notification + bubble, keep reminding). */

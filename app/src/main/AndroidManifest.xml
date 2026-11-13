@@ -156,6 +156,11 @@
             android:name=".service.BreakSnoozeReceiver"
             android:exported="false" />
 
+        <!-- Bloomy's morning "new flower" notification (an inexact alarm, see BloomNotice). -->
+        <receiver
+            android:name=".service.BloomNoteReceiver"
+            android:exported="false" />
+
         <!-- Lets other apps read a shared week-in-review picture (only when the user taps Share). -->
         <provider
             android:name="androidx.core.content.FileProvider"
