@@ -3,7 +3,7 @@
 Tracks what's done vs. what's left against the build order in `CLAUDE.md`.
 Read this first when picking the project back up in a new session / Android Studio.
 
-## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.2 (code 15) = 2.3.0 + Parent lock + reel counting that works on real YouTube (also in picture-in-picture, no double counts) + reel count widget (GitHub version) + "Add widget", built 2026-11-06 as `release/ScrollNah-2.4.2-play.aab` and released on GitHub as v2.4.2 (v2.4.0 didn't count real YouTube Shorts; v2.4.1 could count a swipe-and-back twice); the developer will upload the bundle to Play after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. **Newer: 2.5.0 (code 16)**, built 2026-11-06 as `release/ScrollNah-2.5.0-play.aab` (same upload key `AC:58:24...`, Play release APK 1.68 MB) = 2.4.2 + daily reels limit, slow-down plan, setup reality check, Settings hints, sleeping widgets at night, mascot sounds, reels in the weekly report, and **the tracker in the Play version** (it needs the Accessibility API declaration + video from `store/play-console-answers.md`). **Newest: 2.5.5 (code 21)**, released on GitHub as v2.5.5 on 2026-11-13 and built as `release/ScrollNah-2.5.5-play.aab` = 2.5.0 + no black YouTube window over the Pause screen + readable "Not now" (2.5.1) + Limits asks about unsaved changes with a "Lock it in" bar (2.5.2) + Limits tabs, Home's reels suggestion, the Home UX pass, the Home-button navigation fix (2.5.3) + the reels mood on the badge and reel widget, the setup reels number with the tracker step, and setup surviving rotation (2.5.4) + Bloomy's morning flower note and confetti on the celebrations (2.5.5); upload this bundle to Play instead of 2.5.4 / 2.5.0 / 2.4.2 (the reviewer steps and video plan written for 2.5.4 still apply). Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
+## Status (2026-11-04): Play closed testing (Alpha) release 11 (2.2.3) sent for Google's first review on 2026-11-03. Version 2.3.0 (code 12) is built (`release/ScrollNah-2.3.0-play.aab`, Play APK 1.54 MB) with everything since 2.2.3: backup & restore, time-left bubble, Beast cool-down, open limits, shared budgets, work hours, "Do this instead", Sunday week note, streak rewards, Xiaomi pop-up check, guided setup. Upload it to the closed track once 11 is approved. GitHub release v2.3.0 published 2026-11-04 (same commit 114e6e0). Next: 2.4.2 (code 15) = 2.3.0 + Parent lock + reel counting that works on real YouTube (also in picture-in-picture, no double counts) + reel count widget (GitHub version) + "Add widget", built 2026-11-06 as `release/ScrollNah-2.4.2-play.aab` and released on GitHub as v2.4.2 (v2.4.0 didn't count real YouTube Shorts; v2.4.1 could count a swipe-and-back twice); the developer will upload the bundle to Play after closed testing ends. Add the device-admin reviewer note from `store/play-console-answers.md` then. **Newer: 2.5.0 (code 16)**, built 2026-11-06 as `release/ScrollNah-2.5.0-play.aab` (same upload key `AC:58:24...`, Play release APK 1.68 MB) = 2.4.2 + daily reels limit, slow-down plan, setup reality check, Settings hints, sleeping widgets at night, mascot sounds, reels in the weekly report, and **the tracker in the Play version** (it needs the Accessibility API declaration + video from `store/play-console-answers.md`). **Newest: 2.5.6 (code 22)**, released on GitHub as v2.5.6 on 2026-11-15 and built as `release/ScrollNah-2.5.6-play.aab` = 2.5.0 + no black YouTube window over the Pause screen + readable "Not now" (2.5.1) + Limits asks about unsaved changes with a "Lock it in" bar (2.5.2) + Limits tabs, Home's reels suggestion, the Home UX pass, the Home-button navigation fix (2.5.3) + the reels mood on the badge and reel widget, the setup reels number with the tracker step, and setup surviving rotation (2.5.4) + Bloomy's morning flower note and confetti on the celebrations (2.5.5) + fingerprint unlock for Parent lock, no more payment-app note, "Ask how long" and pictures for "Do this instead" (2.5.6); upload this bundle to Play instead of 2.5.5 / 2.5.4 / 2.5.0 / 2.4.2 (the reviewer steps and video plan written for 2.5.4 still apply; no new permission needs a declaration: USE_BIOMETRIC is a normal permission). Rule for first build: NOTHING that needs a server (AI insights + friend challenges deferred).
 
 ---
 
@@ -489,14 +489,14 @@ debug gallery (below).
   at launch, alarm 8:00 (Parent lock) -> note at 8:25 with the old 25-min window; Parent lock off -> alarm 9:00 ->
   note at 9:04, tap -> Home "New flower!" pop-up; flower found at 8:35 with Parent lock -> alarm tomorrow 8:00;
   pop-up seen at 7:30 -> 9:09 alarm posted nothing. 89 unit tests.
-## Pictures for "Do this instead" (2026-11-15, developer idea; not released yet)
+## Pictures for "Do this instead" (2026-11-15, developer idea; released in 2.5.6)
 - Each idea gets a 2dp line picture: `IdeaKind.of(text)` (tested) picks it from the idea's words (water -> drop,
   tea/coffee/chai -> cup, stretch/yoga/push-ups -> a figure with arms up, outside/walk -> sun, air/breathe -> wind,
   read/book -> open book, call/text/friend -> phone, music/song -> note, write/journal -> pencil, nap/sleep -> moon,
   anything else -> heart). Feather-style paths (`IdeaIcon`, Icons.kt; Feather is MIT, already used for the gear).
   Pause screen card: a lime 48dp tile with the picture beside "Try this instead?"; Settings list: the picture before
   each idea. Checked on the emulator with the 5 starter ideas + chai, song, nap.
-## Ask how long (2026-11-15, developer idea; not released yet)
+## Ask how long (2026-11-15, developer idea; released in 2.5.6)
 - Settings > Ask how long (off by default) with its own app list (any app; `AddAppScreen` reused with `hide`/`onPick`,
   route `ASK_ADD_APP_ROUTE`; saved as newline text `ask_how_long_apps` so backups keep it). Before a listed app opens,
   the mascot asks "How long do you need Chrome?" on a lime page (`AskHowLongScreen`, PauseActivity's ask mode,
@@ -522,13 +522,13 @@ debug gallery (below).
   Emulator gotchas: after the quick-boot snapshot loads, Android may stop recording app switches (no "foreground"
   lines in blocker.log) until `adb reboot`; this AVD still has the OLD `com.unscroll.app` install, whose own blocker
   covers the screen: `pm disable-user com.unscroll.app` while testing, `pm enable` after.
-## Payment-app note removed (2026-11-15, developer: "don't show that, not needed"; not released yet)
+## Payment-app note removed (2026-11-15, developer: "don't show that, not needed"; released in 2.5.6)
 - The once-a-day "[App] not opening?" notification when a UPI/bank app opened while the tracker was on is gone:
   `LimitActions.showPaymentAppHelp`, its check in `BlockerService.tick`, `TrackerOffReceiver` (+ manifest entry),
   `FeatureWatchService.turnOff()`/`running`, and the debug gallery's `paymenthelp` hook. The UPI warning stays in
   the tracker's disclosure and Settings, and the bubble still never draws over payment apps (`PaymentApps`).
   README now says to turn the tracker off in Accessibility settings while paying.
-## Fingerprint unlock for Parent lock (2026-11-15, developer request; not released yet)
+## Fingerprint unlock for Parent lock (2026-11-15, developer request; released in 2.5.6)
 - The catch, told to the developer first: Android only says "a saved fingerprint matched", never whose, so on a
   child's phone with the child's finger saved it would let the child in. Built the safe version they chose:
 - `data/ParentFingerprint.kt` (Android 11+, platform `BiometricPrompt`, `USE_BIOMETRIC`, no androidx.biometric):

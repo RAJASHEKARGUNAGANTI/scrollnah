@@ -17,8 +17,8 @@ android {
         applicationId = "app.scrollnah"
         minSdk = 26
         targetSdk = 36
-        versionCode = 21
-        versionName = "2.5.5"
+        versionCode = 22
+        versionName = "2.5.6"
     }
 
     // Release signing reads ../keystore.properties (private, not in git). Without it,
