@@ -1,5 +1,13 @@
 package com.unscroll.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import com.unscroll.app.data.IdeaKind
+import com.unscroll.app.ui.components.IdeaIcon
+import com.unscroll.app.ui.theme.BorderWidth
+import com.unscroll.app.ui.theme.Ink
+import com.unscroll.app.ui.theme.Lime
+import com.unscroll.app.ui.theme.TileShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,12 +64,25 @@ internal fun DoThisInsteadCard(ideas: List<String>) {
     var index by rememberSaveable(ideas) { mutableIntStateOf(Random.nextInt(ideas.size)) }
     // Bottom padding: room for the hard shadow when the card is last in a scrolling column.
     NeoCard(modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)) {
-        Text("Try this instead?", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Text(
-            ideas[index % ideas.size],
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(top = 2.dp, bottom = if (ideas.size > 1) 0.dp else 8.dp)
-        )
+        val idea = ideas[index % ideas.size]
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(bottom = if (ideas.size > 1) 0.dp else 8.dp)
+        ) {
+            // A little picture of the idea (picked from its words, see IdeaKind) in a lime tile.
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .background(Lime, TileShape)
+                    .border(BorderWidth, Neo.colors.outline, TileShape),
+                contentAlignment = Alignment.Center
+            ) { IdeaIcon(IdeaKind.of(idea), size = 26.dp, tint = Ink) }
+            Column(Modifier.weight(1f)) {
+                Text("Try this instead?", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(idea, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
         if (ideas.size > 1) {
             Box(
                 Modifier
@@ -84,6 +105,7 @@ internal fun InsteadIdeasEditor(mascotName: String, ideas: List<String>, onChang
     )
     ideas.forEachIndexed { i, idea ->
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IdeaIcon(IdeaKind.of(idea), size = 22.dp, modifier = Modifier.padding(end = 12.dp))
             Text(idea, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Box(
                 Modifier

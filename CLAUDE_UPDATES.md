@@ -489,6 +489,13 @@ debug gallery (below).
   at launch, alarm 8:00 (Parent lock) -> note at 8:25 with the old 25-min window; Parent lock off -> alarm 9:00 ->
   note at 9:04, tap -> Home "New flower!" pop-up; flower found at 8:35 with Parent lock -> alarm tomorrow 8:00;
   pop-up seen at 7:30 -> 9:09 alarm posted nothing. 89 unit tests.
+## Pictures for "Do this instead" (2026-11-15, developer idea; not released yet)
+- Each idea gets a 2dp line picture: `IdeaKind.of(text)` (tested) picks it from the idea's words (water -> drop,
+  tea/coffee/chai -> cup, stretch/yoga/push-ups -> a figure with arms up, outside/walk -> sun, air/breathe -> wind,
+  read/book -> open book, call/text/friend -> phone, music/song -> note, write/journal -> pencil, nap/sleep -> moon,
+  anything else -> heart). Feather-style paths (`IdeaIcon`, Icons.kt; Feather is MIT, already used for the gear).
+  Pause screen card: a lime 48dp tile with the picture beside "Try this instead?"; Settings list: the picture before
+  each idea. Checked on the emulator with the 5 starter ideas + chai, song, nap.
 ## Ask how long (2026-11-15, developer idea; not released yet)
 - Settings > Ask how long (off by default) with its own app list (any app; `AddAppScreen` reused with `hide`/`onPick`,
   route `ASK_ADD_APP_ROUTE`; saved as newline text `ask_how_long_apps` so backups keep it). Before a listed app opens,

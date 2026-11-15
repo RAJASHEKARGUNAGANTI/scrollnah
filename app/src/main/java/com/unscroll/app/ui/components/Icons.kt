@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.unscroll.app.data.IdeaKind
 
 /**
  * Hand-drawn 2dp stroke icons on a 24x24 grid, matching the HTML design mock
@@ -304,5 +305,48 @@ fun ClockIcon(modifier: Modifier = Modifier, size: Dp = 26.dp) {
             moveTo(12f * s, 7f * s); lineTo(12f * s, 12f * s); lineTo(15.5f * s, 14f * s)
         }
         drawPath(path, tint, style = stroke)
+    }
+}
+
+// ---- "Do this instead" pictures (see IdeaKind): Feather-style 24x24 outlines, plus a little figure ----
+
+private fun feather(d: String) = PathParser().parsePathString(d).toPath()
+
+private val ideaPaths by lazy {
+    mapOf(
+        IdeaKind.WATER to feather("M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"), // a drop
+        IdeaKind.CUP to feather("M18 8h1a4 4 0 0 1 0 8h-1 M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M10 1v3 M14 1v3"),
+        // A little figure stretching, arms up.
+        IdeaKind.MOVE to feather("M14.3 4.5a2.3 2.3 0 1 1-4.6 0 2.3 2.3 0 0 1 4.6 0z M12 9v6.5 M12 10.5L5 3.5 M12 10.5l7-7 M12 15.5L7 22 M12 15.5l5 6.5"),
+        IdeaKind.OUTSIDE to feather(
+            "M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0z M12 1v2 M12 21v2 M4.22 4.22l1.42 1.42 M18.36 18.36l1.42 1.42 " +
+                "M1 12h2 M21 12h2 M4.22 19.78l1.42-1.42 M18.36 5.64l1.42-1.42"
+        ), // the sun
+        IdeaKind.AIR to feather("M9.59 4.59A2 2 0 1 1 11 8H2 M12.59 19.41A2 2 0 1 0 14 16H2 M17.73 7.73A2.5 2.5 0 1 1 19.5 12H2"), // wind
+        IdeaKind.BOOK to feather("M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"),
+        IdeaKind.CALL to feather(
+            "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67" +
+                "A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6" +
+                "l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+        ),
+        IdeaKind.MUSIC to feather("M9 18V5l12-2v13 M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"),
+        IdeaKind.WRITE to feather("M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"),
+        IdeaKind.REST to moonPath,
+        IdeaKind.OTHER to feather(
+            "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23" +
+                "l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+        ) // a heart: something you like
+    )
+}
+
+/** The little picture for a "Do this instead" idea, e.g. a drop for "Drink a glass of water". */
+@Composable
+fun IdeaIcon(kind: IdeaKind, modifier: Modifier = Modifier, size: Dp = 24.dp, tint: Color = LocalContentColor.current) {
+    StrokeIcon(modifier, size, tint) { s, stroke, color ->
+        val path = ideaPaths[kind] ?: return@StrokeIcon
+        scale(s, pivot = Offset.Zero) {
+            // Stroke width divided by the scale, so the line stays 2dp after scaling up.
+            drawPath(path, color, style = Stroke(width = stroke.width / s, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
     }
 }
