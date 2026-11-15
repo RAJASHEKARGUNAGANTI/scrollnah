@@ -2,15 +2,15 @@ package com.unscroll.app.data
 
 /**
  * "Ask how long" (developer idea, 2026-11-15): before an app on its list opens, the mascot asks how
- * long it's needed: 5, 10, 15 or 20 minutes. When that time is up the app is blocked, with no
- * "+5 minutes". Each app can be opened like this [PICKS_PER_HOUR] times an hour, counted from its
+ * long it's needed: 5 or 10 minutes (only these two, the developer's choice). When that time is up
+ * the app is blocked, with no "+5 minutes". Each app can be opened like this [PICKS_PER_HOUR] times an hour, counted from its
  * first pick; after that it stays blocked until the hour is over. A pick never goes past the app's
  * daily limit. The clock keeps running once a time is picked, even if the person leaves the app.
  *
  * Pure logic (tested). The blocker and the question screen use it; AskSessions saves each app's [AppState].
  */
 object AskHowLong {
-    val CHOICES = listOf(5, 10, 15, 20)
+    val CHOICES = listOf(5, 10)
     const val PICKS_PER_HOUR = 3
     const val HOUR_MS = 60 * 60_000L
 
@@ -40,7 +40,7 @@ object AskHowLong {
         else -> Next.Ask(choices(minutesLeftToday), picksLeft(s, now))
     }
 
-    /** 5/10/15/20 min, never more than what's left today; what's left is offered too ("8 min"). */
+    /** 5 or 10 min, never more than what's left today; what's left is offered too ("7 min"). */
     fun choices(minutesLeftToday: Int?): List<Int> = when {
         minutesLeftToday == null || minutesLeftToday >= CHOICES.last() -> CHOICES
         minutesLeftToday <= 0 -> emptyList()

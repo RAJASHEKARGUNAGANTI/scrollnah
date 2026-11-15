@@ -493,7 +493,7 @@ debug gallery (below).
 - Settings > Ask how long (off by default) with its own app list (any app; `AddAppScreen` reused with `hide`/`onPick`,
   route `ASK_ADD_APP_ROUTE`; saved as newline text `ask_how_long_apps` so backups keep it). Before a listed app opens,
   the mascot asks "How long do you need Chrome?" on a lime page (`AskHowLongScreen`, PauseActivity's ask mode,
-  `launchAsk`): 5/10/15/20 min, never past the daily limit or a tighter shared budget (`AskHowLong.choices`: with 7
+  `launchAsk`): 5 or 10 min (first 5/10/15/20; the developer cut it to two the same day), never past the daily limit or a tighter shared budget (`AskHowLong.choices`: with 7
   left, "5 min" and "7 min"), pill "Time 1 of 3 this hour", "Not now, take me home".
 - Developer's answers: after 3 picks the app is blocked until an hour after the first pick; 3 per app; the clock
   keeps running after leaving; its own list in Settings. When the time runs out with the app in front:
