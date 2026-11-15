@@ -4,7 +4,7 @@ title: ScrollNah privacy policy
 
 # ScrollNah privacy policy
 
-_Last updated: 6 November 2026_
+_Last updated: 15 November 2026_
 
 ScrollNah is an Android app that helps you spend less time on the apps you choose, with a friendly mascot (Blobby or Bloomy). This policy explains what the app looks at, what it keeps, and where it keeps it.
 
@@ -28,6 +28,8 @@ If a parent turns on **Parent lock** (for a child's phone), ScrollNah also check
 
 It notes these in a short report that only someone with the parent PIN or pattern can open in ScrollNah's Settings. **Uninstall protection** (optional) makes ScrollNah a "device admin app" that asks for **no device powers at all**: Android simply asks to turn it off before ScrollNah can be uninstalled. ScrollNah cannot lock, wipe or control the phone.
 
+**Fingerprint unlock** (optional, Android 11 and newer): the parent can also unlock Parent lock with a fingerprint saved on the phone. Android checks the fingerprint itself; ScrollNah never sees, stores or sends a fingerprint. It only keeps a key in Android's secure key storage that works after a fingerprint check and stops working when a fingerprint is added or removed (then fingerprint unlock turns off and the report notes it).
+
 ### Optional Reels, Shorts and website tracker (off by default)
 
 ScrollNah includes an optional tracker that uses Android's Accessibility service. It is **switched off by default**, and ScrollNah explains what it reads and asks you to agree before sending you to Android's settings to turn it on. If you turn it on, it only checks which screen is open in Instagram and YouTube (to spot Reels and Shorts), notices when their videos scroll (to count about how many Reels and Shorts you watch), and reads your browser's address bar (to count time on the websites of apps you limit, like youtube.com). It uses this only for your Reels, Shorts and website limits, the reel count and your weekly report. When you reach a Reels or Shorts limit you set (in Firm or Beast mode), it presses Back once to leave that screen, and that is the only thing it does on its own. It saves **only minutes and that count**, on your phone, never what is on the screen, which videos you watched or which pages you visited, and it sends nothing anywhere. It never reads messages, passwords or other apps. You can turn it off any time in Android's Accessibility settings.
@@ -44,7 +46,7 @@ All of this is stored only on your phone, inside the app's private storage:
 - Your answers on the Pause screen (for example "Bored") and whether you took a break, used for your weekly report
 - Your name, if you type one, so the app can say hello
 - Your mascot and light/dark choice
-- If Parent lock is on: a scrambled, salted fingerprint (hash) of the PIN or pattern, never the PIN itself, and the lock's report (up to 100 short entries such as "Display over other apps was turned off, Today 4:10 PM")
+- If Parent lock is on: a scrambled, salted hash of the PIN or pattern, never the PIN itself, whether fingerprint unlock is on, and the lock's report (up to 100 short entries such as "Display over other apps was turned off, Today 4:10 PM")
 
 ## What ScrollNah shares
 
@@ -59,7 +61,7 @@ The only link out of the app is **Settings > Feedback**, which opens a GitHub Di
 ## Deleting your data
 
 - **Settings > Data > Clear history** deletes your saved minutes, weekly report history, streak days, Pause answers and break history (your limits and garden stay).
-- **Turning off Parent lock** (Settings > Parent lock) deletes the PIN fingerprint and the lock's report, and switches off uninstall protection.
+- **Turning off Parent lock** (Settings > Parent lock) deletes the PIN hash, the fingerprint-unlock key and the lock's report, and switches off uninstall protection.
 - **Uninstalling ScrollNah** deletes everything it stored on the phone. If uninstall protection is on, Android asks to turn it off first. Backup files you saved stay where you put them; delete them like any other file.
 
 ## Children

@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
 import com.unscroll.app.UnscrollApplication
+import com.unscroll.app.data.ParentFingerprint
 import com.unscroll.app.data.ParentLock
 import com.unscroll.app.data.TamperLog
 import org.json.JSONObject
@@ -61,6 +62,7 @@ object TamperWatch {
      */
     fun checkSwitches(context: Context) {
         if (!ParentLock.isOn) return
+        ParentFingerprint.checkStillValid() // a fingerprint added or removed turns fingerprint unlock off
         val container = (context.applicationContext as UnscrollApplication).container
         val switches = buildMap {
             put("Usage access", container.usage.hasUsageAccess())

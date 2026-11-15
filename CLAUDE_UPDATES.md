@@ -489,6 +489,37 @@ debug gallery (below).
   at launch, alarm 8:00 (Parent lock) -> note at 8:25 with the old 25-min window; Parent lock off -> alarm 9:00 ->
   note at 9:04, tap -> Home "New flower!" pop-up; flower found at 8:35 with Parent lock -> alarm tomorrow 8:00;
   pop-up seen at 7:30 -> 9:09 alarm posted nothing. 89 unit tests.
+## Payment-app note removed (2026-11-15, developer: "don't show that, not needed"; not released yet)
+- The once-a-day "[App] not opening?" notification when a UPI/bank app opened while the tracker was on is gone:
+  `LimitActions.showPaymentAppHelp`, its check in `BlockerService.tick`, `TrackerOffReceiver` (+ manifest entry),
+  `FeatureWatchService.turnOff()`/`running`, and the debug gallery's `paymenthelp` hook. The UPI warning stays in
+  the tracker's disclosure and Settings, and the bubble still never draws over payment apps (`PaymentApps`).
+  README now says to turn the tracker off in Accessibility settings while paying.
+## Fingerprint unlock for Parent lock (2026-11-15, developer request; not released yet)
+- The catch, told to the developer first: Android only says "a saved fingerprint matched", never whose, so on a
+  child's phone with the child's finger saved it would let the child in. Built the safe version they chose:
+- `data/ParentFingerprint.kt` (Android 11+, platform `BiometricPrompt`, `USE_BIOMETRIC`, no androidx.biometric):
+  an AES key in AndroidKeyStore with `setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG)` and
+  `setInvalidatedByBiometricEnrollment(true)`; every unlock uses it through a `CryptoObject` (doFinal after the
+  match). A fingerprint added or removed destroys it: `stopBecauseChanged()` turns fingerprint unlock off and logs
+  `TamperLog.Kind.FINGERPRINT_CHANGED`; `TamperWatch.checkSwitches` checks it every 30 s with the screen on
+  (`checkStillValid`, no prompt; a keystore hiccup doesn't count as a change). Android's lockout after wrong
+  fingers logs `FINGERPRINT_TRIES`.
+- `ParentLock`: `fingerprintOn`/`setFingerprint`, `unlockWithFingerprint()`, `unlockedWithSecret` (true after the
+  PIN/pattern, `set` or the 24 h reset). Settings' `withSecret {}` asks for the PIN (`UnlockDialog(secretOnly = true)`,
+  no fingerprint button) before turning the lock off, changing the PIN, turning off uninstall protection or the
+  Fingerprint switch, if the unlock was a fingerprint.
+- Settings > Parent lock > Fingerprint: off/unsupported rows hidden below Android 11 or without a sensor; no
+  fingerprint saved = "Add your fingerprint in the phone's settings first" (opens `ACTION_BIOMETRIC_ENROLL`); turning
+  on = a warning ("Any fingerprint saved on this phone will open Parent lock, including your child's...", "They're
+  all mine"), then one fingerprint touch to confirm. Unlock pages show "Use fingerprint" above the pad; dialogs a
+  parent opened (Home's lock button, extra minutes) open the prompt straight away; the Limits/Settings gate doesn't.
+- Emulator (Android 15, the developer set a screen lock and the helper pressed the virtual sensor with
+  `adb emu finger touch`): row before/after a fingerprint was saved; warning -> touch -> "Fingerprint unlock is on";
+  locked Settings -> Use fingerprint -> open; after a fingerprint unlock, turning the lock off asked for the PIN only;
+  the lock button opened the prompt at once; 6 wrong fingers -> "Too many fingerprint tries" + report; a 2nd
+  fingerprint saved -> within 30 s fingerprint unlock off, report "A fingerprint was added or removed...", the
+  locked page only shows the PIN pad. Privacy policy updated (fingerprint unlock paragraph; "PIN hash" wording).
 ## Confetti on the celebrations (2026-11-13, developer: "a confetti feels good while gaining the flower"; released in 2.5.5)
 - `ui/components/Celebration.kt`: `CelebrationPopup` (a full-screen `Dialog` so the confetti can fly around the card;
   the card is a lime `NeoShadowSurface` with the mascot, title, words, `FlowRow` buttons, scrolls on short screens; a

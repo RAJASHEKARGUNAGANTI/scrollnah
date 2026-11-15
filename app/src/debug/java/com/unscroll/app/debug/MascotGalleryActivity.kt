@@ -56,14 +56,6 @@ class MascotGalleryActivity : ComponentActivity() {
             finish()
             return
         }
-        // Test the "BHIM not opening?" notification without a payment app installed:
-        //   adb shell am start -n app.scrollnah/com.unscroll.app.debug.MascotGalleryActivity --es paymenthelp BHIM
-        intent.getStringExtra("paymenthelp")?.let { appName ->
-            getSharedPreferences("payment_help", MODE_PRIVATE).edit().clear().apply() // skip the once-a-day check
-            LimitActions.showPaymentAppHelp(this, appName)
-            finish()
-            return
-        }
         // Test the Sunday "week in review is ready" note on any day:
         //   adb shell am start -n app.scrollnah/com.unscroll.app.debug.MascotGalleryActivity --ez weekready true
         if (intent.getBooleanExtra("weekready", false)) {

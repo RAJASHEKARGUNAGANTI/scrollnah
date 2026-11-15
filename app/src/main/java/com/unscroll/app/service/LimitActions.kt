@@ -183,7 +183,6 @@ object LimitActions {
 
     private const val STREAK_NOTIFICATION_ID = 2
     private const val WEEK_READY_NOTIFICATION_ID = 6
-    const val PAYMENT_HELP_NOTIFICATION_ID = 3
     private const val FLOATING_NOTIFICATION_ID = 5
 
     /**
@@ -213,52 +212,6 @@ object LimitActions {
             .build()
         try {
             notifications.notify(FLOATING_NOTIFICATION_ID, notification)
-        } catch (e: SecurityException) {
-            // Permission revoked; skip.
-        }
-    }
-
-    /**
-     * A UPI/bank app was opened while the Reels & Shorts tracker (Accessibility) is on.
-     * Many of those apps won't open then, so explain why and link to the switch.
-     * At most once a day. Plain, calm wording (this is about a setting, not a nudge).
-     */
-    fun showPaymentAppHelp(context: Context, appName: String) {
-        val notifications = NotificationManagerCompat.from(context)
-        if (!notifications.areNotificationsEnabled()) return
-        val prefs = context.getSharedPreferences("payment_help", Context.MODE_PRIVATE)
-        val today = java.time.LocalDate.now().toString()
-        if (prefs.getString("last_shown", null) == today) return
-        prefs.edit().putString("last_shown", today).apply()
-
-        val openSettings = PendingIntent.getActivity(
-            context,
-            PAYMENT_HELP_NOTIFICATION_ID,
-            Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        // One tap switches the tracker off (BHIM and similar apps then open). Turning it back on is up to the user.
-        val turnOff = PendingIntent.getBroadcast(
-            context,
-            PAYMENT_HELP_NOTIFICATION_ID,
-            Intent(context, TrackerOffReceiver::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        val text = "$appName and other UPI or bank apps may not open while an app uses Accessibility. " +
-            "Turn off ScrollNah's Reels & Shorts tracker while you pay, and turn it back on later in Limits. " +
-            "Your limits and reminders keep working."
-        val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.NUDGES))
-            .setSmallIcon(R.drawable.ic_stat_blobby)
-            .setContentTitle("$appName not opening?")
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setAutoCancel(true)
-            .setContentIntent(openSettings)
-            .addAction(0, "Turn off tracker", turnOff)
-            .addAction(0, "Accessibility settings", openSettings)
-            .build()
-        try {
-            notifications.notify(PAYMENT_HELP_NOTIFICATION_ID, notification)
         } catch (e: SecurityException) {
             // Permission revoked; skip.
         }

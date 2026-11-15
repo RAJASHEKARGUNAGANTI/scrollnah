@@ -344,16 +344,6 @@ class BlockerService : Service() {
         if (justOpened) debug("foreground: $app")
         currentApp = app
 
-        // UPI/bank apps often refuse to open while an Accessibility service is on: explain how to fix it.
-        if (justOpened && PaymentApps.contains(app) && FeatureWatchService.isEnabled(this)) {
-            val name = try {
-                packageManager.getApplicationLabel(packageManager.getApplicationInfo(app!!, 0)).toString()
-            } catch (e: Exception) {
-                "This app"
-            }
-            LimitActions.showPaymentAppHelp(this, name)
-        }
-
         // 2. Is it a limited app? (null for other apps, the home screen and ScrollNah itself)
         val limited = trackedApps.find { it.packageName == app && it.enabled }
         // Time on a limited app (or its website in a browser) changes the widgets' numbers.

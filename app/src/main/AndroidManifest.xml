@@ -16,6 +16,8 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Restart the blocker after a reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Parent lock's optional fingerprint unlock: Android's own fingerprint prompt (ScrollNah never sees a fingerprint). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <!-- Android 11+ hides other apps by default. This lets us list apps that have
          a launcher icon (for the "Add an app" picker and app names). -->
@@ -171,11 +173,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/shared_files" />
         </provider>
-
-        <!-- "Turn off tracker" button on the payment-app notification. -->
-        <receiver
-            android:name=".service.TrackerOffReceiver"
-            android:exported="false" />
 
         <receiver
             android:name=".service.BootReceiver"

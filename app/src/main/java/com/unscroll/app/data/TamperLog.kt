@@ -20,7 +20,8 @@ object TamperLog {
 
     enum class Kind {
         STOPPED, SWITCH_OFF, SWITCH_ON, CLOCK_CHANGED, WRONG_TRIES,
-        RESET_ASKED, RESET_CANCELLED, RESET_USED, UNINSTALL_GUARD_OFF_ASKED, UNINSTALL_GUARD_OFF
+        RESET_ASKED, RESET_CANCELLED, RESET_USED, UNINSTALL_GUARD_OFF_ASKED, UNINSTALL_GUARD_OFF,
+        FINGERPRINT_CHANGED, FINGERPRINT_TRIES
     }
 
     data class Event(val at: Long, val kind: Kind, val detail: String = "")
@@ -67,6 +68,8 @@ object TamperLog {
         Kind.RESET_USED -> "A new PIN was set after the 24-hour wait"
         Kind.UNINSTALL_GUARD_OFF_ASKED -> "Someone started turning off uninstall protection"
         Kind.UNINSTALL_GUARD_OFF -> "Uninstall protection was turned off"
+        Kind.FINGERPRINT_CHANGED -> "A fingerprint was added or removed on this phone, so fingerprint unlock turned off"
+        Kind.FINGERPRINT_TRIES -> "Too many fingerprint tries that didn't match"
     }
 
     /** "Today 4:10 PM", "Yesterday 9:05 AM" or "3 Nov, 9:05 AM". */

@@ -70,6 +70,7 @@ import com.unscroll.app.ui.components.AddWidgetDialog
 import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.data.SetupFacts
+import com.unscroll.app.data.ParentFingerprint
 import com.unscroll.app.data.ParentLock
 import com.unscroll.app.data.Strictness
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +79,7 @@ import androidx.compose.foundation.verticalScroll
 import com.unscroll.app.data.TamperLog
 import com.unscroll.app.service.TamperWatch
 import com.unscroll.app.ui.components.SetLockDialog
+import com.unscroll.app.ui.components.UnlockDialog
 import com.unscroll.app.data.SetupStep
 import com.unscroll.app.ui.components.ConfirmPopupsLink
 import com.unscroll.app.ui.components.NeoButtonPrimary
@@ -142,6 +144,14 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     val guardActive = remember(refresh) { TamperWatch.isGuardActive(context) }
     var settingLock by remember { mutableStateOf(false) }
     var confirmLockOff by remember { mutableStateOf(false) }
+    var addingFingerprint by remember { mutableStateOf(false) }
+    val fingerprintReady = remember(refresh) { ParentFingerprint.ready(context) }
+    // A fingerprint opens Settings, but turning the lock off, changing the PIN, turning off uninstall
+    // protection and the fingerprint switch need the PIN or pattern: this asks for it first if needed.
+    var afterSecret by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun withSecret(action: () -> Unit) {
+        if (ParentLock.unlockedWithSecret) action() else afterSecret = action
+    }
     var showingTrackerDisclosure by remember { mutableStateOf(false) }
     var showReport by remember { mutableStateOf(false) }
 
@@ -189,16 +199,37 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                     "Parent lock",
                     if (lock.on) "On. Use the lock button on Home to lock it again." else "Off",
                     lock.on
-                ) { if (lock.on) confirmLockOff = true else settingLock = true }
+                ) { if (lock.on) withSecret { confirmLockOff = true } else settingLock = true }
                 if (lock.on) {
                     val noun = if (lock.kind == ParentLock.Kind.PIN) "PIN" else "pattern"
-                    SettingRow("PIN or pattern", "Uses a $noun", "Change", onClick = { settingLock = true })
+                    SettingRow("PIN or pattern", "Uses a $noun", "Change", onClick = { withSecret { settingLock = true } })
+                    // Fingerprint unlock (Android 11+ with a fingerprint sensor): see ParentFingerprint.
+                    if (lock.fingerprint || fingerprintReady != ParentFingerprint.Ready.NOT_SUPPORTED) {
+                        SwitchRow(
+                            "Fingerprint",
+                            when {
+                                lock.fingerprint -> "On. Turning the lock off or changing the $noun still needs the $noun."
+                                fingerprintReady == ParentFingerprint.Ready.NO_FINGERPRINT -> "Add your fingerprint in the phone's settings first"
+                                else -> "Unlock with a parent's fingerprint"
+                            },
+                            lock.fingerprint
+                        ) {
+                            when {
+                                lock.fingerprint -> withSecret {
+                                    ParentLock.setFingerprint(false)
+                                    ParentFingerprint.forget()
+                                }
+                                fingerprintReady == ParentFingerprint.Ready.NO_FINGERPRINT -> openFingerprintSettings(context)
+                                else -> withSecret { addingFingerprint = true }
+                            }
+                        }
+                    }
                     SwitchRow(
                         "Uninstall protection",
                         "Android asks to turn this off before ScrollNah can be removed",
                         ParentLock.uninstallProtection && guardActive
                     ) {
-                        if (ParentLock.uninstallProtection && guardActive) {
+                        if (ParentLock.uninstallProtection && guardActive) withSecret {
                             ParentLock.uninstallProtection = false
                             TamperWatch.removeGuard(context)
                             refresh++
@@ -514,10 +545,47 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                     TamperWatch.removeGuard(context)
                     TamperLog.clear()
                     ParentLock.turnOff()
+                    ParentFingerprint.forget()
                     refresh++
                 }) { Text("Turn off", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
             },
             dismissButton = { TextButton(onClick = { confirmLockOff = false }) { Text("Cancel", color = Neo.colors.content) } }
+        )
+    }
+
+    afterSecret?.let { action ->
+        UnlockDialog(
+            subtitle = "This needs the parent PIN or pattern. A fingerprint isn't enough for it.",
+            secretOnly = true,
+            onUnlocked = {
+                afterSecret = null
+                action()
+            },
+            onDismiss = { afterSecret = null }
+        )
+    }
+
+    if (addingFingerprint) {
+        AlertDialog(
+            onDismissRequest = { addingFingerprint = false },
+            containerColor = Neo.colors.surface,
+            title = { Text("Unlock with a fingerprint?", style = MaterialTheme.typography.headlineSmall) },
+            text = {
+                Text(
+                    "Any fingerprint saved on this phone will open Parent lock, including your child's. " +
+                        "Turn this on only if every fingerprint in this phone's settings is yours.\n\n" +
+                        "If a fingerprint is added or removed later (even yours), fingerprint unlock turns off by itself " +
+                        "and the report shows it. Turning Parent lock off, changing the PIN or pattern and turning off " +
+                        "uninstall protection still need the PIN or pattern."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    addingFingerprint = false
+                    turnOnFingerprint(context)
+                }) { Text("They're all mine", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
+            },
+            dismissButton = { TextButton(onClick = { addingFingerprint = false }) { Text("Cancel", color = Neo.colors.content) } }
         )
     }
 
@@ -784,5 +852,44 @@ internal fun ChoicePill(text: String, selected: Boolean, isChoice: Boolean = tru
         contentAlignment = Alignment.Center
     ) {
         Text(text, fontWeight = FontWeight.Bold, color = if (selected) Ink else Neo.colors.content)
+    }
+}
+
+/** Makes the fingerprint key and asks for a fingerprint once, so it's only on if it really works. */
+private fun turnOnFingerprint(context: Context) {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return
+    try {
+        ParentFingerprint.createKey()
+    } catch (e: Exception) {
+        Toast.makeText(context, "Fingerprint unlock doesn't work on this phone.", Toast.LENGTH_LONG).show()
+        return
+    }
+    ParentFingerprint.ask(context, "Fingerprint unlock", "Touch the sensor to turn it on", "Cancel") { result ->
+        if (result == ParentFingerprint.Result.Right) {
+            ParentLock.setFingerprint(true)
+            Toast.makeText(context, "Fingerprint unlock is on", Toast.LENGTH_SHORT).show()
+        } else {
+            ParentFingerprint.forget()
+            (result as? ParentFingerprint.Result.Problem)?.let { Toast.makeText(context, it.message, Toast.LENGTH_LONG).show() }
+        }
+    }
+}
+
+/** Android's "add a fingerprint" screen (or its security settings where that isn't available). */
+private fun openFingerprintSettings(context: Context) {
+    val enroll = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        Intent(android.provider.Settings.ACTION_BIOMETRIC_ENROLL).putExtra(
+            android.provider.Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+            android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG
+        )
+    } else Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS)
+    try {
+        context.startActivity(enroll)
+    } catch (e: Exception) {
+        try {
+            context.startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))
+        } catch (e2: Exception) {
+            Toast.makeText(context, "Open the phone's settings to add a fingerprint.", Toast.LENGTH_LONG).show()
+        }
     }
 }

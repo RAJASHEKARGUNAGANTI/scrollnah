@@ -1,5 +1,7 @@
 package com.unscroll.app.ui.components
 
+import android.os.Build
+import android.os.CancellationSignal
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -52,7 +56,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.unscroll.app.data.ParentFingerprint
 import com.unscroll.app.data.ParentLock
+import com.unscroll.app.data.TamperLog
 import com.unscroll.app.ui.theme.BorderWidth
 import com.unscroll.app.ui.theme.DisplayFontFamily
 import com.unscroll.app.ui.theme.Ink
@@ -100,11 +106,28 @@ fun ParentLockGate(content: @Composable () -> Unit) {
     }
 }
 
-/** Full-screen "enter the parent PIN" over anything (Home's lock button, extra minutes...). */
+/**
+ * Full-screen "enter the parent PIN" over anything (Home's lock button, extra minutes...).
+ * A parent asked for it, so a fingerprint prompt opens straight away when fingerprint unlock is on.
+ * [secretOnly]: things a fingerprint isn't enough for (turning the lock off, changing the PIN...).
+ */
 @Composable
-fun UnlockDialog(onUnlocked: () -> Unit, onDismiss: () -> Unit, subtitle: String = "Enter the parent PIN or pattern.") {
+fun UnlockDialog(
+    onUnlocked: () -> Unit,
+    onDismiss: () -> Unit,
+    subtitle: String? = null,
+    secretOnly: Boolean = false
+) {
+    val fingerprint = !secretOnly && ParentLock.state.collectAsStateWithLifecycle().value.fingerprint
     FullScreenDialog(onDismiss) {
-        UnlockContent(title = "Parent lock", subtitle = subtitle, onUnlocked = onUnlocked, onCancel = onDismiss)
+        UnlockContent(
+            title = "Parent lock",
+            subtitle = subtitle ?: if (fingerprint) "Use a parent's fingerprint, or the PIN or pattern." else "Enter the parent PIN or pattern.",
+            onUnlocked = onUnlocked,
+            onCancel = onDismiss,
+            secretOnly = secretOnly,
+            askFingerprintFirst = true
+        )
     }
 }
 
@@ -132,12 +155,53 @@ private fun FullScreenDialog(onDismiss: () -> Unit, content: @Composable ColumnS
     }
 }
 
-/** The unlock page: the pad, what went wrong, and "Forgot PIN?". */
+/**
+ * The unlock page: "Use fingerprint" (when it's on), the pad, what went wrong, and "Forgot PIN?".
+ * [askFingerprintFirst] opens the fingerprint prompt straight away (a parent asked for this page).
+ */
 @Composable
-fun UnlockContent(title: String, subtitle: String, onUnlocked: () -> Unit, onCancel: (() -> Unit)? = null) {
-    val kind = ParentLock.state.collectAsStateWithLifecycle().value.kind
+fun UnlockContent(
+    title: String,
+    subtitle: String,
+    onUnlocked: () -> Unit,
+    onCancel: (() -> Unit)? = null,
+    secretOnly: Boolean = false,
+    askFingerprintFirst: Boolean = false
+) {
+    val lockState = ParentLock.state.collectAsStateWithLifecycle().value
+    val kind = lockState.kind
     val noun = if (kind == ParentLock.Kind.PIN) "PIN" else "pattern"
     var message by remember { mutableStateOf<String?>(null) }
+
+    // Fingerprint unlock: Android's own prompt over this page; the PIN pad stays as the other way in.
+    val context = LocalContext.current
+    val fingerprint = !secretOnly && lockState.fingerprint && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+    var prompt by remember { mutableStateOf<CancellationSignal?>(null) }
+    fun askFingerprint() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        prompt?.cancel()
+        prompt = ParentFingerprint.ask(context, "Parent lock", "Unlock with a parent's fingerprint", "Use the $noun") { result ->
+            prompt = null
+            when (result) {
+                ParentFingerprint.Result.Right -> {
+                    ParentLock.unlockWithFingerprint()
+                    onUnlocked()
+                }
+                ParentFingerprint.Result.Cancelled -> {}
+                ParentFingerprint.Result.KeyGone -> {
+                    ParentFingerprint.stopBecauseChanged()
+                    message = "A fingerprint was added or removed on this phone, so fingerprint unlock turned off. Use the $noun."
+                }
+                ParentFingerprint.Result.TooManyTries -> {
+                    TamperLog.add(TamperLog.Kind.FINGERPRINT_TRIES)
+                    message = "Too many fingerprint tries. Use the $noun."
+                }
+                is ParentFingerprint.Result.Problem -> message = result.message
+            }
+        }
+    }
+    LaunchedEffect(Unit) { if (fingerprint && askFingerprintFirst) askFingerprint() }
+    DisposableEffect(Unit) { onDispose { prompt?.cancel() } }
     var clear by remember { mutableIntStateOf(0) }
     var waitUntil by remember { mutableStateOf(System.currentTimeMillis() + ParentLock.waitLeft()) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -167,6 +231,7 @@ fun UnlockContent(title: String, subtitle: String, onUnlocked: () -> Unit, onCan
         LockBadge(open = false)
         Text(title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
         Text(subtitle, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+        if (fingerprint) NeoButtonPrimary("Use fingerprint", onClick = { askFingerprint() }, modifier = Modifier.fillMaxWidth())
         val shown = if (waiting) "Too many wrong tries. Try again in ${secondsText(waitUntil - now)}." else message
         if (shown != null) Text(shown, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         val submit: (String) -> Unit = { secret ->

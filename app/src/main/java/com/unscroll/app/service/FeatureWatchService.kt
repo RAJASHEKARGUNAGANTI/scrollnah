@@ -108,7 +108,6 @@ class FeatureWatchService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
-        running = this
         scope.launch { featureDao.observeLimits().collect { list -> featureLimits = list.associateBy { it.featureId } } }
         scope.launch { container.database.trackedAppDao().observeAll().collect { list -> trackedApps = list.associateBy { it.packageName } } }
         scope.launch { container.settings.strictness.collect { strictness = it } }
@@ -134,7 +133,6 @@ class FeatureWatchService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
-        if (running === this) running = null
         handler.removeCallbacksAndMessages(null) // heartbeat, watchdog, settle check, a waiting Pause screen
         ReelBadge.hide()
         scope.cancel()
@@ -434,20 +432,6 @@ class FeatureWatchService : AccessibilityService() {
         private const val BACK_SETTLE_MS = 500L
         private const val MAX_CREDIT_MS = 5_000L
         private const val WATCHDOG_MS = 60_000L
-
-        /** The tracker while it's switched on, so the "Turn off tracker" button can reach it. */
-        @Volatile private var running: FeatureWatchService? = null
-
-        /**
-         * Switches the tracker off, exactly like turning it off in Accessibility settings
-         * (UPI/bank apps like BHIM won't open while it's on). Only the user can turn it
-         * back on, in Settings. Returns false if it was already off.
-         */
-        fun turnOff(): Boolean {
-            val service = running ?: return false
-            service.disableSelf()
-            return true
-        }
 
         /** True if the user has switched this service on in Accessibility settings. */
         fun isEnabled(context: Context): Boolean {

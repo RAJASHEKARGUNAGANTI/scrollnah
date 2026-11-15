@@ -17,13 +17,17 @@ import javax.crypto.spec.PBEKeySpec
  *
  * Unlocking lasts while a locked screen is in use, then [UNLOCK_MS] more; the screen
  * turning off or the lock button on Home locks it again straight away.
+ *
+ * Optional fingerprint unlock (see ParentFingerprint) opens locked pages and allows extra
+ * minutes, but turning the lock off, changing the PIN, turning off uninstall protection and
+ * the fingerprint switch itself still need the PIN or pattern ([unlockedWithSecret]).
  */
 object ParentLock {
 
     enum class Kind { PIN, PATTERN }
 
     /** What the lock looks like right now, for screens to follow. */
-    data class State(val on: Boolean, val locked: Boolean, val kind: Kind)
+    data class State(val on: Boolean, val locked: Boolean, val kind: Kind, val fingerprint: Boolean = false)
 
     sealed class Check {
         object Right : Check()
@@ -54,6 +58,10 @@ object ParentLock {
     // In memory only: after ScrollNah restarts, it's always locked.
     @Volatile private var unlockedUntil = 0L
 
+    /** true = the current unlock used the PIN or pattern (not a fingerprint). */
+    @Volatile var unlockedWithSecret = false
+        private set
+
     /** Called once from UnscrollApplication.onCreate. */
     fun init(context: Context) {
         prefs = context.getSharedPreferences("parent_lock", Context.MODE_PRIVATE)
@@ -63,6 +71,21 @@ object ParentLock {
     val isOn: Boolean get() = prefs.getBoolean("on", false)
     val kind: Kind get() = Kind.entries.find { it.name == prefs.getString("kind", null) } ?: Kind.PIN
     val isLocked: Boolean get() = isOn && System.currentTimeMillis() >= unlockedUntil
+
+    /** Fingerprint unlock is on (only while the lock is on). */
+    val fingerprintOn: Boolean get() = isOn && prefs.getBoolean("fingerprint", false)
+
+    fun setFingerprint(on: Boolean) {
+        prefs.edit().putBoolean("fingerprint", on).commit()
+        publish()
+    }
+
+    /** A saved fingerprint matched (ParentFingerprint): unlocked, but not for the PIN-only actions. */
+    fun unlockWithFingerprint(now: Long = System.currentTimeMillis()) {
+        unlockedUntil = now + UNLOCK_MS
+        unlockedWithSecret = false
+        publish()
+    }
 
     /** Turns the lock on with a new PIN or pattern (also used to change it). Unlocked afterwards. */
     fun set(kind: Kind, secret: String) {
@@ -80,8 +103,9 @@ object ParentLock {
     }
 
     fun turnOff() {
-        prefs.edit().clear().commit()
+        prefs.edit().clear().commit() // also turns fingerprint unlock off
         unlockedUntil = 0L
+        unlockedWithSecret = false
         publish()
     }
 
@@ -109,8 +133,10 @@ object ParentLock {
     fun waitLeft(now: Long = System.currentTimeMillis()): Long =
         (prefs.getLong("wait_until", 0L) - now).coerceAtLeast(0L)
 
+    /** Unlocked with the PIN or pattern (or a new one was just set). */
     fun unlock(now: Long = System.currentTimeMillis()) {
         unlockedUntil = now + UNLOCK_MS
+        unlockedWithSecret = true
         publish()
     }
 
@@ -179,7 +205,7 @@ object ParentLock {
     }
 
     private fun publish() {
-        _state.value = State(on = isOn, locked = isLocked, kind = kind)
+        _state.value = State(on = isOn, locked = isLocked, kind = kind, fingerprint = fingerprintOn)
     }
 
     private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
