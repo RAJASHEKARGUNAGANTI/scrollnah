@@ -495,6 +495,9 @@ debug gallery (below).
   the mascot asks "How long do you need Chrome?" on a lime page (`AskHowLongScreen`, PauseActivity's ask mode,
   `launchAsk`): 5 or 10 min (first 5/10/15/20; the developer cut it to two the same day), never past the daily limit or a tighter shared budget (`AskHowLong.choices`: with 7
   left, "5 min" and "7 min"), pill "Time 1 of 3 this hour", "Not now, take me home".
+- Later the same day the developer made it 3 times in 2 HOURS (`AskHowLong.PICKS`, `WINDOW_MS`, `WINDOW_TEXT`;
+  texts say "Time 1 of 3 in 2 hours", "...before 10:12 PM", "That's 3 times in 2 hours."). The examples below are
+  from the 1-hour version.
 - Developer's answers: after 3 picks the app is blocked until an hour after the first pick; 3 per app; the clock
   keeps running after leaving; its own list in Settings. When the time runs out with the app in front:
   `PauseReason.ASK_TIME_UP` ("Time's up for Chrome. That was your 5 minutes. You can open Chrome 2 more times this

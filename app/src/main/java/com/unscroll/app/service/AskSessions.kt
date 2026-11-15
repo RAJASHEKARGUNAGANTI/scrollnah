@@ -4,7 +4,7 @@ import android.content.Context
 import com.unscroll.app.data.AskHowLong
 
 /**
- * Saves each "Ask how long" app's hour (see [AskHowLong.AppState]) on the phone, so restarting
+ * Saves each "Ask how long" app's 2 hours (see [AskHowLong.AppState]) on the phone, so restarting
  * ScrollNah doesn't hand out new picks. SharedPreferences: the blocker reads it every second.
  */
 object AskSessions {
@@ -23,6 +23,6 @@ object AskSessions {
     /** [minutes] were picked for [packageName]: its time starts now. */
     fun pick(context: Context, packageName: String, minutes: Int, now: Long = System.currentTimeMillis()) {
         val s = AskHowLong.pick(get(context, packageName), now, minutes)
-        prefs(context).edit().putString(packageName, "${s.hourStart},${s.picks},${s.sessionEnd},${s.minutes}").commit()
+        prefs(context).edit().putString(packageName, "${s.windowStart},${s.picks},${s.sessionEnd},${s.minutes}").commit()
     }
 }

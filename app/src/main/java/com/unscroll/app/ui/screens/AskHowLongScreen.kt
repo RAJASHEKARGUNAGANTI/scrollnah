@@ -45,7 +45,7 @@ import com.unscroll.app.ui.theme.White
  * A lime page (the orange Pause screen means "stop"; this one is a friendly check-in).
  * Picking a time opens the app; when the time is up it's blocked with no "+5 minutes".
  *
- * @param picksLeft picks left this hour, counting this one (3, 2 or 1).
+ * @param picksLeft picks left in these 2 hours, counting this one (3, 2 or 1).
  * @param minutesLeftToday the app's daily limit left, or null if it has none.
  */
 @Composable
@@ -58,9 +58,14 @@ fun AskHowLongScreen(
     onNotNow: () -> Unit
 ) {
     val name = LocalMascot.current.theme.mascotName
-    val turn = AskHowLong.PICKS_PER_HOUR - picksLeft + 1
-    val after = if (picksLeft == 1) "After this, $appName stays closed until the hour is up."
-    else "You can do this ${picksLeft - 1} more ${if (picksLeft - 1 == 1) "time" else "times"} this hour."
+    val turn = AskHowLong.PICKS - picksLeft + 1
+    val window = AskHowLong.WINDOW_TEXT
+    val more = "${picksLeft - 1} more ${if (picksLeft - 1 == 1) "time" else "times"}"
+    val after = when {
+        picksLeft == 1 -> "After this, $appName stays closed until the $window are up."
+        picksLeft == AskHowLong.PICKS -> "You can do this $more in the next $window." // the 2 hours start with this pick
+        else -> "You can do this $more before the $window are up."
+    }
     val todayLeft = minutesLeftToday?.let { " $it min of $appName left today." }.orEmpty()
     // Short screens (small phones, big text, sideways): a smaller mascot, so the times stay in view.
     val compact = LocalConfiguration.current.screenHeightDp < 700
@@ -85,7 +90,7 @@ fun AskHowLongScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp)
             ) {
-                NeoPill("Time $turn of ${AskHowLong.PICKS_PER_HOUR} this hour")
+                NeoPill("Time $turn of ${AskHowLong.PICKS} in ${AskHowLong.WINDOW_TEXT}")
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Mascot(mood = MoodLevel.HAPPY, size = if (compact) 76.dp else 120.dp, contentDescription = "$name is asking")
                     Text(name, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.clearAndSetSemantics {})

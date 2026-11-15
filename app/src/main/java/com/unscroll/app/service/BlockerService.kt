@@ -449,8 +449,8 @@ class BlockerService : Service() {
 
     /**
      * "Ask how long" (see [AskHowLong]): asks how long [app] is needed before it opens, blocks it
-     * when the picked time is up (no "+5"), and after 3 picks an hour keeps it blocked until the hour
-     * is over. Returns true when it acted (or is waiting for an answer), so the limit checks wait.
+     * when the picked time is up (no "+5"), and after 3 picks in 2 hours keeps it blocked until the
+     * 2 hours are over. Returns true when it acted (or is waiting for an answer), so the limit checks wait.
      */
     private fun checkAskHowLong(now: Long, app: String, limited: TrackedApp?, justOpened: Boolean): Boolean {
         val state = AskSessions.get(this, app)
@@ -459,11 +459,11 @@ class BlockerService : Service() {
         if (!justOpened && state.sessionEnd in (now - 5_000L)..now && askTimeUpShown[app] != state.sessionEnd) {
             askTimeUpShown[app] = state.sessionEnd
             val picksLeft = AskHowLong.picksLeft(state, now)
-            debug("$app: picked time up (${state.minutes} min), $picksLeft picks left this hour")
+            debug("$app: picked time up (${state.minutes} min), $picksLeft picks left")
             LimitActions.onAskBlock(
                 this,
                 PauseTarget(app, name, app, state.minutes, openCount = null, reason = PauseReason.ASK_TIME_UP,
-                    picksLeft = picksLeft, backAt = state.hourStart + AskHowLong.HOUR_MS)
+                    picksLeft = picksLeft, backAt = state.windowStart + AskHowLong.WINDOW_MS)
             )
             return true
         }
@@ -478,7 +478,7 @@ class BlockerService : Service() {
             is AskHowLong.Next.Blocked -> {
                 if (now - (lastActionAt[app] ?: 0L) < 3_000L) return true
                 lastActionAt[app] = now
-                debug("$app: 3 picks used this hour, blocked until ${next.until}")
+                debug("$app: 3 picks used in 2 hours, blocked until ${next.until}")
                 LimitActions.onAskBlock(
                     this,
                     PauseTarget(app, name, app, 0, openCount = null, reason = PauseReason.ASK_BLOCKED, picksLeft = 0, backAt = next.until)

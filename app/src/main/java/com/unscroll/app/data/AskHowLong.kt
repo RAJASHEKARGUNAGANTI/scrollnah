@@ -3,39 +3,41 @@ package com.unscroll.app.data
 /**
  * "Ask how long" (developer idea, 2026-11-15): before an app on its list opens, the mascot asks how
  * long it's needed: 5 or 10 minutes (only these two, the developer's choice). When that time is up
- * the app is blocked, with no "+5 minutes". Each app can be opened like this [PICKS_PER_HOUR] times an hour, counted from its
- * first pick; after that it stays blocked until the hour is over. A pick never goes past the app's
+ * the app is blocked, with no "+5 minutes". Each app can be opened like this [PICKS] times in [WINDOW_TEXT]
+ * (developer: first an hour, then 2 hours), counted from its first pick; after that it stays blocked
+ * until those 2 hours are over. A pick never goes past the app's
  * daily limit. The clock keeps running once a time is picked, even if the person leaves the app.
  *
  * Pure logic (tested). The blocker and the question screen use it; AskSessions saves each app's [AppState].
  */
 object AskHowLong {
     val CHOICES = listOf(5, 10)
-    const val PICKS_PER_HOUR = 3
-    const val HOUR_MS = 60 * 60_000L
+    const val PICKS = 3
+    const val WINDOW_MS = 2 * 60 * 60_000L
+    const val WINDOW_TEXT = "2 hours"
 
-    /** One app's hour: when its first pick was, how many picks since, and when the picked time ends. */
-    data class AppState(val hourStart: Long = 0L, val picks: Int = 0, val sessionEnd: Long = 0L, val minutes: Int = 0)
+    /** One app's 2 hours: when its first pick was, how many picks since, and when the picked time ends. */
+    data class AppState(val windowStart: Long = 0L, val picks: Int = 0, val sessionEnd: Long = 0L, val minutes: Int = 0)
 
     sealed class Next {
         /** A picked time is still running (or the daily limit is used up and takes over): let it be. */
         object Open : Next()
-        /** Ask how long: [choices] in minutes; [picksLeft] this hour, counting this one. */
+        /** Ask how long: [choices] in minutes; [picksLeft] in these 2 hours, counting this one. */
         data class Ask(val choices: List<Int>, val picksLeft: Int) : Next()
-        /** All picks used this hour: blocked until [until]. */
+        /** All picks used: blocked until [until], 2 hours after the first pick. */
         data class Blocked(val until: Long) : Next()
     }
 
-    private fun hourRunning(s: AppState, now: Long) = s.picks > 0 && now < s.hourStart + HOUR_MS
+    private fun windowRunning(s: AppState, now: Long) = s.picks > 0 && now < s.windowStart + WINDOW_MS
 
-    /** Picks left this hour (all of them once the hour since the first pick is over). */
+    /** Picks left (all of them once 2 hours have passed since the first pick). */
     fun picksLeft(s: AppState, now: Long): Int =
-        if (hourRunning(s, now)) (PICKS_PER_HOUR - s.picks).coerceAtLeast(0) else PICKS_PER_HOUR
+        if (windowRunning(s, now)) (PICKS - s.picks).coerceAtLeast(0) else PICKS
 
     /** What to do with the app in front now. [minutesLeftToday] is null when it has no daily limit. */
     fun next(s: AppState, now: Long, minutesLeftToday: Int?): Next = when {
         now < s.sessionEnd -> Next.Open
-        picksLeft(s, now) == 0 -> Next.Blocked(s.hourStart + HOUR_MS)
+        picksLeft(s, now) == 0 -> Next.Blocked(s.windowStart + WINDOW_MS)
         minutesLeftToday != null && minutesLeftToday <= 0 -> Next.Open // the daily limit takes over
         else -> Next.Ask(choices(minutesLeftToday), picksLeft(s, now))
     }
@@ -47,11 +49,11 @@ object AskHowLong {
         else -> CHOICES.filter { it < minutesLeftToday } + minutesLeftToday
     }
 
-    /** [minutes] were picked: the time starts now, and a new hour starts if the last one is over. */
+    /** [minutes] were picked: the time starts now, and new 2 hours start if the last ones are over. */
     fun pick(s: AppState, now: Long, minutes: Int): AppState {
-        val running = hourRunning(s, now)
+        val running = windowRunning(s, now)
         return AppState(
-            hourStart = if (running) s.hourStart else now,
+            windowStart = if (running) s.windowStart else now,
             picks = if (running) s.picks + 1 else 1,
             sessionEnd = now + minutes * 60_000L,
             minutes = minutes

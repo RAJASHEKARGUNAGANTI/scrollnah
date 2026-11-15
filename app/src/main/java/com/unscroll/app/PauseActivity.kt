@@ -61,7 +61,7 @@ class PauseActivity : ComponentActivity() {
                     AskHowLongScreen(
                         appName = name,
                         choices = choices.toList(),
-                        picksLeft = picksLeft ?: AskHowLong.PICKS_PER_HOUR,
+                        picksLeft = picksLeft ?: AskHowLong.PICKS,
                         minutesLeftToday = intent.getIntExtra(EXTRA_LIMIT, -1).takeIf { it >= 0 },
                         onPick = { minutes ->
                             AskSessions.pick(this, packageToLog, minutes)

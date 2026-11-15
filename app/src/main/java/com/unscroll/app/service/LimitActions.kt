@@ -26,7 +26,7 @@ data class PauseTarget(
     val reason: PauseReason = PauseReason.LIMIT,
     val maxOpens: Int? = null, // the app's open limit (for PauseReason.OPENS), or the daily reels limit (REELS)
     val groupName: String? = null, // set when a shared budget ran out (limitMinutes is then the group's)
-    val picksLeft: Int? = null,    // "Ask how long": picks left this hour
+    val picksLeft: Int? = null,    // "Ask how long": picks left in its 2 hours
     val backAt: Long? = null       // "Ask how long": when the app opens again (all picks used)
 )
 
@@ -54,7 +54,7 @@ object LimitActions {
     }
 
     /**
-     * "Ask how long": the picked time is up, or all picks this hour are used. Always the locked
+     * "Ask how long": the picked time is up, or all 3 picks in 2 hours are used. Always the locked
      * Pause screen (no "+5 minutes"), whatever the strictness: the person chose the time themselves.
      */
     fun onAskBlock(context: Context, target: PauseTarget) {

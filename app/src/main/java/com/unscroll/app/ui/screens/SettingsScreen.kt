@@ -386,7 +386,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}, onAdd
                 Text(
                     "Before these apps open, $name asks how long you need them: 5 or 10 minutes. " +
                         "When the time's up, the app closes with no extra minutes. Each app can be opened this way " +
-                        "${AskHowLong.PICKS_PER_HOUR} times an hour, never past its daily limit.",
+                        "${AskHowLong.PICKS} times in ${AskHowLong.WINDOW_TEXT}, never past its daily limit.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 SwitchRow(

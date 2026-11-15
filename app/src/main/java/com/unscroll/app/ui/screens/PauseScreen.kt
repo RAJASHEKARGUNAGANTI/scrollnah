@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.unscroll.app.data.AskHowLong
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.pauseReasons
 import com.unscroll.app.service.FocusRules
@@ -72,7 +73,7 @@ import kotlinx.coroutines.delay
  * @param groupName the shared budget that ran out ([limitMinutes] is then the group's), or null.
  * @param locked Beast mode: no reason chips and no "+5 minutes", only "Take me home".
  * @param onAllowFiveMinutes null hides the button (also used for Beast mode).
- * @param picksLeft, backAt "Ask how long" blocks: picks left this hour, and when the app opens again.
+ * @param picksLeft, backAt "Ask how long" blocks: picks left, and when its 2 hours end (the app opens again).
  */
 @Composable
 fun PauseScreen(
@@ -113,7 +114,7 @@ fun PauseScreen(
     } ?: "later"
     val pillText = when {
         reason == PauseReason.ASK_TIME_UP -> "Time's up"
-        reason == PauseReason.ASK_BLOCKED -> "3 times this hour"
+        reason == PauseReason.ASK_BLOCKED -> "3 times in ${AskHowLong.WINDOW_TEXT}"
         reason == PauseReason.FOCUS -> "Focus mode"
         reason == PauseReason.BEDTIME -> "Bedtime"
         reason == PauseReason.WORK -> "Work hours"
@@ -125,7 +126,7 @@ fun PauseScreen(
     }
     val title = when {
         reason == PauseReason.ASK_TIME_UP -> "Time's up for $appName."
-        reason == PauseReason.ASK_BLOCKED -> "That's 3 times this hour."
+        reason == PauseReason.ASK_BLOCKED -> "That's 3 times in ${AskHowLong.WINDOW_TEXT}."
         reason == PauseReason.FOCUS -> "Focus mode is on."
         reason == PauseReason.BEDTIME -> "It's bedtime. $appName can wait."
         reason == PauseReason.WORK -> "Work time. $appName can wait."
@@ -154,9 +155,9 @@ fun PauseScreen(
             val picked = limitMinutes?.let { "your $it minutes" } ?: "the time you picked"
             when {
                 picksLeft == null || picksLeft <= 0 ->
-                    "That was $picked, and your last time this hour. $appName opens again at $backAtText."
+                    "That was $picked, and your last time for now. $appName opens again at $backAtText."
                 else ->
-                    "That was $picked. You can open $appName ${picksLeft} more ${if (picksLeft == 1) "time" else "times"} this hour, if you really need to."
+                    "That was $picked. You can open $appName ${picksLeft} more ${if (picksLeft == 1) "time" else "times"} before $backAtText, if you really need to."
             }
         }
         PauseReason.ASK_BLOCKED -> "$appName opens again at $backAtText. Let's do something else till then."

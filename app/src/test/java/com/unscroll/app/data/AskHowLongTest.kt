@@ -30,24 +30,24 @@ class AskHowLongTest {
         val s = AskHowLong.pick(AskHowLong.AppState(), t0, 10)
         assertEquals(Next.Open, AskHowLong.next(s, t0 + 2 * min, null)) // back after 2 min: no question
         assertEquals(Next.Open, AskHowLong.next(s, t0 + 9 * min, null))
-        // Time's up: the next open asks again, with 2 picks left this hour.
+        // Time's up: the next open asks again, with 2 picks left.
         assertEquals(Next.Ask(listOf(5, 10), 2), AskHowLong.next(s, t0 + 10 * min, null))
     }
 
     @Test
-    fun threePicksAnHourThenBlockedUntilTheHourEnds() {
+    fun threePicksInTwoHoursThenBlockedUntilTheyEnd() {
         var s = AskHowLong.pick(AskHowLong.AppState(), t0, 5)
         s = AskHowLong.pick(s, t0 + 10 * min, 5)
-        s = AskHowLong.pick(s, t0 + 20 * min, 5)
+        s = AskHowLong.pick(s, t0 + 70 * min, 5) // an hour later still counts (2 hours)
         assertEquals(3, s.picks)
-        assertEquals(Next.Open, AskHowLong.next(s, t0 + 22 * min, null)) // the 3rd time is still running
-        assertEquals(Next.Blocked(t0 + 60 * min), AskHowLong.next(s, t0 + 25 * min, null))
-        assertEquals(Next.Blocked(t0 + 60 * min), AskHowLong.next(s, t0 + 59 * min, null))
-        // An hour after the first pick: three new picks.
-        assertEquals(Next.Ask(listOf(5, 10), 3), AskHowLong.next(s, t0 + 60 * min, null))
-        val fresh = AskHowLong.pick(s, t0 + 61 * min, 10)
+        assertEquals(Next.Open, AskHowLong.next(s, t0 + 72 * min, null)) // the 3rd time is still running
+        assertEquals(Next.Blocked(t0 + 120 * min), AskHowLong.next(s, t0 + 75 * min, null))
+        assertEquals(Next.Blocked(t0 + 120 * min), AskHowLong.next(s, t0 + 119 * min, null))
+        // 2 hours after the first pick: three new picks.
+        assertEquals(Next.Ask(listOf(5, 10), 3), AskHowLong.next(s, t0 + 120 * min, null))
+        val fresh = AskHowLong.pick(s, t0 + 121 * min, 10)
         assertEquals(1, fresh.picks)
-        assertEquals(t0 + 61 * min, fresh.hourStart)
+        assertEquals(t0 + 121 * min, fresh.windowStart)
     }
 
     @Test

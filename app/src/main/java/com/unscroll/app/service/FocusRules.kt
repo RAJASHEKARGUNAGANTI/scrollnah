@@ -10,7 +10,7 @@ import java.util.Locale
 
 /** Why a limited app is paused. OPENS = opened more times today than the user allows. */
 /** Why something is paused. REELS = the daily reels limit (see [com.unscroll.app.data.ReelLimit]). */
-/** Why the Pause screen is up. ASK_*: "Ask how long" (the picked time is up / 3 picks used this hour). */
+/** Why the Pause screen is up. ASK_*: "Ask how long" (the picked time is up / 3 picks used in 2 hours). */
 enum class PauseReason { LIMIT, BEDTIME, FOCUS, OPENS, WORK, REELS, ASK_TIME_UP, ASK_BLOCKED;
     val isAsk: Boolean get() = this == ASK_TIME_UP || this == ASK_BLOCKED
 }
