@@ -44,6 +44,8 @@ class SettingsRepository(context: Context) {
     private val slowPlanLastKey = stringPreferencesKey("slow_plan_last")
     private val popupsConfirmedKey = booleanPreferencesKey("popups_confirmed")
     private val weekReadyNoteKey = booleanPreferencesKey("week_ready_note")
+    private val askOnKey = booleanPreferencesKey("ask_how_long_on")
+    private val askAppsKey = stringPreferencesKey("ask_how_long_apps") // package names, one per line (so backups keep it)
     private val insteadIdeasKey = stringPreferencesKey("instead_ideas")
     private val breakEnabledKey = booleanPreferencesKey("break_enabled")
     private val breakMinutesKey = intPreferencesKey("break_minutes")
@@ -210,6 +212,32 @@ class SettingsRepository(context: Context) {
 
     suspend fun setWeekReadyNote(on: Boolean) {
         store.edit { it[weekReadyNoteKey] = on }
+    }
+
+    /** "Ask how long" (see AskHowLong): on or off, and its apps. Off by default. */
+    val askHowLong: Flow<AskSettings> = store.data.map { prefs ->
+        AskSettings(
+            on = prefs[askOnKey] ?: false,
+            apps = prefs[askAppsKey]?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
+        )
+    }
+
+    suspend fun setAskHowLongOn(on: Boolean) {
+        store.edit { it[askOnKey] = on }
+    }
+
+    suspend fun addAskApp(packageName: String) {
+        store.edit { prefs ->
+            val apps = prefs[askAppsKey]?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
+            if (packageName !in apps) prefs[askAppsKey] = (apps + packageName).joinToString("\n")
+        }
+    }
+
+    suspend fun removeAskApp(packageName: String) {
+        store.edit { prefs ->
+            val apps = prefs[askAppsKey]?.split('\n')?.filter { it.isNotBlank() && it != packageName } ?: emptyList()
+            prefs[askAppsKey] = apps.joinToString("\n")
+        }
     }
 
     /** "Do this instead" ideas for the Pause screen (saved one per line). Never edited = a starter list. */

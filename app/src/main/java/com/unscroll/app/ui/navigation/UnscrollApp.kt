@@ -12,6 +12,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.unscroll.app.appContainer
+import com.unscroll.app.data.AskSettings
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -124,7 +128,20 @@ fun UnscrollApp(openRequest: String? = null, onOpened: () -> Unit = {}) {
                 ReadableWidth { ParentLockGate {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
-                        onOpenGarden = { navController.navigate(GARDEN_ROUTE) }
+                        onOpenGarden = { navController.navigate(GARDEN_ROUTE) },
+                        onAddAskApp = { navController.navigate(ASK_ADD_APP_ROUTE) }
+                    )
+                } }
+            }
+            composable(ASK_ADD_APP_ROUTE) {
+                ReadableWidth { ParentLockGate {
+                    val container = appContainer()
+                    val ask by container.settings.askHowLong.collectAsStateWithLifecycle(AskSettings())
+                    AddAppScreen(
+                        onBack = { navController.popBackStack() },
+                        title = "Ask how long",
+                        hide = ask.apps.toSet(),
+                        onPick = { app -> container.appScope.launch { container.settings.addAskApp(app.packageName) } }
                     )
                 } }
             }

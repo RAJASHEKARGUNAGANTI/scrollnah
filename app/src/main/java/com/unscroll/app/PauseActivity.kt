@@ -14,10 +14,13 @@ import androidx.compose.runtime.setValue
 import com.unscroll.app.data.ParentLock
 import com.unscroll.app.data.db.PauseLog
 import com.unscroll.app.ui.components.UnlockDialog
+import com.unscroll.app.data.AskHowLong
 import com.unscroll.app.service.Allowances
+import com.unscroll.app.service.AskSessions
 import com.unscroll.app.service.LimitActions
 import com.unscroll.app.service.PauseReason
 import com.unscroll.app.service.PauseTarget
+import com.unscroll.app.ui.screens.AskHowLongScreen
 import com.unscroll.app.ui.screens.PauseScreen
 import com.unscroll.app.ui.theme.AppTheme
 import kotlinx.coroutines.launch
@@ -44,9 +47,32 @@ class PauseActivity : ComponentActivity() {
         val maxOpens = intent.getIntExtra(EXTRA_MAX_OPENS, -1).takeIf { it >= 0 }
         val groupName = intent.getStringExtra(EXTRA_GROUP)
         val reason = PauseReason.entries.getOrElse(intent.getIntExtra(EXTRA_REASON, 0)) { PauseReason.LIMIT }
+        val picksLeft = intent.getIntExtra(EXTRA_PICKS_LEFT, -1).takeIf { it >= 0 }
+        val backAt = intent.getLongExtra(EXTRA_BACK_AT, 0L).takeIf { it > 0L }
 
         // Back must not sneak the user into the app; treat it like "Nah, I'm good".
         onBackPressedDispatcher.addCallback(this) { goHome() }
+
+        // "Ask how long": the question before the app opens (not a block).
+        val choices = intent.getIntArrayExtra(EXTRA_ASK_CHOICES)
+        if (choices != null) {
+            setContent {
+                AppTheme {
+                    AskHowLongScreen(
+                        appName = name,
+                        choices = choices.toList(),
+                        picksLeft = picksLeft ?: AskHowLong.PICKS_PER_HOUR,
+                        minutesLeftToday = intent.getIntExtra(EXTRA_LIMIT, -1).takeIf { it >= 0 },
+                        onPick = { minutes ->
+                            AskSessions.pick(this, packageToLog, minutes)
+                            finish() // the app underneath shows again, with its time running
+                        },
+                        onNotNow = { goHome() }
+                    )
+                }
+            }
+            return
+        }
 
         setContent {
             AppTheme {
@@ -66,8 +92,11 @@ class PauseActivity : ComponentActivity() {
                     groupName = groupName,
                     locked = locked,
                     reason = reason,
-                    onDecline = { reason ->
-                        log(packageToLog, reason, openedAnyway = false)
+                    picksLeft = picksLeft,
+                    backAt = backAt,
+                    onDecline = { why ->
+                        // "Ask how long" blocks aren't Pause answers, so Stats don't count them.
+                        if (!reason.isAsk) log(packageToLog, why, openedAnyway = false)
                         goHome()
                     },
                     // Beast mode: no "+5 minutes" button at all.
@@ -136,6 +165,26 @@ class PauseActivity : ComponentActivity() {
         private const val EXTRA_REASON = "reason"
         private const val EXTRA_MAX_OPENS = "max_opens"
         private const val EXTRA_GROUP = "group"
+        private const val EXTRA_PICKS_LEFT = "picks_left"
+        private const val EXTRA_BACK_AT = "back_at"
+        private const val EXTRA_ASK_CHOICES = "ask_choices"
+
+        /**
+         * "Ask how long": asks how long [appName] is needed before it opens ([choices] in minutes).
+         * [minutesLeftToday] is null when the app has no daily limit.
+         */
+        fun launchAsk(context: Context, packageName: String, appName: String, choices: List<Int>, picksLeft: Int, minutesLeftToday: Int?) {
+            lastLaunchAt = System.currentTimeMillis()
+            val intent = Intent(context, PauseActivity::class.java)
+                .putExtra(EXTRA_KEY, packageName)
+                .putExtra(EXTRA_NAME, appName)
+                .putExtra(EXTRA_PACKAGE, packageName)
+                .putExtra(EXTRA_ASK_CHOICES, choices.toIntArray())
+                .putExtra(EXTRA_PICKS_LEFT, picksLeft)
+                .putExtra(EXTRA_LIMIT, minutesLeftToday ?: -1)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            context.startActivity(intent)
+        }
 
         fun launch(context: Context, target: PauseTarget, locked: Boolean) {
             lastLaunchAt = System.currentTimeMillis()
@@ -149,6 +198,8 @@ class PauseActivity : ComponentActivity() {
                 .putExtra(EXTRA_REASON, target.reason.ordinal)
                 .putExtra(EXTRA_MAX_OPENS, target.maxOpens ?: -1)
                 .putExtra(EXTRA_GROUP, target.groupName)
+                .putExtra(EXTRA_PICKS_LEFT, target.picksLeft ?: -1)
+                .putExtra(EXTRA_BACK_AT, target.backAt ?: 0L)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             context.startActivity(intent)
         }

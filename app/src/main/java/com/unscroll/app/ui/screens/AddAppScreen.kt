@@ -44,9 +44,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Lists the apps on the phone (most used today first) so the user can add one to their limits. */
+/**
+ * Lists the apps on the phone (most used today first) so the user can add one to their limits.
+ * With [onPick] it adds to another list instead ("Ask how long"), hiding the apps in [hide].
+ */
 @Composable
-fun AddAppScreen(onBack: () -> Unit = {}) {
+fun AddAppScreen(
+    onBack: () -> Unit = {},
+    title: String = "Add an app",
+    hide: Set<String>? = null,
+    onPick: ((InstalledApp) -> Unit)? = null
+) {
     val context = LocalContext.current
     val container = appContainer()
     val scope = rememberCoroutineScope()
@@ -66,7 +74,7 @@ fun AddAppScreen(onBack: () -> Unit = {}) {
         }
     }
 
-    val trackedPackages = tracked.map { it.packageName }.toSet()
+    val trackedPackages = hide ?: tracked.map { it.packageName }.toSet()
     val choices = installed.orEmpty()
         .filter { it.packageName !in trackedPackages }
         .filter { query.isBlank() || it.label.contains(query.trim(), ignoreCase = true) }
@@ -78,7 +86,7 @@ fun AddAppScreen(onBack: () -> Unit = {}) {
             Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ScreenTitle("Add an app", onBack)
+            ScreenTitle(title, onBack)
             AppSearchField(query = query, onQueryChange = { query = it })
         }
         LazyColumn(
@@ -98,7 +106,10 @@ fun AddAppScreen(onBack: () -> Unit = {}) {
                     app = app,
                     minutesToday = minutesToday[app.packageName] ?: 0,
                     onClick = {
-                        scope.launch {
+                        if (onPick != null) {
+                            onPick(app)
+                            onBack()
+                        } else scope.launch {
                             dao.insert(TrackedApp(app.packageName, app.label, DEFAULT_APP_LIMIT_MINUTES))
                             onBack()
                         }

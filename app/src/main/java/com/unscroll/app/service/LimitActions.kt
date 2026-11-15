@@ -25,7 +25,9 @@ data class PauseTarget(
     val openCount: Int?,      // times opened today (null for Reels/Shorts)
     val reason: PauseReason = PauseReason.LIMIT,
     val maxOpens: Int? = null, // the app's open limit (for PauseReason.OPENS), or the daily reels limit (REELS)
-    val groupName: String? = null // set when a shared budget ran out (limitMinutes is then the group's)
+    val groupName: String? = null, // set when a shared budget ran out (limitMinutes is then the group's)
+    val picksLeft: Int? = null,    // "Ask how long": picks left this hour
+    val backAt: Long? = null       // "Ask how long": when the app opens again (all picks used)
 )
 
 /** Decides what happens at the limit, based on the strictness the user picked. */
@@ -49,6 +51,16 @@ object LimitActions {
                 PauseActivity.launch(context, target, locked = true)
             else -> PauseActivity.launch(context, target, locked = false)
         }
+    }
+
+    /**
+     * "Ask how long": the picked time is up, or all picks this hour are used. Always the locked
+     * Pause screen (no "+5 minutes"), whatever the strictness: the person chose the time themselves.
+     */
+    fun onAskBlock(context: Context, target: PauseTarget) {
+        if (PauseActivity.isShowing) return
+        if (target.packageName in MediaPauser.BACKGROUND_PLAYERS) MediaPauser.pausePlayback(context)
+        PauseActivity.launch(context, target, locked = true)
     }
 
     fun createChannels(context: Context) {
@@ -199,6 +211,7 @@ object LimitActions {
             PauseReason.LIMIT -> "Your $appName time is up for today, so I paused the little window. Swipe it away when you're ready."
             PauseReason.OPENS -> "That's enough $appName opens for today, so I paused the little window. Swipe it away when you're ready."
             PauseReason.REELS -> "That's your reels for today, so I paused the little window. Swipe it away when you're ready."
+            PauseReason.ASK_TIME_UP, PauseReason.ASK_BLOCKED -> "Your $appName time is up, so I paused the little window. Swipe it away when you're ready."
         }
         val notification = NotificationCompat.Builder(context, SoundFx.channel(context, SoundFx.Channel.NUDGES))
             .setSmallIcon(R.drawable.ic_stat_blobby)

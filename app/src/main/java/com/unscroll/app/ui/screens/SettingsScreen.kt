@@ -71,6 +71,11 @@ import com.unscroll.app.service.FocusRules
 import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.data.SetupFacts
 import com.unscroll.app.data.ParentFingerprint
+import com.unscroll.app.ui.components.duration
+import com.unscroll.app.ui.components.AppTile
+import com.unscroll.app.data.BeastGuard
+import com.unscroll.app.data.AskSettings
+import com.unscroll.app.data.AskHowLong
 import com.unscroll.app.data.ParentLock
 import com.unscroll.app.data.Strictness
 import androidx.compose.runtime.LaunchedEffect
@@ -100,7 +105,7 @@ import kotlinx.coroutines.launch
 
 /** Everything adjustable in one place: name, mascot, look, permissions, focus/passes, data, about. */
 @Composable
-fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
+fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}, onAddAskApp: () -> Unit = {}) {
     val context = LocalContext.current
     val container = appContainer()
     val scope = rememberCoroutineScope()
@@ -145,6 +150,23 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
     var settingLock by remember { mutableStateOf(false) }
     var confirmLockOff by remember { mutableStateOf(false) }
     var addingFingerprint by remember { mutableStateOf(false) }
+
+    // "Ask how long": its switch and apps. Loosening it in Beast mode needs the cool-down first.
+    val ask by container.settings.askHowLong.collectAsStateWithLifecycle(AskSettings())
+    val limitedApps by container.database.trackedAppDao().observeAll().collectAsStateWithLifecycle(emptyList())
+    var askGuard by remember { mutableStateOf<BeastGuard.State?>(null) }
+    fun loosenAsk(change: suspend () -> Unit) {
+        scope.launch {
+            val guarded = strictness == Strictness.BEAST && !ParentLock.isOn // Parent lock already asked for the PIN
+            val state = BeastGuard.state()
+            if (guarded && state !is BeastGuard.State.Open) {
+                askGuard = state
+                return@launch
+            }
+            change()
+            if (guarded) BeastGuard.used() // the next loosening needs a new cool-down
+        }
+    }
     val fingerprintReady = remember(refresh) { ParentFingerprint.ready(context) }
     // A fingerprint opens Settings, but turning the lock off, changing the PIN, turning off uninstall
     // protection and the fingerprint switch need the PIN or pattern: this asks for it first if needed.
@@ -359,6 +381,48 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
         }
 
         item {
+            Section("Ask how long") {
+                val name = LocalMascot.current.theme.mascotName
+                Text(
+                    "Before these apps open, $name asks how long you need them: 5, 10, 15 or 20 minutes. " +
+                        "When the time's up, the app closes with no extra minutes. Each app can be opened this way " +
+                        "${AskHowLong.PICKS_PER_HOUR} times an hour, never past its daily limit.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                SwitchRow(
+                    "Ask how long",
+                    when {
+                        !ask.on -> "Off"
+                        ask.apps.isEmpty() -> "On. Add an app below."
+                        else -> "On for ${ask.apps.size} ${if (ask.apps.size == 1) "app" else "apps"}"
+                    },
+                    ask.on
+                ) {
+                    if (ask.on) loosenAsk { container.settings.setAskHowLongOn(false) }
+                    else scope.launch { container.settings.setAskHowLongOn(true) }
+                }
+                if (ask.on) {
+                    ask.apps.forEach { pkg ->
+                        val label = remember(pkg) { appLabel(context, pkg) }
+                        val limit = limitedApps.find { it.packageName == pkg && it.enabled }?.limitOn()
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            AppTile(pkg, label, size = 36.dp)
+                            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                                Text(label, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (limit != null) "Daily limit ${duration(limit)} too" else "No daily limit",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            ActionPill("Remove", { loosenAsk { container.settings.removeAskApp(pkg) } }, spoken = "Remove $label")
+                        }
+                    }
+                    SettingRow("Add an app", "Choose which apps to ask about", "Add", onClick = onAddAskApp)
+                }
+            }
+        }
+
+        item {
             Section("Do this instead") {
                 InsteadIdeasEditor(
                     mascotName = LocalMascot.current.theme.mascotName,
@@ -550,6 +614,19 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                 }) { Text("Turn off", fontWeight = FontWeight.Bold, color = Neo.colors.content) }
             },
             dismissButton = { TextButton(onClick = { confirmLockOff = false }) { Text("Cancel", color = Neo.colors.content) } }
+        )
+    }
+
+    askGuard?.let { state ->
+        BeastGuardDialog(
+            state = state,
+            onStart = {
+                BeastGuard.startCooldown()
+                askGuard = null
+            },
+            onKeepStrict = { askGuard = null },
+            onClose = { askGuard = null },
+            why = "This lets an app open without asking"
         )
     }
 
@@ -892,4 +969,12 @@ private fun openFingerprintSettings(context: Context) {
             Toast.makeText(context, "Open the phone's settings to add a fingerprint.", Toast.LENGTH_LONG).show()
         }
     }
+}
+
+/** The name an app shows on the phone, or its package name if it's not installed any more. */
+private fun appLabel(context: Context, packageName: String): String = try {
+    val pm = context.packageManager
+    pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+} catch (e: Exception) {
+    packageName
 }

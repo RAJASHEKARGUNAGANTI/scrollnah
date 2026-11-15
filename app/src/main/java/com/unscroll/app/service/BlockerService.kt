@@ -15,7 +15,9 @@ import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.unscroll.app.PauseActivity
 import com.unscroll.app.UnscrollApplication
+import com.unscroll.app.data.AskHowLong
 import com.unscroll.app.data.BreakSettings
 import com.unscroll.app.data.PaymentApps
 import com.unscroll.app.data.Strictness
@@ -87,6 +89,12 @@ class BlockerService : Service() {
     /** Is at least one limited app switched on? Without one there's nothing to watch. */
     private val hasLimitedApps = MutableStateFlow(false)
 
+    // "Ask how long" (see AskHowLong): its apps (empty while it's off), and the last time-up shown per app.
+    @Volatile private var askApps: Set<String> = emptySet()
+    private val hasAskApps = MutableStateFlow(false)
+    private val askTimeUpShown = mutableMapOf<String, Long>()
+    private val appLabels = mutableMapOf<String, String>()
+
     /** Set when the widgets' numbers may have changed (a limited app or a browser was used). */
     @Volatile private var widgetDirty = true
 
@@ -132,6 +140,12 @@ class BlockerService : Service() {
         scope.launch { container.settings.strictness.collect { strictness = it } }
         scope.launch { container.settings.breakSettings.collect { breakSettings = it } }
         scope.launch { container.settings.timeLeftBubble.collect { timeLeftBubble = it } }
+        scope.launch {
+            container.settings.askHowLong.collect {
+                askApps = it.activeApps
+                hasAskApps.value = askApps.isNotEmpty()
+            }
+        }
         // Keep the "... is keeping watch" notification in step with the chosen mascot.
         scope.launch {
             container.settings.mascotTheme.collect { theme ->
@@ -222,9 +236,9 @@ class BlockerService : Service() {
      * limited) it waits without using the processor until there is.
      */
     private suspend fun awaitWork() {
-        if (screenOn.value && hasLimitedApps.value) return
-        debug("pausing checks (screen ${if (screenOn.value) "on" else "off"}, limited apps: ${hasLimitedApps.value})")
-        combine(screenOn, hasLimitedApps) { on, apps -> on && apps }.first { it }
+        if (screenOn.value && (hasLimitedApps.value || hasAskApps.value)) return
+        debug("pausing checks (screen ${if (screenOn.value) "on" else "off"}, limited apps: ${hasLimitedApps.value}, ask apps: ${hasAskApps.value})")
+        combine(screenOn, hasLimitedApps, hasAskApps) { on, limited, ask -> on && (limited || ask) }.first { it }
         debug("checks back on")
         firstTick = true // look further back to learn what's open right now
     }
@@ -351,11 +365,13 @@ class BlockerService : Service() {
         // Break reminders look at every tick, so they also notice when the user leaves the app.
         checkBreak(now, limited)
         checkFloatingPlayers(now, app)
-        if (app == null || limited == null) return
+        // "Ask how long" works for any app on its list, limited or not.
+        val asked = app != null && app in askApps
+        if (app == null || (limited == null && !asked)) return
 
         // 3a. Focus mode / bedtime pause limited apps regardless of usage.
-        val rule = FocusRules.activeRule()
-        if (rule != null) {
+        val rule = if (limited != null) FocusRules.activeRule() else null
+        if (limited != null && rule != null) {
             // Bedtime and work hours honour +5 passes (not in Beast); focus never does.
             if (rule != PauseReason.FOCUS && strictness != Strictness.BEAST && Allowances.isActive(app)) return
             val gap = if (strictness == Strictness.CHILL && rule != PauseReason.FOCUS) chillGap(justOpened) else 3_000L
@@ -371,7 +387,7 @@ class BlockerService : Service() {
         }
 
         // 3b. Is it over its limit? (Usage is re-read every 10 s, or right away when the app opens.)
-        if (justOpened || now - lastUsageRefresh > 10_000L) {
+        if (limited != null && (justOpened || now - lastUsageRefresh > 10_000L)) {
             val packages = trackedApps.map { it.packageName }.toSet()
             usedMinutes = container.usage.todayUsageMinutes(packages)
             // Time on each app's website in a browser (counted by the Accessibility service).
@@ -382,6 +398,10 @@ class BlockerService : Service() {
             }
             lastUsageRefresh = now
         }
+        // 3c. "Ask how long": ask before it opens, block when the picked time is up.
+        if (asked && checkAskHowLong(now, app, limited, justOpened)) return
+        if (limited == null) return
+
         // App time + website time.
         val used = (usedMinutes[app] ?: 0) + (webMinutes[app] ?: 0)
         val limit = limited.limitOn() // today's budget (weekend one on Sat/Sun if set)
@@ -425,6 +445,63 @@ class BlockerService : Service() {
             ),
             strictness
         )
+    }
+
+    /**
+     * "Ask how long" (see [AskHowLong]): asks how long [app] is needed before it opens, blocks it
+     * when the picked time is up (no "+5"), and after 3 picks an hour keeps it blocked until the hour
+     * is over. Returns true when it acted (or is waiting for an answer), so the limit checks wait.
+     */
+    private fun checkAskHowLong(now: Long, app: String, limited: TrackedApp?, justOpened: Boolean): Boolean {
+        val state = AskSessions.get(this, app)
+        val name = limited?.appName ?: appLabel(app)
+        // The picked time ran out just now, with the app still in front: block it.
+        if (!justOpened && state.sessionEnd in (now - 5_000L)..now && askTimeUpShown[app] != state.sessionEnd) {
+            askTimeUpShown[app] = state.sessionEnd
+            val picksLeft = AskHowLong.picksLeft(state, now)
+            debug("$app: picked time up (${state.minutes} min), $picksLeft picks left this hour")
+            LimitActions.onAskBlock(
+                this,
+                PauseTarget(app, name, app, state.minutes, openCount = null, reason = PauseReason.ASK_TIME_UP,
+                    picksLeft = picksLeft, backAt = state.hourStart + AskHowLong.HOUR_MS)
+            )
+            return true
+        }
+        // Never more than the daily limit; an open limit or a shared budget used up counts as nothing left.
+        val left = limited?.let {
+            val used = (usedMinutes[app] ?: 0) + (webMinutes[app] ?: 0)
+            val groupLeft = tightestGroup(app)?.let { g -> g.limitMinutes - groupUsed(g) }
+            if (opensOverLimit(it, justOpened) != null) 0 else minOf(it.limitOn() - used, groupLeft ?: Int.MAX_VALUE)
+        }
+        return when (val next = AskHowLong.next(state, now, left)) {
+            AskHowLong.Next.Open -> false
+            is AskHowLong.Next.Blocked -> {
+                if (now - (lastActionAt[app] ?: 0L) < 3_000L) return true
+                lastActionAt[app] = now
+                debug("$app: 3 picks used this hour, blocked until ${next.until}")
+                LimitActions.onAskBlock(
+                    this,
+                    PauseTarget(app, name, app, 0, openCount = null, reason = PauseReason.ASK_BLOCKED, picksLeft = 0, backAt = next.until)
+                )
+                true
+            }
+            is AskHowLong.Next.Ask -> {
+                if (PauseActivity.isShowing || now - (lastActionAt[app] ?: 0L) < 3_000L) return true
+                lastActionAt[app] = now
+                debug("$app: asking how long (${next.choices}, ${next.picksLeft} picks left, $left min left today)")
+                PauseActivity.launchAsk(this, app, name, next.choices, next.picksLeft, left)
+                true
+            }
+        }
+    }
+
+    /** The name an app shows on the phone ("Instagram"), remembered after the first look. */
+    private fun appLabel(pkg: String): String = appLabels.getOrPut(pkg) {
+        try {
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+        } catch (e: Exception) {
+            "This app"
+        }
     }
 
     /** Minutes used today by a shared budget's apps (app time + website time, only apps whose own limit is on). */

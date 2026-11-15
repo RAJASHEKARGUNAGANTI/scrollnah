@@ -46,6 +46,7 @@ All of this is stored only on your phone, inside the app's private storage:
 - Your answers on the Pause screen (for example "Bored") and whether you took a break, used for your weekly report
 - Your name, if you type one, so the app can say hello
 - Your mascot and light/dark choice
+- If you use "Ask how long": the apps you chose for it, and for each one the times you picked in the last hour
 - If Parent lock is on: a scrambled, salted hash of the PIN or pattern, never the PIN itself, whether fingerprint unlock is on, and the lock's report (up to 100 short entries such as "Display over other apps was turned off, Today 4:10 PM")
 
 ## What ScrollNah shares

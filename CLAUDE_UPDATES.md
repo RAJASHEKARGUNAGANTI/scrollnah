@@ -489,6 +489,29 @@ debug gallery (below).
   at launch, alarm 8:00 (Parent lock) -> note at 8:25 with the old 25-min window; Parent lock off -> alarm 9:00 ->
   note at 9:04, tap -> Home "New flower!" pop-up; flower found at 8:35 with Parent lock -> alarm tomorrow 8:00;
   pop-up seen at 7:30 -> 9:09 alarm posted nothing. 89 unit tests.
+## Ask how long (2026-11-15, developer idea; not released yet)
+- Settings > Ask how long (off by default) with its own app list (any app; `AddAppScreen` reused with `hide`/`onPick`,
+  route `ASK_ADD_APP_ROUTE`; saved as newline text `ask_how_long_apps` so backups keep it). Before a listed app opens,
+  the mascot asks "How long do you need Chrome?" on a lime page (`AskHowLongScreen`, PauseActivity's ask mode,
+  `launchAsk`): 5/10/15/20 min, never past the daily limit or a tighter shared budget (`AskHowLong.choices`: with 7
+  left, "5 min" and "7 min"), pill "Time 1 of 3 this hour", "Not now, take me home".
+- Developer's answers: after 3 picks the app is blocked until an hour after the first pick; 3 per app; the clock
+  keeps running after leaving; its own list in Settings. When the time runs out with the app in front:
+  `PauseReason.ASK_TIME_UP` ("Time's up for Chrome. That was your 5 minutes. You can open Chrome 2 more times this
+  hour..."), all used: `ASK_BLOCKED` ("That's 3 times this hour. Chrome opens again at 9:12 PM."). Both always the
+  locked Pause screen (`LimitActions.onAskBlock`, any strictness), not logged as Pause answers.
+- `BlockerService`: watches when only ask apps exist (`hasAskApps`), `checkAskHowLong` after focus/bedtime/work and
+  before the daily-limit check (an app with no time left, an open limit used up or a +5 pass goes to the usual
+  limit handling). Time-up is caught within 5 s of the end while the app is in front; otherwise the next open asks.
+  Per-app state in SharedPreferences (`AskSessions`, survives restarts). Beast: turning it off or removing an app
+  needs the cool-down (`loosenAsk`), unless Parent lock already asked for the PIN.
+- Emulator (Android 15, demo mode, clock moved with `cmd alarm set-time`): Chrome (no limit) asked 1 of 3 -> 5 min
+  -> time up "2 more times"; 2 of 3; 3 of 3 "After this, Chrome stays closed until the hour is up" -> time up "your
+  last time this hour, opens again at 9:12 PM" -> 4th open blocked; an hour later "Time 1 of 3" again; Not now ->
+  home; YouTube with 7 min left offered 5 and 7. 360x640 at font 1.3 fits (smaller mascot below 700 dp tall).
+  Emulator gotchas: after the quick-boot snapshot loads, Android may stop recording app switches (no "foreground"
+  lines in blocker.log) until `adb reboot`; this AVD still has the OLD `com.unscroll.app` install, whose own blocker
+  covers the screen: `pm disable-user com.unscroll.app` while testing, `pm enable` after.
 ## Payment-app note removed (2026-11-15, developer: "don't show that, not needed"; not released yet)
 - The once-a-day "[App] not opening?" notification when a UPI/bank app opened while the tracker was on is gone:
   `LimitActions.showPaymentAppHelp`, its check in `BlockerService.tick`, `TrackerOffReceiver` (+ manifest entry),

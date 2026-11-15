@@ -9,6 +9,8 @@ enum class Destination(val route: String, val label: String) {
 
 /** Not a bottom-nav tab, so it lives outside the enum. */
 const val ADD_APP_ROUTE = "add_app"
+/** Adding an app to "Ask how long" (from Settings). */
+const val ASK_ADD_APP_ROUTE = "ask_add_app"
 /** Preview of the Pause screen (opened from Limits; the real one is PauseActivity). */
 const val PAUSE_PREVIEW_ROUTE = "pause_preview"
 const val BREAKS_ROUTE = "breaks"
