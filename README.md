@@ -1,6 +1,6 @@
 # ScrollNah
 
-**[⬇ Download the latest APK](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/latest)** · Android 8.0+ · free, no account
+**[Get it on Google Play](https://play.google.com/store/apps/details?id=app.scrollnah)** · or **[⬇ download the latest APK](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/latest)** · Android 8.0+ · free, no account
 
 A playful Android app that helps you scroll less, with a mascot that reacts to how much you scroll: **Blobby** the orange blob, or **Bloomy**, a plant that grows a flower for every week you stay under your limits.
 
@@ -35,12 +35,17 @@ A playful Android app that helps you scroll less, with a mascot that reacts to h
 
 ## Install
 
+**From Google Play:** open [ScrollNah on Google Play](https://play.google.com/store/apps/details?id=app.scrollnah) and tap **Install**. Updates come by themselves.
+
+**Or the APK from GitHub** (new features arrive here first):
+
 1. Open the [latest release](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/latest) on your phone and download the `.apk` file.
 2. Open it and allow **Install unknown apps** for your browser or file manager when Android asks.
 3. Follow the short setup in the app.
 
 Good to know:
 - Play Protect may warn about an app from outside the Play Store. That's expected for direct downloads.
+- The Play and GitHub versions can't update each other (Play signs its installs with its own key). To switch, back up in **Settings > Backup**, uninstall, install the other one and restore.
 - On Android 13+, the optional Reels/Shorts tracker can be greyed out at first: go to **Settings > Apps > ScrollNah > ⋮ > Allow restricted settings**, then turn it on.
 - UPI and bank apps like BHIM may refuse to open while any app uses Accessibility, including the optional tracker. If that happens, turn the tracker off in Android's Accessibility settings while you pay (ScrollNah's **Settings > Permissions** links there), and back on later.
 
