@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/Icon";
+import { NewsletterForm } from "@/components/NewsletterForm";
 import { ScrollBuddy } from "@/components/ScrollBuddy";
 import { YearCalculator } from "@/components/YearCalculator";
 import { site } from "@/lib/site";
@@ -276,7 +277,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------- Newsletter (switched on in phase 2) ---------- */}
+      {/* ---------- Newsletter ---------- */}
       <section id="news" style={{ paddingTop: 0 }}>
         <div className="wrap">
           <div className="card panel news">
@@ -284,15 +285,7 @@ export default function Home() {
               <h2>Get the news</h2>
               <p className="muted" style={{ marginTop: 10 }}>New versions, new mascots, and what&apos;s coming. About once a month, never spam.</p>
             </div>
-            <div>
-              <form aria-label="Newsletter sign-up (opens soon)">
-                <input className="input" type="email" placeholder="you@example.com" disabled aria-label="Your email" style={{ flex: "1 1 220px" }} />
-                <button className="btn lime" type="button" disabled>Opens soon</button>
-              </form>
-              <p className="note" style={{ marginTop: 12 }}>
-                The newsletter opens soon. Until then, follow along on <a href={site.youtube}>YouTube</a> and <a href={site.instagram}>Instagram</a>.
-              </p>
-            </div>
+            <NewsletterForm />
           </div>
         </div>
       </section>

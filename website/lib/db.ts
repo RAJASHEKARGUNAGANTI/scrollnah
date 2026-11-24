@@ -33,6 +33,13 @@ export function getDb(): Promise<Db> | null {
           db.collection("feedback").createIndex({ createdAt: 1 }, { expireAfterSeconds: TWO_YEARS }),
           db.collection("rate_limits").createIndex({ at: 1 }, { expireAfterSeconds: 60 * 60 }),
           db.collection("rate_limits").createIndex({ key: 1 }),
+          // Newsletter: one entry per address; unconfirmed sign-ups delete themselves after 7 days.
+          db.collection("subscribers").createIndex({ email: 1 }, { unique: true }),
+          db.collection("subscribers").createIndex({ tokenHash: 1 }, { sparse: true }),
+          db.collection("subscribers").createIndex(
+            { createdAt: 1 },
+            { expireAfterSeconds: 7 * 24 * 60 * 60, partialFilterExpression: { status: "pending" } },
+          ),
         ]);
         return db;
       })

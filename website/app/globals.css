@@ -192,6 +192,7 @@ section { padding: 84px 0; }
 .news { display: grid; grid-template-columns: 1.1fr 1fr; gap: 26px; align-items: center; }
 @media (max-width: 800px) { .news { grid-template-columns: 1fr; } }
 .news form { display: flex; gap: 12px; flex-wrap: wrap; }
+.news form .note { margin: 0; }
 .coffee { display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center; background: var(--orange); color: var(--ink); border-color: var(--ink); box-shadow: 6px 6px 0 var(--ink); }
 .coffee .muted { color: #2a1a12; }
 .cup { width: 96px; height: 96px; border-radius: 26px; background: #fff; border: 2.5px solid var(--ink); display: grid; place-items: center; color: var(--ink); }

@@ -14,13 +14,13 @@ export default function PrivacyPage() {
         <div className="wrap">
           <span className="eyebrow">Privacy</span>
           <h1 style={{ fontSize: "clamp(38px, 6vw, 60px)" }}>Privacy, in plain words</h1>
-          <p className="muted">Last updated: 24 November 2026</p>
+          <p className="muted">Last updated: 25 November 2026</p>
         </div>
       </section>
       <div className="wrap"><div className="prose">
         <div className="card callout">
           The app collects nothing: it has no account, no ads, no analytics and no internet access. This website only keeps what you
-          type into the feedback form.
+          type into the feedback form or the newsletter box.
         </div>
 
         <h2>The ScrollNah app</h2>
@@ -44,6 +44,13 @@ export default function PrivacyPage() {
           deleted automatically after 2 years at the latest.
         </p>
         <p>
+          <strong>The newsletter.</strong> If you sign up, the website keeps your email address and when you signed up and
+          confirmed. You get one confirmation email first; nothing else is sent until you confirm, and unconfirmed sign-ups are
+          deleted after 7 days. The newsletter comes from ScrollNah&apos;s Gmail, about once a month, with no tracking pixels and
+          no tracked links. Every email has an unsubscribe link, and unsubscribing deletes your address straight away. Your
+          address is never sold or shared.
+        </p>
+        <p>
           <strong>Spam protection.</strong> The form uses Cloudflare Turnstile to check that you&apos;re a person (Cloudflare&apos;s privacy
           policy applies to that check). To stop floods of messages, the website keeps a scrambled version of your IP address for one hour,
           then deletes it. Your real IP address is never stored.
@@ -60,6 +67,7 @@ export default function PrivacyPage() {
         <h2>Your choices</h2>
         <ul>
           <li>The email box is optional. Leave it empty and your message is anonymous.</li>
+          <li>Newsletter: use the unsubscribe link at the bottom of any issue; your address is deleted straight away.</li>
           <li>
             Want your messages deleted? Send a note through the <Link href="/feedback">feedback form</Link> with the email address you
             used, and I&apos;ll delete them within 30 days.

@@ -75,9 +75,29 @@ The `website/` folder has to be on GitHub first (commit and push it).
 Before launch: Vercel's free plan is for non-commercial use, and a Buy Me a Coffee link is a grey area.
 Ask Vercel Support in one line whether a donation link is fine on Hobby.
 
+## The newsletter
+
+People sign up in the box on the home page. They get one confirmation email and must press
+"Yes, sign me up" on the website (a button, so email scanners can't sign anyone up). Unconfirmed
+sign-ups delete themselves after 7 days; unsubscribing deletes the address straight away. Each
+issue has a personal unsubscribe link and Gmail's one-click unsubscribe. No tracking.
+
+**Sending an issue** (from the `website` folder on your Mac):
+
+1. Write the issue in `newsletter/issues/`, e.g. copy `2026-12-first-issue.md`: first line
+   `Subject: ...`, an empty line, then plain text.
+2. Dry run (sends nothing, shows how many people would get it):
+   `node scripts/send-newsletter.mjs newsletter/issues/2026-12-first-issue.md`
+3. Send it to yourself first: add `--test`.
+4. Send it to everyone: add `--send` (about 2 seconds per email).
+
+`HASH_SALT` signs the unsubscribe links, so it must be **the same in `.env` and in Vercel**; the
+script checks this against `/api/health` before sending. Gmail allows about 500 emails a day; past
+~450 subscribers, move to an email service (for example Resend or Brevo with your own domain).
+
 ## Privacy rules for this site
 - No analytics, no ads, no tracking cookies. Fonts and images are served from this site.
-- The form keeps only what people type; the email box is optional. Real IP addresses are never stored
+- The forms keep only what people type; the feedback form's email box is optional. Real IP addresses are never stored
   (a scrambled version is kept for 1 hour for the spam limit).
 - `/feedback` has no Buy Me a Coffee link on purpose: the Google Play version of the app links there.
 - If you add anything that collects data, update `app/privacy/page.tsx` first.

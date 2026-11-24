@@ -1,6 +1,7 @@
 // GET /api/health: a quick check of the live site. It says which settings are there (yes/no only, never
 // the values), whether the database answers, and whether the Turnstile secret is valid. Open it in a browser.
 import { getDb } from "@/lib/db";
+import { keyFingerprint, newsletterReady } from "@/lib/newsletter";
 
 export const dynamic = "force-dynamic"; // check every time, never a cached answer
 
@@ -78,6 +79,8 @@ export async function GET() {
       email: has("GMAIL_USER") && has("GMAIL_APP_PASSWORD") ? "set" : "not set",
       turnstileSiteKey: has("NEXT_PUBLIC_TURNSTILE_SITE_KEY") ? "set" : "not set",
       turnstileSecret,
+      newsletter: newsletterReady() ? "ready" : "needs HASH_SALT (16+ characters)",
+      newsletterKey: keyFingerprint(), // the send script checks this matches the one on the Mac
     },
     { headers: { "Cache-Control": "no-store" } },
   );
