@@ -158,7 +158,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}, onAdd
         scope.launch {
             val guarded = strictness == Strictness.BEAST && !ParentLock.isOn // Parent lock already asked for the PIN
             val state = BeastGuard.state()
-            if (guarded && state !is BeastGuard.State.Open) {
+            if (guarded && !state.allowsLoosening) {
                 askGuard = state
                 return@launch
             }

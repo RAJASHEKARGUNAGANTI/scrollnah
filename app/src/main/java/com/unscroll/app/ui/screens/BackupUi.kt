@@ -65,7 +65,7 @@ internal fun RestoreBackupAction(content: @Composable (start: () -> Unit) -> Uni
         if (container.settings.strictness.first() != Strictness.BEAST) return true
         if (ParentLock.isOn) return true // Settings already needed the parent's PIN
         val state = BeastGuard.state()
-        if (state is BeastGuard.State.Open) return true
+        if (state.allowsLoosening) return true // cool-down done, or settling in after setup
         guard = state
         return false
     }

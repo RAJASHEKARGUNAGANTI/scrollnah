@@ -65,6 +65,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.unscroll.app.appContainer
 import com.unscroll.app.data.DEFAULT_APP_LIMIT_MINUTES
 import com.unscroll.app.data.InstalledApp
+import com.unscroll.app.data.BeastGuard
 import com.unscroll.app.data.Strictness
 import com.unscroll.app.data.db.TrackedApp
 import com.unscroll.app.data.launchableApps
@@ -167,6 +168,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 container.database.trackedAppDao().insert(TrackedApp(app.packageName, app.label, DEFAULT_APP_LIMIT_MINUTES))
             }
             container.settings.setOnboarded(true)
+            BeastGuard.startSettlingIn() // the first hour: limits can be fine-tuned freely, even in Beast mode
             BlockerService.startIfNeeded(context)
             onFinished()
         }
@@ -325,7 +327,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                 body = when (strictness) {
                     Strictness.CHILL -> "A notification when you hit a limit. You can take 5 more minutes."
                     Strictness.FIRM -> "The Pause screen pops up at your limit. 5 more minutes after a breath."
-                    Strictness.BEAST -> "Apps lock at your limit until midnight. No extra minutes."
+                    Strictness.BEAST -> "Apps lock at your limit until midnight. No extra minutes. After your first hour, giving yourself more time needs a 10-minute wait."
                 },
                 button = "Next",
                 onNext = { step++ }

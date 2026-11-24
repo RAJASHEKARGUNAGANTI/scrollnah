@@ -280,13 +280,12 @@ fun LimitsScreen(
     /** Runs [save] now, unless it gives more time in Beast mode without a finished cool-down. */
     fun guarded(isLoosening: Boolean = loosens, save: () -> Unit) {
         if (!isLoosening) return save()
-        when (BeastGuard.state()) {
-            is BeastGuard.State.Open -> {
-                save()
-                BeastGuard.used() // the next loosening needs a new cool-down
-                guardTick++
-            }
-            else -> showGuard = true
+        if (BeastGuard.state().allowsLoosening) {
+            save()
+            BeastGuard.used() // the next loosening needs a new cool-down (settling in after setup isn't used up)
+            guardTick++
+        } else {
+            showGuard = true
         }
     }
 
@@ -585,6 +584,7 @@ fun LimitsScreen(
                     is BeastGuard.State.Waiting -> "Cool-down: ${minutesUp(s.msLeft)} min left before you can give yourself more time."
                     is BeastGuard.State.Open -> "Cool-down done: you can loosen limits for the next ${minutesUp(s.msLeft)} min."
                     BeastGuard.State.Locked -> "Beast mode: giving yourself more time needs a 10-minute cool-down."
+                    is BeastGuard.State.Settling -> "Settling in: change anything freely for the next ${minutesUp(s.msLeft)} min. After that, giving yourself more time needs a 10-minute cool-down."
                 }
                 Text(status, style = MaterialTheme.typography.bodyMedium)
             }
