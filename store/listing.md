@@ -72,7 +72,7 @@ Hi, I'm ScrollNah! Set a daily budget for the apps that eat your day, and Blobby
 - Tags to pick if offered: Digital wellbeing, Self-improvement, Habit tracker
 
 ## Contact details
-- Website: https://rajashekargunaganti.github.io/scrollnah/
+- Website: https://scrollnah.vercel.app (since 2026-11-24; was https://rajashekargunaganti.github.io/scrollnah/)
 - Email: (your support email, required by Play; it is shown publicly)
 - Privacy policy: https://rajashekargunaganti.github.io/scrollnah/privacy-policy
 

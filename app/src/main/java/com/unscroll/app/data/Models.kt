@@ -12,33 +12,28 @@ enum class Strictness(val title: String, val subtitle: String) {
 
 val pauseReasons = listOf("Bored", "Replying to someone", "Pure habit", "Work thing")
 
-/** The app's public GitHub repo (source code + Discussions for feedback). */
+/** The app's public GitHub repo (source code). */
 const val REPO_URL = "https://github.com/RAJASHEKARGUNAGANTI/scrollnah"
-const val FEEDBACK_URL = "$REPO_URL/discussions"
 
-/** Feedback types and the GitHub Discussions category each one is posted in. */
-enum class FeedbackType(val label: String, val category: String, val titlePrefix: String) {
-    IDEA("Idea", "ideas", ""),
-    BUG("Bug", "general", "Bug: "),
-    QUESTION("Question", "q-a", "")
+/** The ScrollNah website (the `website/` folder, hosted on Vercel). */
+const val WEBSITE_URL = "https://scrollnah.vercel.app"
+
+/** The three kinds of message on the website's feedback page (its `?type=` values). */
+enum class FeedbackType(val id: String, val title: String, val detail: String) {
+    FEEDBACK("feedback", "Send feedback", "What you like, or what annoys you"),
+    FEATURE("feature", "Request a feature", "Something you wish ScrollNah did"),
+    BUG("bug", "Report a bug", "Your app version and phone are filled in")
 }
 
 /**
- * Link that opens a new GitHub Discussion with the user's message already filled in.
- * The user still reviews it and presses "Start discussion" on GitHub themselves.
+ * Link to the website's feedback form with the app details filled in, so people don't have to look
+ * them up. The website shows them in editable boxes; nothing is sent until the person presses Send there.
+ * [store] is the app version's store, "play" or "github" (BuildConfig.FLAVOR).
  */
-fun feedbackUrl(type: FeedbackType, message: String, appVersion: String): String {
-    val text = message.trim()
-    val firstLine = text.lineSequence().first().take(60)
-    val title = type.titlePrefix + firstLine + if (text.length > firstLine.length) "..." else ""
-    val body = buildString {
-        appendLine(text)
-        appendLine()
-        appendLine("---")
-        append("ScrollNah $appVersion · Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-    }
+fun websiteFeedbackUrl(type: FeedbackType, appVersion: String, android: String, device: String, store: String): String {
     fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
-    return "$FEEDBACK_URL/new?category=${type.category}&title=${enc(title)}&body=${enc(body)}"
+    val src = if (store == "play" || store == "github") store else "unknown"
+    return "$WEBSITE_URL/feedback?type=${type.id}&v=${enc(appVersion)}&android=${enc(android)}&device=${enc(device)}&src=$src"
 }
 
 const val MIN_LIMIT_MINUTES = 5

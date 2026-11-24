@@ -49,10 +49,15 @@ android {
             dimension = "store"
             isDefault = true
             buildConfigField("boolean", "TRACKER_AVAILABLE", "true")
+            // Settings > About > Website: the home page has a Buy Me a Coffee link, so only this version links it.
+            buildConfigField("boolean", "WEBSITE_LINK", "true")
         }
         create("play") {
             dimension = "store"
             buildConfigField("boolean", "TRACKER_AVAILABLE", "true")
+            // Play's rules on donation links are strict: the Play version only opens the website's
+            // feedback page, which has no coffee link.
+            buildConfigField("boolean", "WEBSITE_LINK", "false")
         }
     }
 

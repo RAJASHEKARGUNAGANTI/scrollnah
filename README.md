@@ -2,6 +2,8 @@
 
 **[Get it on Google Play](https://play.google.com/store/apps/details?id=app.scrollnah)** · or **[⬇ download the latest APK](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/releases/latest)** · Android 8.0+ · free, no account
 
+Website, feedback form and what's coming next: **[scrollnah.vercel.app](https://scrollnah.vercel.app)**
+
 A playful Android app that helps you scroll less, with a mascot that reacts to how much you scroll: **Blobby** the orange blob, or **Bloomy**, a plant that grows a flower for every week you stay under your limits.
 
 - **Daily limits** for any app (a different one on weekends if you like), plus separate limits for **Instagram Reels** and **YouTube Shorts**.

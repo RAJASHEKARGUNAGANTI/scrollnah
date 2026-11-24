@@ -4,7 +4,7 @@ title: ScrollNah privacy policy
 
 # ScrollNah privacy policy
 
-_Last updated: 15 November 2026_
+_Last updated: 24 November 2026_
 
 ScrollNah is an Android app that helps you spend less time on the apps you choose, with a friendly mascot (Blobby or Bloomy). This policy explains what the app looks at, what it keeps, and where it keeps it.
 
@@ -57,7 +57,7 @@ If you tap **Share** on a "week in review" card, ScrollNah makes a picture of th
 
 If you tap **Settings > Data > Save a backup**, ScrollNah writes one file with your limits, settings, history, streak and garden to the place you choose (for example your Downloads folder or a cloud drive app you pick). ScrollNah does not upload it anywhere itself. Anyone who has that file can read your usage history, so keep it somewhere private. **Restore a backup** only reads a file you pick.
 
-The only link out of the app is **Settings > Feedback**, which opens a GitHub Discussions page in your browser with your message filled in, plus your app version, Android version and phone model to help with bugs. Nothing is sent unless you choose to post it on GitHub yourself, where GitHub's own privacy policy applies.
+The app's links out are in Settings. **Settings > Feedback** opens the feedback form on the ScrollNah website in your browser, with your app version, Android version and phone model filled in to help with bugs (you can change or remove them there). Nothing is sent unless you press Send on the website; what the website keeps is explained on its [privacy page](https://scrollnah.vercel.app/privacy). **Settings > About** links to the website (GitHub version) and to the source code on GitHub. The app itself still has no internet access.
 
 ## Deleting your data
 
@@ -75,4 +75,4 @@ If this policy changes, the new version will be posted on this page with a new d
 
 ## Contact
 
-Questions? Start a thread in [ScrollNah Discussions on GitHub](https://github.com/RAJASHEKARGUNAGANTI/scrollnah/discussions).
+Questions? Use the [feedback form on the ScrollNah website](https://scrollnah.vercel.app/feedback), no account needed.
