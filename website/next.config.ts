@@ -10,6 +10,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  agentRules: false, // don't write an AGENTS.md file into the project when `npm run dev` starts
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

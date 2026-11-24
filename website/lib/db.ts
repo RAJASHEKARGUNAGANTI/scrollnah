@@ -13,7 +13,8 @@ export function getDb(): Promise<Db> | null {
   const uri = process.env.MONGODB_URI;
   if (!uri) return null;
   if (!globalThis._scrollnahDb) {
-    globalThis._scrollnahDb = new MongoClient(uri, { maxPoolSize: 5 })
+    // Give up after 8 s instead of the default 30 s, so a wrong address fails with a clear error quickly.
+    globalThis._scrollnahDb = new MongoClient(uri, { maxPoolSize: 5, serverSelectionTimeoutMS: 8000 })
       .connect()
       .then(async (client) => {
         const db = client.db(process.env.MONGODB_DB || "scrollnah");
