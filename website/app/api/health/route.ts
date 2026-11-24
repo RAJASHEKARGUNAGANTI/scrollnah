@@ -72,6 +72,8 @@ export async function GET() {
   return Response.json(
     {
       build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
+      // Which deployment answered (changes on every deploy and redeploy, unlike the commit above).
+      deployment: (process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_URL || "local").slice(-10),
       database,
       email: has("GMAIL_USER") && has("GMAIL_APP_PASSWORD") ? "set" : "not set",
       turnstileSiteKey: has("NEXT_PUBLIC_TURNSTILE_SITE_KEY") ? "set" : "not set",
