@@ -37,7 +37,7 @@ export function FeedbackForm({ initial }: { initial: Initial }) {
     e.preventDefault();
     setError("");
     if (message.trim().length < 3) return setError("Please write a few words.");
-    if (turnstileEnabled && !token) return setError("Please wait a second for the spam check, then try again.");
+    if (turnstileEnabled && !token) return setError("Please tick \"Verify you are human\" first, then press Send it.");
     setStatus("sending");
     try {
       const res = await fetch("/api/feedback", {
