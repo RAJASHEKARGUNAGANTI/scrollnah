@@ -6,6 +6,38 @@ export const dynamic = "force-dynamic"; // check every time, never a cached answ
 
 const has = (name: string) => Boolean(process.env[name]);
 
+/** Looks at the shape of MONGODB_URI for the usual copy-paste slips. Never returns any part of it. */
+function addressSlip(): string {
+  const uri = (process.env.MONGODB_URI || "").trim().replace(/^(["'])(.*)\1$/, "$2");
+  if (uri.startsWith("MONGODB_URI=")) return "remove 'MONGODB_URI=' from the start of the value";
+  if (!/^mongodb(\+srv)?:\/\//.test(uri)) return "the value must start with mongodb+srv://";
+  if (/[<>]/.test(uri)) return "remove the < > around the password";
+  // The password sits between "user:" and the last "@" before the host.
+  const userInfo = uri.replace(/^mongodb(\+srv)?:\/\//, "").split("/")[0];
+  const at = userInfo.lastIndexOf("@");
+  const password = at > 0 && userInfo.indexOf(":") > 0 ? userInfo.slice(userInfo.indexOf(":") + 1, at) : "";
+  if (/[@:/?#[\]]|%(?![0-9A-Fa-f]{2})/.test(password)) {
+    return "the password has special characters that must be encoded (@ = %40, : = %3A, / = %2F, # = %23, ? = %3F, % = %25)";
+  }
+  if (/\s/.test(uri)) return "there is a space or line break inside the value";
+  return "paste it again in Vercel (starts with mongodb+srv://, no quotes, no name, real password)";
+}
+
+/** A plain hint for the usual database problems. Never includes the address or password. */
+function explainDbError(err: unknown): string {
+  const name = err instanceof Error ? err.name : "";
+  const message = err instanceof Error ? err.message.toLowerCase() : "";
+  // Brackets left around the password still parse, then fail at login, so check them first.
+  if (/[<>]/.test(process.env.MONGODB_URI || "")) return "MONGODB_URI: remove the < > around the password";
+  if (name === "MongoParseError" || message.includes("invalid scheme") || message.includes("connection string") || name === "TypeError" || name === "URIError") {
+    return `MONGODB_URI isn't a valid address: ${addressSlip()}`;
+  }
+  if (message.includes("auth")) return "wrong database username or password in MONGODB_URI";
+  if (message.includes("enotfound") || message.includes("querysrv")) return "can't find the cluster: check the part after @ in MONGODB_URI";
+  if (name === "MongoServerSelectionError") return "can't reach the cluster (Atlas > Network Access, or the cluster is paused)";
+  return `can't connect (${name || "unknown error"}, see Vercel Logs)`;
+}
+
 export async function GET() {
   // Database: connect and ping.
   let database = "not set up (MONGODB_URI missing)";
@@ -17,7 +49,7 @@ export async function GET() {
       database = "ok";
     } catch (err) {
       console.error("health: database", err);
-      database = "can't connect (see Vercel Logs)";
+      database = explainDbError(err);
     }
   }
 

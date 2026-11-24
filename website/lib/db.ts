@@ -10,11 +10,20 @@ const TWO_YEARS = 2 * 365 * 24 * 60 * 60;
 
 /** The database, or null when MONGODB_URI isn't set yet (the forms then say "not switched on yet"). */
 export function getDb(): Promise<Db> | null {
-  const uri = process.env.MONGODB_URI;
+  // Forgive copy-paste extras: spaces around the value, or quotes around it.
+  const uri = process.env.MONGODB_URI?.trim().replace(/^(["'])(.*)\1$/, "$2");
   if (!uri) return null;
   if (!globalThis._scrollnahDb) {
-    // Give up after 8 s instead of the default 30 s, so a wrong address fails with a clear error quickly.
-    globalThis._scrollnahDb = new MongoClient(uri, { maxPoolSize: 5, serverSelectionTimeoutMS: 8000 })
+    let client: MongoClient;
+    try {
+      // Give up after 8 s instead of the default 30 s, so a wrong address fails with a clear error quickly.
+      client = new MongoClient(uri, { maxPoolSize: 5, serverSelectionTimeoutMS: 8000 });
+    } catch (err) {
+      // A badly formed address fails right here. Hand it back as a failed promise, so the
+      // callers' try/catch reports it instead of the whole request crashing.
+      return Promise.reject(err);
+    }
+    globalThis._scrollnahDb = client
       .connect()
       .then(async (client) => {
         const db = client.db(process.env.MONGODB_DB || "scrollnah");
