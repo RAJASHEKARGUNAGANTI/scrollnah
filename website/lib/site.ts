@@ -9,7 +9,7 @@ export const site = {
   youtube: "https://www.youtube.com/@meandmytheta",
   instagram: "https://www.instagram.com/meandmytheta",
   // Fill these in when you have them. Empty = the button shows "coming soon" (coffee) or is hidden (LinkedIn).
-  coffee: "", // e.g. "https://buymeacoffee.com/yourname"
+  coffee: "https://www.buymeacoffee.com/rajashekargunaganti",
   linkedin: "", // e.g. "https://www.linkedin.com/in/yourname"
 };
 
