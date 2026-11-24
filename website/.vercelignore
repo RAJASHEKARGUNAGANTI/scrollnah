@@ -1,0 +1,6 @@
+# Never upload secret files from this Mac to Vercel. Secrets go in Vercel's Environment Variables instead.
+.env
+.env.*
+!.env.example
+node_modules
+.next
