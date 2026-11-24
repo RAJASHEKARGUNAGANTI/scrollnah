@@ -9,10 +9,15 @@ import com.unscroll.app.service.FocusRules
  * more opens, switching a limit off, removing an app, a lower strictness, a shorter bedtime or work hours) needs a
  * 10-minute cool-down first. After it, there are 15 minutes to make the change.
  * Making things stricter never waits.
+ *
+ * Settling in (2026-11-24, developer feedback): for the first hour after setup, everything can be changed
+ * freely. New users are still finding the right numbers (and may be restoring a backup on a new phone);
+ * a cool-down right away felt like the app was broken.
  */
 object BeastGuard {
     const val WAIT_MS = 10 * 60_000L
     const val WINDOW_MS = 15 * 60_000L
+    const val SETTLING_MS = 60 * 60_000L
 
     sealed class State {
         /** No cool-down running: loosening has to wait. */
@@ -21,10 +26,20 @@ object BeastGuard {
         data class Waiting(val msLeft: Long) : State()
         /** Loosening allowed for [msLeft] more. */
         data class Open(val msLeft: Long) : State()
+        /** Just after setup: anything can be changed freely for [msLeft] more, no cool-down. */
+        data class Settling(val msLeft: Long) : State()
+
+        /** True when giving yourself more time is allowed right now. */
+        val allowsLoosening: Boolean get() = this is Open || this is Settling
     }
 
-    /** Where the cool-down is, given when it ends ([unlockAt], 0 = never started). Pure, for tests. */
-    fun stateAt(unlockAt: Long, now: Long): State = when {
+    /**
+     * Where the cool-down is, given when it ends ([unlockAt], 0 = never started) and when settling in
+     * after setup ends ([settleUntil], 0 = not settling). Pure, for tests.
+     */
+    fun stateAt(unlockAt: Long, now: Long, settleUntil: Long = 0L): State = when {
+        // Settling in. (If the clock was moved back, more than an hour can seem left: that doesn't count.)
+        now < settleUntil && settleUntil - now <= SETTLING_MS -> State.Settling(settleUntil - now)
         unlockAt <= 0L || now >= unlockAt + WINDOW_MS -> State.Locked
         now < unlockAt -> State.Waiting(unlockAt - now)
         else -> State.Open(unlockAt + WINDOW_MS - now)
@@ -104,9 +119,14 @@ object BeastGuard {
         prefs = context.getSharedPreferences("beast_guard", Context.MODE_PRIVATE)
     }
 
-    fun state(now: Long = System.currentTimeMillis()): State = stateAt(prefs.getLong("unlock_at", 0L), now)
+    fun state(now: Long = System.currentTimeMillis()): State =
+        stateAt(prefs.getLong("unlock_at", 0L), now, prefs.getLong("settle_until", 0L))
 
     fun startCooldown(now: Long = System.currentTimeMillis()) = prefs.edit().putLong("unlock_at", now + WAIT_MS).apply()
+
+    /** Called when setup finishes: an hour to fine-tune everything before the cool-down applies. */
+    fun startSettlingIn(now: Long = System.currentTimeMillis()) =
+        prefs.edit().putLong("settle_until", now + SETTLING_MS).apply()
 
     /** After a loosening change is saved, the next one needs a new cool-down. */
     fun used() = prefs.edit().remove("unlock_at").apply()

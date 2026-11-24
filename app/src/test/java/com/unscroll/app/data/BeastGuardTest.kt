@@ -24,6 +24,39 @@ class BeastGuardTest {
     }
 
     @Test
+    fun settlingInAfterSetupAllowsChangesForAnHour() {
+        val setupDone = 5_000_000L
+        val settleUntil = setupDone + BeastGuard.SETTLING_MS
+        // Right after setup, and still 1 minute before the hour is up: free to change anything.
+        assertEquals(BeastGuard.State.Settling(60 * min), BeastGuard.stateAt(0L, setupDone, settleUntil))
+        assertEquals(BeastGuard.State.Settling(1 * min), BeastGuard.stateAt(0L, settleUntil - 1 * min, settleUntil))
+        assertTrue(BeastGuard.stateAt(0L, setupDone, settleUntil).allowsLoosening)
+        // After the hour, the normal cool-down rule is back.
+        assertEquals(BeastGuard.State.Locked, BeastGuard.stateAt(0L, settleUntil, settleUntil))
+        assertFalse(BeastGuard.stateAt(0L, settleUntil, settleUntil).allowsLoosening)
+    }
+
+    @Test
+    fun settlingInWinsOverARunningCoolDown() {
+        val now = 9_000_000L
+        assertEquals(BeastGuard.State.Settling(30 * min), BeastGuard.stateAt(now + 5 * min, now, now + 30 * min))
+    }
+
+    @Test
+    fun movingTheClockBackDoesNotStretchSettlingIn() {
+        val settleUntil = 9_000_000L + BeastGuard.SETTLING_MS
+        // The clock was set back 3 hours: more than an hour seems left, so it doesn't count.
+        assertEquals(BeastGuard.State.Locked, BeastGuard.stateAt(0L, settleUntil - 4 * 60 * min, settleUntil))
+    }
+
+    @Test
+    fun onlyOpenAndSettlingAllowLoosening() {
+        assertTrue(BeastGuard.State.Open(1).allowsLoosening)
+        assertFalse(BeastGuard.State.Waiting(1).allowsLoosening)
+        assertFalse(BeastGuard.State.Locked.allowsLoosening)
+    }
+
+    @Test
     fun moreMinutesOrSwitchingOffIsLooser() {
         assertTrue(BeastGuard.limitLoosened(30, true, null, 35, true, null))
         assertTrue(BeastGuard.limitLoosened(30, true, null, 30, false, null))
