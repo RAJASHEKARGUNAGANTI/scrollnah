@@ -34,7 +34,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,14 +54,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.appContainer
-import com.unscroll.app.data.FEEDBACK_URL
 import com.unscroll.app.data.Growth
 import com.unscroll.app.data.MascotTheme
 import com.unscroll.app.data.MoodLevel
 import com.unscroll.app.data.PotProgress
+import com.unscroll.app.BuildConfig
 import com.unscroll.app.data.FeedbackType
 import com.unscroll.app.data.REPO_URL
-import com.unscroll.app.data.feedbackUrl
+import com.unscroll.app.data.WEBSITE_URL
+import com.unscroll.app.data.websiteFeedbackUrl
 import com.unscroll.app.service.Allowances
 import com.unscroll.app.service.FeatureWatchService
 import com.unscroll.app.service.FocusRules
@@ -70,7 +70,6 @@ import com.unscroll.app.service.SetupChecks
 import com.unscroll.app.data.SetupFacts
 import com.unscroll.app.data.SetupStep
 import com.unscroll.app.ui.components.ConfirmPopupsLink
-import com.unscroll.app.ui.components.NeoButtonPrimary
 import com.unscroll.app.ui.components.NeoCard
 import com.unscroll.app.ui.mascot.LocalMascot
 import com.unscroll.app.ui.mascot.Mascot
@@ -324,11 +323,19 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
 
         item {
             Section("Feedback") {
-                FeedbackForm(
-                    onSend = { type, message ->
+                // Each row opens the website's form with the app details filled in (no account needed).
+                Text("Ideas, bugs or questions? Tell me on the ScrollNah website. No account needed.", style = MaterialTheme.typography.bodyMedium)
+                FeedbackType.entries.forEach { type ->
+                    SettingRow(type.title, type.detail, "Open", onClick = {
                         val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
-                        openLink(context, feedbackUrl(type, message, version))
-                    }
+                        val device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+                        openLink(context, websiteFeedbackUrl(type, version, android.os.Build.VERSION.RELEASE, device, BuildConfig.FLAVOR))
+                    })
+                }
+                Text(
+                    "Opens the website in your browser. Your app version, Android version and phone model are filled in " +
+                        "to help with bugs; you can change or remove them before sending.",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
@@ -343,17 +350,19 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}) {
                     "Everything stays on your phone. ScrollNah has no account and sends nothing anywhere.",
                     style = MaterialTheme.typography.bodyMedium
                 )
+                if (BuildConfig.WEBSITE_LINK) {
+                    SettingRow(
+                        "Website",
+                        "Features, what's coming next, and a way to say thanks",
+                        "Visit",
+                        onClick = { openLink(context, WEBSITE_URL) }
+                    )
+                }
                 SettingRow(
                     "Source code",
                     "ScrollNah is open on GitHub",
                     "View",
                     onClick = { openLink(context, REPO_URL) }
-                )
-                SettingRow(
-                    "All discussions",
-                    "See what others suggested",
-                    "View",
-                    onClick = { openLink(context, FEEDBACK_URL) }
                 )
             }
         }
@@ -468,52 +477,6 @@ private fun openLink(context: Context, url: String) {
     } catch (e: Exception) {
         Toast.makeText(context, "No browser found to open the page", Toast.LENGTH_SHORT).show()
     }
-}
-
-/** Pick a type, write a message, then continue on GitHub with it filled in. */
-@Composable
-private fun FeedbackForm(onSend: (FeedbackType, String) -> Unit) {
-    var type by remember { mutableStateOf(FeedbackType.IDEA) }
-    var message by remember { mutableStateOf("") }
-
-    Text("Ideas, bugs or questions? Tell us here.", style = MaterialTheme.typography.bodyMedium)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FeedbackType.entries.forEach { option ->
-            ChoicePill(option.label, selected = type == option) { type = option }
-        }
-    }
-    OutlinedTextField(
-        value = message,
-        onValueChange = { message = it.take(2000) },
-        placeholder = {
-            Text(
-                when (type) {
-                    FeedbackType.IDEA -> "It would be great if..."
-                    FeedbackType.BUG -> "What happened, and what did you expect?"
-                    FeedbackType.QUESTION -> "What would you like to know?"
-                }
-            )
-        },
-        minLines = 3,
-        maxLines = 6,
-        modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Neo.colors.background,
-            unfocusedContainerColor = Neo.colors.background,
-            focusedBorderColor = Neo.colors.outline,
-            unfocusedBorderColor = Neo.colors.outline
-        )
-    )
-    NeoButtonPrimary(
-        "Continue on GitHub",
-        onClick = { onSend(type, message) },
-        enabled = message.isNotBlank()
-    )
-    Text(
-        "Opens GitHub with your message filled in. You'll need a free GitHub account to post. " +
-            "Your app version and phone model are added to help with bugs.",
-        style = MaterialTheme.typography.bodyMedium
-    )
 }
 
 /** Snapshot of permission switches, re-read each time the screen resumes. */

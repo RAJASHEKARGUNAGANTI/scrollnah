@@ -17,8 +17,8 @@ android {
         applicationId = "app.scrollnah"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.3.0"
+        versionCode = 23
+        versionName = "2.3.1"
     }
 
     // Release signing reads ../keystore.properties (private, not in git). Without it,
@@ -47,10 +47,15 @@ android {
             dimension = "store"
             isDefault = true
             buildConfigField("boolean", "TRACKER_AVAILABLE", "true")
+            // Settings > About > Website: the home page has a Buy Me a Coffee link, so only this version links it.
+            buildConfigField("boolean", "WEBSITE_LINK", "true")
         }
         create("play") {
             dimension = "store"
             buildConfigField("boolean", "TRACKER_AVAILABLE", "false")
+            // Play's rules on donation links are strict: the Play version only opens the website's
+            // feedback page, which has no coffee link.
+            buildConfigField("boolean", "WEBSITE_LINK", "false")
         }
     }
 
