@@ -232,7 +232,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <h3 className="group-title" style={{ marginTop: 40 }}>On the idea list <span className="badge">Vote for what you want next</span></h3>
+          <h3 className="group-title" id="ideas" style={{ marginTop: 40 }}>On the idea list <span className="badge">Vote for what you want next</span></h3>
           <IdeaVotes />
         </div>
       </section>

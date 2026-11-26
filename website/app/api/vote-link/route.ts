@@ -2,7 +2,7 @@
 // scrambled fingerprint of it, so one person can't vote twice (lib/votes.ts).
 // The answer is the same whether or not this person voted before, so nobody can check who did.
 import { getDb } from "@/lib/db";
-import { MAX_PER_IDEA, VOTE_BUDGET } from "@/lib/ideas";
+import { IDEA_IDS, MAX_PER_IDEA, VOTE_BUDGET } from "@/lib/ideas";
 import { sendVoteLinkEmail } from "@/lib/mail";
 import { newToken, newsletterReady, originOf } from "@/lib/newsletter";
 import { clientIp, hashIp, turnstileOk, underLimit } from "@/lib/spam";
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const raw = await req.json().catch(() => null);
   const parsed = VoteLinkSchema.safeParse(raw);
   if (!parsed.success) return json({ error: parsed.error.issues[0]?.message ?? "Please check your email." }, 400);
-  const { email, website, turnstileToken } = parsed.data;
+  const { email, website, turnstileToken, idea } = parsed.data;
 
   if (website) return json({ ok: true }); // a bot filled in the hidden field
 
@@ -35,7 +35,9 @@ export async function POST(req: Request) {
     // Asked again within a few minutes: the first email is still on its way, so don't send another.
     if (!(await newVoteLink(db, voterKey(email), token))) return json({ ok: true });
     try {
-      await sendVoteLinkEmail(email, `${originOf(req)}/vote?t=${encodeURIComponent(token)}`, VOTE_BUDGET, MAX_PER_IDEA);
+      // The vote page starts with one vote on the idea whose button was pressed (if it's a real idea).
+      const ideaPart = IDEA_IDS.has(idea) ? `&idea=${idea}` : "";
+      await sendVoteLinkEmail(email, `${originOf(req)}/vote?t=${encodeURIComponent(token)}${ideaPart}`, VOTE_BUDGET, MAX_PER_IDEA);
     } catch (err) {
       await dropVoteLink(db, token); // so asking again sends a new email straight away
       throw err;

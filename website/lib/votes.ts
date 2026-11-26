@@ -20,6 +20,7 @@ export const VoteLinkSchema = z.object({
   email: z.email("That email doesn't look right.").max(200).transform((e) => e.trim()),
   website: z.string().optional().default(""), // hidden trap field, like the other forms
   turnstileToken: z.string().max(4096).optional().default(""),
+  idea: z.string().max(60).optional().default(""), // the idea whose Vote button was pressed
 });
 
 /**

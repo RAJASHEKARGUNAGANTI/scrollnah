@@ -13,9 +13,11 @@ type Props = {
   sentText: (email: string) => ReactNode;
   /** Small print under the box. */
   children?: ReactNode;
+  /** Extra fields sent along (e.g. which idea the vote link is for). */
+  extra?: Record<string, string>;
 };
 
-export function EmailLinkForm({ endpoint, button, sentTitle, sentText, children }: Props) {
+export function EmailLinkForm({ endpoint, button, sentTitle, sentText, children, extra }: Props) {
   const [email, setEmail] = useState("");
   const [trap, setTrap] = useState(""); // hidden from people; bots fill it in
   const [engaged, setEngaged] = useState(false);
@@ -34,7 +36,7 @@ export function EmailLinkForm({ endpoint, button, sentTitle, sentText, children 
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, website: trap, turnstileToken: token }),
+        body: JSON.stringify({ ...extra, email, website: trap, turnstileToken: token }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) return setStatus("sent");

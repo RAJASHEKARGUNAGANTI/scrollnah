@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { VoteBoard } from "@/components/VoteBoard";
 import { getDb } from "@/lib/db";
-import { MAX_PER_IDEA, VOTE_BUDGET, type Picks } from "@/lib/ideas";
+import { IDEAS, IDEA_IDS, MAX_PER_IDEA, VOTE_BUDGET, type Picks } from "@/lib/ideas";
 import { picksOf, voteTotals, voterForLink } from "@/lib/votes";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +27,8 @@ async function load(token: string): Promise<Loaded> {
 
 // The link in the vote email lands here. Opening it doesn't vote: only "Save my votes" does, so email apps
 // that open links by themselves (to scan them) can't vote for anyone.
-export default async function VotePage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
-  const { t = "" } = await searchParams;
+export default async function VotePage({ searchParams }: { searchParams: Promise<{ t?: string; idea?: string }> }) {
+  const { t = "", idea = "" } = await searchParams;
   const state = await load(t);
 
   if (state.kind !== "ok") {
@@ -41,10 +41,14 @@ export default async function VotePage({ searchParams }: { searchParams: Promise
             ? "Vote links work for 7 days. Ask for a new one on the home page; your earlier votes are still there."
             : "Something went wrong on our side. Please try again in a little while."}
         </p>
-        <Link className="btn lime" href="/#vote">Get a new vote link</Link>
+        <Link className="btn lime" href="/#ideas">Get a new vote link</Link>
       </div>
     );
   }
+
+  // First visit from an idea's Vote button: one vote is already placed on that idea (saved only with
+  // "Save my votes"). Someone who voted before sees their saved votes instead.
+  const clicked = Object.keys(state.picks).length === 0 && IDEA_IDS.has(idea) ? IDEAS.find((i) => i.id === idea) : undefined;
 
   return (
     <section style={{ paddingTop: 48 }}>
@@ -57,7 +61,13 @@ export default async function VotePage({ searchParams }: { searchParams: Promise
             You can come back with the same link for 7 days to change them.
           </p>
         </div>
-        <VoteBoard token={t} initial={state.picks} counts={state.counts} />
+        <VoteBoard
+          token={t}
+          saved={state.picks}
+          start={clicked ? { [clicked.id]: 1 } : state.picks}
+          startNote={clicked ? `I put 1 vote on ${clicked.title}. Add more, or press Save my votes.` : ""}
+          counts={state.counts}
+        />
       </div>
     </section>
   );

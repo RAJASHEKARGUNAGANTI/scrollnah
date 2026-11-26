@@ -8,12 +8,22 @@ import { IDEAS, MAX_PER_IDEA, VOTE_BUDGET, type Picks } from "@/lib/ideas";
 const total = (p: Picks) => Object.values(p).reduce((a, b) => a + b, 0);
 const same = (a: Picks, b: Picks) => IDEAS.every((i) => (a[i.id] || 0) === (b[i.id] || 0));
 
-export function VoteBoard({ token, initial, counts: firstCounts }: { token: string; initial: Picks; counts: Record<string, number> }) {
-  const [picks, setPicks] = useState<Picks>(initial);
-  const [saved, setSaved] = useState<Picks>(initial); // what the server has
+type Props = {
+  token: string;
+  /** The votes this person already saved. */
+  saved: Picks;
+  /** What the board starts with (the saved votes, or one vote on the idea whose Vote button was pressed). */
+  start: Picks;
+  startNote: string;
+  counts: Record<string, number>;
+};
+
+export function VoteBoard({ token, saved: firstSaved, start, startNote, counts: firstCounts }: Props) {
+  const [picks, setPicks] = useState<Picks>(start);
+  const [saved, setSaved] = useState<Picks>(firstSaved); // what the server has
   const [counts, setCounts] = useState(firstCounts);
   const [saving, setSaving] = useState(false);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(startNote);
   const [error, setError] = useState("");
 
   const left = VOTE_BUDGET - total(picks);
