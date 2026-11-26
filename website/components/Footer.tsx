@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CoffeeLink } from "./CoffeeLink";
 import { Icon } from "./Icon";
 import { site } from "@/lib/site";
 
@@ -23,6 +24,7 @@ export function Footer() {
             {socials.map((s) => (
               <a key={s.name} href={s.href} aria-label={s.label} title={s.label}><Icon name={s.name} /></a>
             ))}
+            <CoffeeLink className="coffee-social"><Icon name="coffee" /></CoffeeLink>
           </div>
         </div>
         <div>
@@ -40,6 +42,7 @@ export function Footer() {
             <li><Link href="/feedback">Send feedback</Link></li>
             <li><Link href="/feedback?type=feature">Request a feature</Link></li>
             <li><Link href="/feedback?type=bug">Report a bug</Link></li>
+            <CoffeeLink li>Buy me a coffee</CoffeeLink>
             <li><Link href="/privacy">Privacy</Link></li>
             <li><a href={site.github}>Source code (MIT)</a></li>
           </ul>

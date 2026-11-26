@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CoffeeLink } from "./CoffeeLink";
 import { Icon } from "./Icon";
 import { ThemeToggle } from "./ThemeToggle";
 import { site } from "@/lib/site";
@@ -22,6 +23,7 @@ export function Header() {
           {links.map((l) => <Link key={l.href} href={l.href}>{l.label}</Link>)}
         </nav>
         <div className="top-actions">
+          <CoffeeLink className="round-btn coffee-btn"><Icon name="coffee" /></CoffeeLink>
           <ThemeToggle />
           <a className="btn lime get" href={site.playStore}>Get the app</a>
           {/* Small screens: a simple menu that works without JavaScript */}
@@ -30,6 +32,7 @@ export function Header() {
             <nav className="card" aria-label="Main">
               {links.map((l) => <Link key={l.href} href={l.href}>{l.label}</Link>)}
               <a href={site.playStore}>Get it on Google Play</a>
+              <CoffeeLink className="menu-coffee"><Icon name="coffee" /> Buy me a coffee</CoffeeLink>
             </nav>
           </details>
         </div>
