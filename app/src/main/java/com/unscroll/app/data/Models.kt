@@ -18,6 +18,13 @@ const val REPO_URL = "https://github.com/RAJASHEKARGUNAGANTI/scrollnah"
 /** The ScrollNah website (the `website/` folder, hosted on Vercel). */
 const val WEBSITE_URL = "https://scrollnah.vercel.app"
 
+/**
+ * ScrollNah's Google Play page: in the Play Store app (where "Rate this app" is), and on the web
+ * for phones without the Play Store. [packageName] is the app ID, "app.scrollnah".
+ */
+fun playListingUrls(packageName: String): Pair<String, String> =
+    "market://details?id=$packageName" to "https://play.google.com/store/apps/details?id=$packageName"
+
 /** The three kinds of message on the website's feedback page (its `?type=` values). */
 enum class FeedbackType(val id: String, val title: String, val detail: String) {
     FEEDBACK("feedback", "Send feedback", "What you like, or what annoys you"),

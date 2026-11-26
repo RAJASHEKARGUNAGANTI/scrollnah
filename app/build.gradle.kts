@@ -49,6 +49,8 @@ android {
             buildConfigField("boolean", "TRACKER_AVAILABLE", "true")
             // Settings > About > Website: the home page has a Buy Me a Coffee link, so only this version links it.
             buildConfigField("boolean", "WEBSITE_LINK", "true")
+            // Settings > Feedback > Rate ScrollNah: only for Play installs (GitHub ones didn't come from Play).
+            buildConfigField("boolean", "RATE_ON_PLAY", "false")
         }
         create("play") {
             dimension = "store"
@@ -56,6 +58,7 @@ android {
             // Play's rules on donation links are strict: the Play version only opens the website's
             // feedback page, which has no coffee link.
             buildConfigField("boolean", "WEBSITE_LINK", "false")
+            buildConfigField("boolean", "RATE_ON_PLAY", "true")
         }
     }
 

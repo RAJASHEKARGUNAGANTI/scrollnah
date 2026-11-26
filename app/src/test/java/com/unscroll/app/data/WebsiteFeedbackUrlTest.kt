@@ -33,4 +33,11 @@ class WebsiteFeedbackUrlTest {
     fun unknownStoreIsSentAsUnknown() {
         assertTrue(websiteFeedbackUrl(FeedbackType.BUG, "1", "1", "x", "fdroid").endsWith("&src=unknown"))
     }
+
+    @Test
+    fun rateRowOpensScrollNahsPlayPage() {
+        val (market, web) = playListingUrls("app.scrollnah")
+        assertEquals("market://details?id=app.scrollnah", market)
+        assertEquals("https://play.google.com/store/apps/details?id=app.scrollnah", web)
+    }
 }
