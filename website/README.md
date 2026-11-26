@@ -17,6 +17,8 @@ All free to start.
 | What the form saves (server) | `app/api/feedback/route.ts`, `lib/feedback.ts` |
 | Database, email, spam checks | `lib/db.ts`, `lib/mail.ts`, `lib/spam.ts` |
 | Privacy page | `app/privacy/page.tsx` |
+| Ideas people can vote for ("On the idea list") | `lib/ideas.ts` (votes counted in MongoDB `idea_votes`) |
+| Year calculator's share picture | `app/api/share-image/route.tsx` (next/og; fonts Bricolage + Geist, Geist is SIL OFL) |
 | Colours, fonts, styles | `app/globals.css` (same colours as the app) |
 | Mascot art and screenshots | `public/img/` |
 

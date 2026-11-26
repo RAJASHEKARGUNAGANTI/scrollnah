@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/Icon";
 import { NewsletterForm } from "@/components/NewsletterForm";
+import { IdeaVotes } from "@/components/IdeaVotes";
 import { ScrollBuddy } from "@/components/ScrollBuddy";
 import { YearCalculator } from "@/components/YearCalculator";
 import { site } from "@/lib/site";
@@ -55,10 +56,6 @@ const comingToPlay: { icon: IconName; bg: string; title: string; text: string }[
   { icon: "lock", bg: "bg-sky", title: "Parent lock", text: "A PIN, pattern or fingerprint that protects the limits on a child's phone." },
 ];
 
-const ideas: { icon: IconName; bg: string; title: string; text: string }[] = [
-  { icon: "users", bg: "bg-orange", title: "Friend challenges", text: "You vs a friend: who scrolls less this week?" },
-  { icon: "sparkle", bg: "bg-lilac", title: "More mascots", text: "A third buddy to pick from, with its own moods." },
-];
 
 const faqs = [
   {
@@ -114,6 +111,11 @@ export default function Home() {
                 <img src="/img/play-badge.png" alt="Get it on Google Play" width={160} height={62} />
               </a>
               <a className="btn" href={site.apk}><Icon name="download" /> Download the APK</a>
+              {site.coffee && (
+                <a className="coffee-mini" href={site.coffee} aria-label="Buy me a coffee" title="Buy me a coffee">
+                  <Icon name="coffee" />
+                </a>
+              )}
             </div>
             <div className="facts">
               <span className="pill">Android 8 and newer</span>
@@ -230,19 +232,8 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <h3 className="group-title" style={{ marginTop: 40 }}>On the idea list</h3>
-          <div className="grid three">
-            {ideas.map((c) => (
-              <div className="card soon" key={c.title}>
-                <div className={`tile ${c.bg}`}><Icon name={c.icon} /></div>
-                <div><h3>{c.title}</h3><p>{c.text}</p></div>
-              </div>
-            ))}
-            <Link className="card soon" href="/feedback?type=feature" style={{ textDecoration: "none" }}>
-              <div className="tile bg-lime"><Icon name="plus" /></div>
-              <div><h3>Your idea here</h3><p>Tell me what you&apos;d like next. Good ideas end up on this list.</p></div>
-            </Link>
-          </div>
+          <h3 className="group-title" style={{ marginTop: 40 }}>On the idea list <span className="badge">Vote for what you want next</span></h3>
+          <IdeaVotes />
         </div>
       </section>
 

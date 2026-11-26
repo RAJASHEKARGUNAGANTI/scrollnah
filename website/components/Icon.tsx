@@ -23,6 +23,8 @@ const paths: Record<string, React.ReactNode> = {
   mail: (<><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m4 7 8 6 8-6" /></>),
   download: (<><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M5 19.5h14" /></>),
   plus: (<path d="M12 5v14M5 12h14" />),
+  monitor: (<><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></>),
+  share: (<><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" /><path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" /></>),
   menu: (<path d="M4 7h16M4 12h16M4 17h16" />),
   arrow: (<path d="M5 12h14M13 6l6 6-6 6" />),
   check: (<path d="m5 12.5 4.5 4.5L19 7.5" />),

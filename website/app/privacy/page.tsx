@@ -14,13 +14,13 @@ export default function PrivacyPage() {
         <div className="wrap">
           <span className="eyebrow">Privacy</span>
           <h1 style={{ fontSize: "clamp(38px, 6vw, 60px)" }}>Privacy, in plain words</h1>
-          <p className="muted">Last updated: 25 November 2026</p>
+          <p className="muted">Last updated: 26 November 2026</p>
         </div>
       </section>
       <div className="wrap"><div className="prose">
         <div className="card callout">
           The app collects nothing: it has no account, no ads, no analytics and no internet access. This website only keeps what you
-          type into the feedback form or the newsletter box.
+          type into the feedback form or the newsletter box, and anonymous idea votes.
         </div>
 
         <h2>The ScrollNah app</h2>
@@ -49,6 +49,10 @@ export default function PrivacyPage() {
           deleted after 7 days. The newsletter comes from ScrollNah&apos;s Gmail, about once a month, with no tracking pixels and
           no tracked links. Every email has an unsubscribe link, and unsubscribing deletes your address straight away. Your
           address is never sold or shared.
+        </p>
+        <p>
+          <strong>Idea votes.</strong> A vote only adds one to that idea&apos;s counter. Nothing about you is saved with it; your
+          browser remembers which ideas you voted for, so the button shows &quot;Voted&quot;.
         </p>
         <p>
           <strong>Spam protection.</strong> The form uses Cloudflare Turnstile to check that you&apos;re a person (Cloudflare&apos;s privacy
