@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       <div className="wrap"><div className="prose">
         <div className="card callout">
           The app collects nothing: it has no account, no ads, no analytics and no internet access. This website only keeps what you
-          type into the feedback form or the newsletter box, and anonymous idea votes.
+          type into the feedback form or the newsletter box, and your idea votes (without your email address).
         </div>
 
         <h2>The ScrollNah app</h2>
@@ -51,12 +51,15 @@ export default function PrivacyPage() {
           address is never sold or shared.
         </p>
         <p>
-          <strong>Idea votes.</strong> A vote only adds one to that idea&apos;s counter. Nothing about you is saved with it; your
-          browser remembers which ideas you voted for, so the button shows &quot;Voted&quot;.
+          <strong>Idea votes.</strong> To vote, you type your email address and get a vote link by email. The website doesn&apos;t
+          keep your address: it keeps only a scrambled fingerprint of it, which can&apos;t be turned back into the address but
+          stops the same address from voting twice, together with how many votes you gave each idea. Vote links stop working
+          after 7 days and are then deleted. The link is sent from ScrollNah&apos;s Gmail, so a copy of that email stays in its
+          sent mail.
         </p>
         <p>
-          <strong>Spam protection.</strong> The form uses Cloudflare Turnstile to check that you&apos;re a person (Cloudflare&apos;s privacy
-          policy applies to that check). To stop floods of messages, the website keeps a scrambled version of your IP address for one hour,
+          <strong>Spam protection.</strong> The forms use Cloudflare Turnstile to check that you&apos;re a person (Cloudflare&apos;s privacy
+          policy applies to that check). To stop floods of messages and votes, the website keeps a scrambled version of your IP address for one hour,
           then deletes it. Your real IP address is never stored.
         </p>
         <p>
@@ -72,6 +75,7 @@ export default function PrivacyPage() {
         <ul>
           <li>The email box is optional. Leave it empty and your message is anonymous.</li>
           <li>Newsletter: use the unsubscribe link at the bottom of any issue; your address is deleted straight away.</li>
+          <li>Idea votes: open a vote link, set every idea to 0 and save. That deletes your entry.</li>
           <li>
             Want your messages deleted? Send a note through the <Link href="/feedback">feedback form</Link> with the email address you
             used, and I&apos;ll delete them within 30 days.

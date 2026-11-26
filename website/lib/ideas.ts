@@ -1,5 +1,5 @@
 // The ideas people can vote for on the home page ("On the idea list"). Add or remove ideas here;
-// the id is what's counted in MongoDB (collection idea_votes), so don't change an id once it has votes.
+// the id is what's saved with each person's votes (MongoDB "voters"), so don't change an id once it has votes.
 import type { IconName } from "@/components/Icon";
 
 export type Idea = { id: string; icon: IconName; bg: string; title: string; text: string };
@@ -12,3 +12,11 @@ export const IDEAS: Idea[] = [
 ];
 
 export const IDEA_IDS = new Set(IDEAS.map((i) => i.id));
+
+/** Everyone gets this many votes to spread over the ideas... */
+export const VOTE_BUDGET = 5;
+/** ...with at most this many on one idea. */
+export const MAX_PER_IDEA = 3;
+
+/** How many votes a person gave each idea (ideas with 0 are left out). */
+export type Picks = Record<string, number>;

@@ -40,6 +40,11 @@ export function getDb(): Promise<Db> | null {
             { createdAt: 1 },
             { expireAfterSeconds: 7 * 24 * 60 * 60, partialFilterExpression: { status: "pending" } },
           ),
+          // Idea votes: vote links delete themselves after 7 days (lib/votes.ts). "voters" needs no index:
+          // each person's votes are kept under their scrambled email (_id).
+          db.collection("vote_links").createIndex({ tokenHash: 1 }, { unique: true }),
+          db.collection("vote_links").createIndex({ voter: 1, createdAt: 1 }),
+          db.collection("vote_links").createIndex({ createdAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }),
         ]);
         return db;
       })

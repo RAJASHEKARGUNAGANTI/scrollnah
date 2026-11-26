@@ -23,10 +23,10 @@ export function hashToken(token: string): string {
 }
 
 /**
- * The secret that signs unsubscribe links. Must be set (HASH_SALT): with a known secret anyone could
- * make an unsubscribe link for someone else.
+ * The secret that signs unsubscribe links (and scrambles voters' email addresses, lib/votes.ts). Must be set
+ * (HASH_SALT): with a known secret anyone could make an unsubscribe link for someone else.
  */
-function secret(): string | null {
+export function secret(): string | null {
   const s = process.env.HASH_SALT;
   return s && s.length >= 16 ? s : null;
 }

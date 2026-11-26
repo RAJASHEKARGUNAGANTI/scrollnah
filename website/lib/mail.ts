@@ -60,3 +60,30 @@ export async function sendConfirmEmail(to: string, confirmLink: string): Promise
     ].join("\n"),
   });
 }
+
+/** The idea-vote link. Plain text, like the newsletter emails. The address isn't saved anywhere on the website. */
+export async function sendVoteLinkEmail(to: string, voteLink: string, budget: number, maxPerIdea: number): Promise<void> {
+  const mail = gmail();
+  if (!mail) throw new Error("Gmail isn't set up");
+  await mail.transport.sendMail({
+    from: `ScrollNah <${mail.user}>`,
+    to,
+    subject: "Your ScrollNah vote link",
+    text: [
+      "Hi!",
+      "",
+      `Here's your link to vote on what ScrollNah gets next. You have ${budget} votes: put them on the ideas`,
+      `you want most, up to ${maxPerIdea} on one idea.`,
+      "",
+      voteLink,
+      "",
+      "The link works for 7 days, and you can use it again to change your votes. Need one later? Ask for",
+      "a new link on the website.",
+      "",
+      "If you didn't ask for this, just ignore this email. The website doesn't keep your address.",
+      "",
+      "Raj, who makes ScrollNah",
+      "https://scrollnah.vercel.app",
+    ].join("\n"),
+  });
+}
