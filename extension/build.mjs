@@ -4,6 +4,7 @@
 //
 //   node build.mjs           -> dist/chrome, dist/firefox and a .zip of each (for the stores)
 //   node build.mjs --test    -> also grants the popular sites up front (for automated tests only)
+//   node build.mjs --source  -> also dist/scrollnah-source-<version>.zip (Firefox Add-ons asks for the source code)
 
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -105,3 +106,11 @@ if (!existsSync(join(src, "icons", "icon-128.png"))) throw new Error("Missing sr
 mkdirSync(dist, { recursive: true });
 build("chrome");
 build("firefox");
+
+if (process.argv.includes("--source")) {
+  // Everything needed to rebuild the packages: the extension folder without the builds.
+  const zip = join(dist, `scrollnah-source-${pkg.version}.zip`);
+  rmSync(zip, { force: true });
+  execFileSync("zip", ["-q", "-r", "-X", zip, ".", "-x", "dist/*", "-x", "*.DS_Store", "-x", "node_modules/*"], { cwd: root });
+  console.log(`source: ${relative(root, zip)}  (${(statSync(zip).size / 1024).toFixed(0)} KB, for Firefox Add-ons)`);
+}

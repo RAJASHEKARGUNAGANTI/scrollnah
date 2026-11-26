@@ -65,6 +65,18 @@ const browserFeatures: { icon: IconName; bg: string; title: string; text: string
   { icon: "shield", bg: "bg-lime", title: "Fair and private", text: "Only the tab you're looking at counts. It sees only the sites you add, and everything stays in your browser." },
 ];
 
+// The extension's stores: a button for each one that's live (links in lib/site.ts), "coming soon" for the rest.
+// Brave, Opera and Vivaldi install from the Chrome Web Store.
+const browserStores = [
+  { name: "Chrome", url: site.chromeStore, also: ["Brave"] },
+  { name: "Edge", url: site.edgeStore, also: [] },
+  { name: "Firefox", url: site.firefoxStore, also: [] },
+];
+const comingSoonStores = browserStores.filter((s) => !s.url).flatMap((s) => [s.name, ...s.also]);
+function listNames(names: string[]) {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 const faqs = [
   {
     q: "Is ScrollNah really free?",
@@ -241,10 +253,10 @@ export default function Home() {
             ))}
           </div>
           <div className="ctas">
-            {site.chromeStore ? <a className="btn lime" href={site.chromeStore}>Add to Chrome</a> : null}
-            {site.edgeStore ? <a className="btn" href={site.edgeStore}>Add to Edge</a> : null}
-            {site.firefoxStore ? <a className="btn" href={site.firefoxStore}>Add to Firefox</a> : null}
-            {!site.chromeStore && !site.firefoxStore ? <span className="badge">Coming soon to Chrome, Edge, Brave and Firefox</span> : null}
+            {browserStores.filter((s) => s.url).map((s, i) => (
+              <a key={s.name} className={`btn${i === 0 ? " lime" : ""}`} href={s.url}>Add to {s.name}</a>
+            ))}
+            {comingSoonStores.length ? <span className="badge">Coming soon to {listNames(comingSoonStores)}</span> : null}
             <Link href="/privacy#extension" className="muted">How it handles your data</Link>
           </div>
         </div>

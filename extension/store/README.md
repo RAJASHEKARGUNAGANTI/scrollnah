@@ -2,6 +2,23 @@
 
 The accounts are yours to create; nothing here is uploaded automatically.
 
+## Launch checklist (in this order)
+1. **Merge `feature/browser-extension` into `main`.** The stores ask for a privacy policy link, and
+   https://scrollnah.vercel.app/privacy#extension only exists after the merge. The website then shows the browser section
+   with "coming soon" (no store links yet).
+2. **Test in Firefox once** (not tested before submitting): install Firefox, `about:debugging#/runtime/this-firefox` >
+   Load Temporary Add-on > `extension/dist/firefox/manifest.json`, then the quick tests (visits a day = 1 on Reddit, hide
+   YouTube Shorts, bedtime, import `extension/test/sample-limits.json`).
+3. **Build:** `cd extension && npm test && node build.mjs --source` gives the Chrome zip, the Firefox zip and the source zip.
+4. **Free stores first:** Firefox Add-ons (section 4) and Microsoft Edge Add-ons (section 3). Chrome costs a one-time
+   US$5 (section 2); it also covers Brave, Opera and Vivaldi.
+5. **After each store approves:** put its link in `website/lib/site.ts` (`firefoxStore`, `edgeStore`, `chromeStore`) and
+   push to `main`. The website shows "Add to ..." for live stores and "coming soon" for the others.
+6. **App release with "Copy limits to computer"** (already on the branch, `data/LimitsExport.kt`): cut `release/X.Y.Z`
+   from `main` when the extension is live (the developer's plan, 2026-11-26). Decide whether Firefox + Edge count as
+   live or to wait for Chrome too. Until then the extension imports a full app backup (Settings > Data > Save a backup).
+7. Mark the website's idea vote "ScrollNah for your browser" as done.
+
 ## 1. Build the packages
 ```bash
 cd extension
@@ -25,8 +42,8 @@ Raise `version` in `extension/package.json` for every new upload (stores refuse 
 ## 4. Firefox Add-ons (free)
 1. https://addons.mozilla.org/developers: sign in with a Firefox account.
 2. **Submit a New Add-on** > "On this site" > upload `dist/scrollnah-firefox-<version>.zip`.
-3. Mozilla asks for the **source code** because the .js files are generated from TypeScript: upload a zip of the
-   `extension/` folder (without `dist/`) and say: "Node 24+, run `node build.mjs`; no npm packages are needed. The build
+3. Mozilla asks for the **source code** because the .js files are generated from TypeScript: upload
+   `dist/scrollnah-source-<version>.zip` (made by `node build.mjs --source`) and say: "Node 24+, run `node build.mjs`; no npm packages are needed. The build
    only strips TypeScript types (node:module stripTypeScriptTypes) and copies files."
 4. Listing text and screenshots from `listing.md`. Data collection: none (already declared in the manifest).
 5. The add-on id `{944b83b9-1b7c-4e38-80a8-0660716da1d1}` is fixed in `build.mjs`: never change it after the first upload.
