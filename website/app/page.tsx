@@ -56,6 +56,14 @@ const comingToPlay: { icon: IconName; bg: string; title: string; text: string }[
   { icon: "lock", bg: "bg-sky", title: "Parent lock", text: "A PIN, pattern or fingerprint that protects the limits on a child's phone." },
 ];
 
+const browserFeatures: { icon: IconName; bg: string; title: string; text: string }[] = [
+  { icon: "timer", bg: "bg-lime", title: "Daily limits per site", text: "YouTube, Instagram, Reddit or any site you add. A different limit for weekends, and visits a day if you like." },
+  { icon: "smile", bg: "bg-orange", title: "Your mascot in the toolbar", text: "Blobby or Bloomy in today's mood, with the minutes left on the site you're on." },
+  { icon: "pause", bg: "bg-pink", title: "The Pause page", text: "Chill sends a nudge, Firm pauses with 5 more minutes if you need them, Beast locks the site until midnight." },
+  { icon: "film", bg: "bg-sky", title: "Hide the endless parts", text: "Switch off YouTube Shorts and the home feed, Instagram Reels and Explore, or X's \"For you\"." },
+  { icon: "share", bg: "bg-lilac", title: "Bring your phone's limits", text: "Copy them from the app in one small file and drop it in. No account, nothing uploaded." },
+  { icon: "shield", bg: "bg-lime", title: "Fair and private", text: "Only the tab you're looking at counts. It sees only the sites you add, and everything stays in your browser." },
+];
 
 const faqs = [
   {
@@ -214,6 +222,32 @@ export default function Home() {
       {/* ---------- Calculator ---------- */}
       <section id="calc">
         <div className="wrap"><YearCalculator /></div>
+      </section>
+
+      {/* ---------- Browser extension ---------- */}
+      <section id="browser">
+        <div className="wrap">
+          <div className="section-head">
+            <span className="eyebrow">For your computer</span>
+            <h2>ScrollNah for your browser</h2>
+            <p className="muted">The same limits and the same mascot on your laptop, for Chrome, Edge, Brave, Opera and Firefox.</p>
+          </div>
+          <div className="grid three">
+            {browserFeatures.map((f) => (
+              <div className="card soon" key={f.title}>
+                <div className={`tile ${f.bg}`}><Icon name={f.icon} /></div>
+                <div><h3>{f.title}</h3><p>{f.text}</p></div>
+              </div>
+            ))}
+          </div>
+          <div className="ctas">
+            {site.chromeStore ? <a className="btn lime" href={site.chromeStore}>Add to Chrome</a> : null}
+            {site.edgeStore ? <a className="btn" href={site.edgeStore}>Add to Edge</a> : null}
+            {site.firefoxStore ? <a className="btn" href={site.firefoxStore}>Add to Firefox</a> : null}
+            {!site.chromeStore && !site.firefoxStore ? <span className="badge">Coming soon to Chrome, Edge, Brave and Firefox</span> : null}
+            <Link href="/privacy#extension" className="muted">How it handles your data</Link>
+          </div>
+        </div>
       </section>
 
       {/* ---------- Coming soon ---------- */}

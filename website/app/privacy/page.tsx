@@ -4,7 +4,7 @@ import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "What the ScrollNah app and this website keep, and where.",
+  description: "What the ScrollNah app, the browser extension and this website keep, and where.",
 };
 
 export default function PrivacyPage() {
@@ -19,7 +19,8 @@ export default function PrivacyPage() {
       </section>
       <div className="wrap"><div className="prose">
         <div className="card callout">
-          The app collects nothing: it has no account, no ads, no analytics and no internet access. This website only keeps what you
+          The app and the browser extension collect nothing: no account, no ads, no analytics, and nothing they know leaves your
+          phone or your browser. This website only keeps what you
           type into the feedback form or the newsletter box, and your idea votes (without your email address).
         </div>
 
@@ -28,6 +29,30 @@ export default function PrivacyPage() {
           Everything the app knows (your limits, minutes, streaks and garden) stays on your phone. It does not send anything to me or to
           anyone else. The full app policy, including the optional Reels &amp; Shorts counter and Parent lock, is here:{" "}
           <a href={site.appPrivacy}>ScrollNah app privacy policy</a>.
+        </p>
+
+        <h2 id="extension">The browser extension</h2>
+        <p>
+          ScrollNah for Chrome, Edge, Brave, Opera and Firefox keeps everything in your own browser (its extension storage) and sends
+          nothing to me or to anyone else. It has no account, no server and no analytics. It keeps:
+        </p>
+        <ul>
+          <li>your settings: the sites you limit and their limits, strictness, bedtime and work hours, your mascot and the name you typed</li>
+          <li>for each day: minutes and visits per site, minutes on YouTube Shorts and Instagram Reels, and your answers on the Pause page (the last 60 days)</li>
+        </ul>
+        <p>
+          <strong>What it can see.</strong> It asks for access to each site you add, one by one, and to nothing else. On those sites it
+          notes which site is open and for how long; it never reads or keeps what&apos;s on the pages, what you type, or the addresses you
+          visit. The &ldquo;hide&rdquo; switches only hide parts of the page (like YouTube Shorts) with styles, and on X it checks which
+          timeline tab is selected so it can switch to &ldquo;Following&rdquo;.
+        </p>
+        <p>
+          <strong>Import from your phone.</strong> The file you make in the app (Settings &gt; Backup &gt; Copy limits to computer) holds
+          only your limits and a few settings. You move it yourself, and the extension reads it on your computer; nothing is uploaded.
+        </p>
+        <p>
+          <strong>Removing it.</strong> Uninstalling the extension deletes everything it saved. You can also reset it any time in its
+          settings under &ldquo;Your data&rdquo;.
         </p>
 
         <h2>This website</h2>

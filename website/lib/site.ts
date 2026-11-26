@@ -11,6 +11,10 @@ export const site = {
   // Fill these in when you have them. Empty = the button shows "coming soon" (coffee) or is hidden (LinkedIn).
   coffee: "https://www.buymeacoffee.com/rajashekargunaganti",
   linkedin: "", // e.g. "https://www.linkedin.com/in/yourname"
+  // The browser extension's store pages. Empty = the website says "coming soon" instead of a button.
+  chromeStore: "",
+  firefoxStore: "",
+  edgeStore: "",
 };
 
 // The site's own address, for link previews. Vercel fills VERCEL_PROJECT_PRODUCTION_URL in automatically.
