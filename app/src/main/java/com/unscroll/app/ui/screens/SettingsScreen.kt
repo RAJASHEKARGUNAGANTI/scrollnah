@@ -63,6 +63,7 @@ import com.unscroll.app.BuildConfig
 import com.unscroll.app.data.FeedbackType
 import com.unscroll.app.data.REPO_URL
 import com.unscroll.app.data.WEBSITE_URL
+import com.unscroll.app.data.playListingUrls
 import com.unscroll.app.data.websiteFeedbackUrl
 import com.unscroll.app.service.Allowances
 import com.unscroll.app.service.FeatureWatchService
@@ -540,6 +541,14 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}, onAdd
                         "to help with bugs; you can change or remove them before sending.",
                     style = MaterialTheme.typography.bodyMedium
                 )
+                if (BuildConfig.RATE_ON_PLAY) {
+                    SettingRow(
+                        "Rate ScrollNah",
+                        "On Google Play. A short review helps other people find it.",
+                        "Rate",
+                        onClick = { openPlayListing(context) }
+                    )
+                }
             }
         }
 
@@ -807,6 +816,16 @@ private fun openLink(context: Context, url: String) {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     } catch (e: Exception) {
         Toast.makeText(context, "No browser found to open the page", Toast.LENGTH_SHORT).show()
+    }
+}
+
+/** Opens ScrollNah's page in the Play Store app, or in the browser when there's no Play Store. */
+private fun openPlayListing(context: Context) {
+    val (market, web) = playListingUrls(context.packageName)
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(market)).setPackage("com.android.vending"))
+    } catch (e: Exception) {
+        openLink(context, web)
     }
 }
 
