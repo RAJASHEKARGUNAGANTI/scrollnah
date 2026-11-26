@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { Reveal } from "@/components/Reveal";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -29,18 +30,22 @@ export const viewport: Viewport = {
 
 // Runs before the page paints, so a saved light/dark choice doesn't flash.
 const themeScript = `try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
+// Turns on the scroll-in animations (components/Reveal.tsx) before the page paints, unless the visitor asked
+// for less motion. If the page's JavaScript hasn't started after 4 s, it switches them off so nothing stays hidden.
+const motionScript = `try{if(!matchMedia("(prefers-reduced-motion: reduce)").matches){var d=document.documentElement;d.setAttribute("data-motion","");setTimeout(function(){if(!window.__reveal)d.removeAttribute("data-motion")},4000)}}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: themeScript + motionScript }} />
       </head>
       <body>
         <a className="skip" href="#main">Skip to content</a>
         <Header />
         <main id="main">{children}</main>
         <Footer />
+        <Reveal />
       </body>
     </html>
   );

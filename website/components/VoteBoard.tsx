@@ -87,7 +87,7 @@ export function VoteBoard({ token, saved: firstSaved, start, startNote, counts: 
                     <Icon name="plus" />
                   </button>
                 </div>
-                <p className="note" style={{ marginTop: 8 }}>{all} {all === 1 ? "vote" : "votes"} from everyone so far</p>
+                <p className="note" style={{ marginTop: 8 }} key={all}><span className="bump">{all} {all === 1 ? "vote" : "votes"} from everyone so far</span></p>
               </div>
             </div>
           );

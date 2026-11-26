@@ -307,7 +307,6 @@ textarea.input { min-height: 150px; resize: vertical; }
   border: 2.5px solid var(--ink); background: var(--lime); color: var(--ink); font: 700 15px/1 var(--font-body), sans-serif;
   cursor: pointer; box-shadow: 3px 3px 0 var(--shadow); }
 .vote .icon { width: 18px; height: 18px; stroke-width: 2.5; }
-.vote:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
 .vote-total { font-weight: 700; font-size: 15px; color: var(--muted); }
 .vote-dialog { width: min(520px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px;
   color: var(--text); margin: auto; }
@@ -336,3 +335,73 @@ textarea.input { min-height: 150px; resize: vertical; }
 body:has(.vote-bar) .buddy { display: none; }
 .calc .share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px; }
 .calc .btn { background: var(--ink); color: var(--lime); border-color: var(--ink); box-shadow: 4px 4px 0 rgba(22, 19, 31, .35); }
+
+/* ---------- Motion ----------
+   Everything moves once and gently. Nothing moves when the visitor's device asks for less motion (end of this part).
+   Individual translate / rotate / scale properties are used so they add to each element's own transform. */
+@keyframes rise { from { opacity: 0; translate: 0 24px; } }
+@keyframes drop { from { opacity: 0; translate: 0 -8px; } }
+@keyframes pop-in { from { opacity: 0; scale: .5; } 70% { opacity: 1; scale: 1.08; } to { scale: 1; } }
+@keyframes bump { 50% { scale: 1.12; } }
+@keyframes float { 50% { translate: 0 -10px; } }
+@keyframes wiggle { 0%, 100% { rotate: 0deg; } 25% { rotate: -12deg; } 75% { rotate: 10deg; } }
+@keyframes shake { 20%, 60% { translate: -6px 0; } 40%, 80% { translate: 6px 0; } }
+@keyframes phone-in { from { opacity: 0; translate: 0 60px; rotate: 6deg; } }
+@keyframes draw { from { background-size: 0% 100%; background-repeat: no-repeat; } to { background-size: 100% 100%; background-repeat: no-repeat; } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; scale: .9; translate: 0 16px; } }
+
+/* Hero: the words rise in one by one, the highlight draws itself, the phone slides up, the mascots pop in and float. */
+.hero .wrap > div:first-child > * { animation: rise .6s cubic-bezier(.2, .8, .2, 1) both; }
+.hero .wrap > div:first-child > :nth-child(2) { animation-delay: .08s; }
+.hero .wrap > div:first-child > :nth-child(3) { animation-delay: .16s; }
+.hero .wrap > div:first-child > :nth-child(4) { animation-delay: .24s; }
+.hero .wrap > div:first-child > :nth-child(5) { animation-delay: .32s; }
+.hero h1 .hl { animation: draw .7s .55s cubic-bezier(.6, 0, .2, 1) both; }
+.hero-art .phone { animation: phone-in .8s .15s cubic-bezier(.2, .8, .2, 1) both; }
+.hero-art .m1 { animation: pop-in .6s .55s both, float 4s 1.2s ease-in-out infinite; }
+.hero-art .m2 { animation: pop-in .6s .75s both, float 4.6s 1.6s ease-in-out infinite; }
+
+/* Sections and cards slide up the first time they scroll into view (components/Reveal.tsx marks them data-shown). */
+:root[data-motion] :is(.section-head, .group-title, .grid > *, .steps > *, .shots, .faq > *, .panel, .calc, .lost > *) {
+  transition: opacity .6s ease calc(var(--i, 0) * 90ms), translate .6s cubic-bezier(.2, .8, .2, 1) calc(var(--i, 0) * 90ms),
+    transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+:root[data-motion] :is(.section-head, .group-title, .grid > *, .steps > *, .shots, .faq > *, .panel, .calc, .lost > *):not([data-shown]) {
+  opacity: 0; translate: 0 26px;
+}
+:root[data-motion] .steps > [data-shown] .num { animation: pop-in .45s calc(var(--i, 0) * 90ms + .25s) both; }
+
+/* Buttons lift a little on hover and press down on click, like .btn. */
+.round-btn, .socials a, .stepper button, .vote, a.card, .play-badge { transition: transform .12s ease, box-shadow .12s ease; }
+:is(.round-btn, .socials a, .stepper button:not(:disabled), .vote, a.card):hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--shadow); }
+:is(.round-btn, .socials a, .stepper button:not(:disabled), .vote, a.card):active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
+.socials a.coffee-social:hover { box-shadow: 5px 5px 0 var(--shadow); }
+.play-badge:hover { transform: translate(-1px, -2px) rotate(-1.5deg); }
+
+/* Little playful touches. */
+.brand:hover .nah { animation: wiggle .5s ease; }
+:is(.coffee-mini, .coffee-btn, .coffee-social, .menu-coffee, .coffee .btn):hover .icon { animation: wiggle .5s ease; }
+.cup .icon { animation: float 3s ease-in-out infinite; }
+:is(.feature, .soon, .why, .fb, .strict):hover .tile { animation: wiggle .5s ease; }
+.theme-btn .icon { transition: rotate .4s ease; }
+.theme-btn:hover .icon { rotate: 35deg; }
+.menu[open] nav { animation: drop .18s ease-out; }
+.faq details[open] > div { animation: drop .3s ease-out; }
+
+/* The year calculator: the number pops and the mascot bounces when the slider moves (a new React key replays it). */
+.calc output { animation: bump .3s ease; transform-origin: left center; }
+.calc img { animation: pop-in .4s ease; }
+
+/* Voting: the popup zooms in, filled dots pop, totals bump, "Saved" and "Check your inbox" pop in, errors shake. */
+.vote-dialog[open] { animation: dialog-in .28s cubic-bezier(.2, .9, .3, 1.2); }
+.vote-dialog[open]::backdrop { animation: fade .25s ease; }
+.pips span.on { animation: pop-in .3s ease; }
+.bump { display: inline-block; animation: bump .35s ease; transform-origin: left center; }
+:is(.news, .vote-dialog, .votebox) [role="status"], .vote-bar ~ p[role="status"] { animation: pop-in .4s ease both; }
+.error[role="alert"] { animation: shake .4s ease; }
+
+/* Less motion, when the visitor's device asks for it: no animations or transitions at all. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, ::backdrop { animation: none !important; transition: none !important; }
+}

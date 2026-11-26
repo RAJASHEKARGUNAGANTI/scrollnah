@@ -45,7 +45,7 @@ export function IdeaVotes() {
                   <button type="button" className="vote" onClick={() => setOpen(idea)} aria-label={`Vote for ${idea.title}`}>
                     <Icon name="plus" /> Vote
                   </button>
-                  {typeof n === "number" && <span className="vote-total">{n} {n === 1 ? "vote" : "votes"}</span>}
+                  {typeof n === "number" && <span className="vote-total bump" key={n}>{n} {n === 1 ? "vote" : "votes"}</span>}
                 </div>
               </div>
             </div>

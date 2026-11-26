@@ -51,7 +51,7 @@ export function YearCalculator() {
         <h2>How much of your year is scrolling?</h2>
         <label htmlFor="mins">On a normal day, I scroll for <span className="mins">{hm(mins)}</span></label>
         <input id="mins" type="range" min={15} max={480} step={15} value={mins} onChange={(e) => setMins(+e.target.value)} />
-        <output htmlFor="mins">About {days} {days === 1 ? "day" : "days"} a year</output>
+        <output htmlFor="mins" key={days}>About {days} {days === 1 ? "day" : "days"} a year</output>
         <p className="muted">That&apos;s about {movies.toLocaleString("en-US")} movies, every single year. ScrollNah can help you win some of it back.</p>
         <div className="share-row">
           <button className="btn" type="button" onClick={share} disabled={sharing}>
@@ -60,7 +60,7 @@ export function YearCalculator() {
           {note && <span className="muted" role="status">{note}</span>}
         </div>
       </div>
-      <img src={`/img/${face}.png`} alt="" width={240} height={240} />
+      <img key={face} src={`/img/${face}.png`} alt="" width={240} height={240} />
     </div>
   );
 }
