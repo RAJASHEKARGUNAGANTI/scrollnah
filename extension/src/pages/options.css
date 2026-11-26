@@ -1,0 +1,94 @@
+.options { max-width: 760px; margin: 0 auto; padding: 28px 16px 140px; display: flex; flex-direction: column; gap: 22px; }
+.options > header { display: flex; gap: 18px; align-items: center; }
+.options > header p { margin-top: 6px; }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; }
+.jump a { text-decoration: none; }
+
+section.card { display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 16px; }
+section.card > .head { display: flex; flex-direction: column; gap: 4px; }
+
+.site { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; border-top: 2px dashed var(--soft); }
+.site:first-of-type { border-top: none; padding-top: 0; }
+.site .main { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.site .who { display: flex; align-items: center; gap: 12px; flex: 1 1 200px; min-width: 0; }
+.site .who div { min-width: 0; }
+.site .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site .controls { display: flex; align-items: center; gap: 12px; }
+.site .more { margin-left: 54px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 2px solid var(--line); border-radius: 14px; background: var(--bg); }
+.site .more .row { justify-content: space-between; flex-wrap: wrap; }
+.site.off .who { opacity: 0.55; }
+.warn-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 2px solid var(--ink); border-radius: 14px; background: var(--orange); color: var(--ink); font-weight: 700; font-size: 14px; }
+.warn-box .btn { min-height: 34px; padding: 4px 12px; }
+
+.add { display: flex; gap: 10px; }
+.add .field { flex: 1; }
+.error { color: var(--orange); font-weight: 700; font-size: 14px; }
+
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.choice {
+  text-align: left;
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 3px 3px 0 var(--shadow);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.choice[aria-checked="true"] { background: var(--lime); color: var(--ink); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.choice[aria-checked="true"] .muted { color: #2c2638; }
+.choice b { font: 800 18px/1.1 "Bricolage Grotesque", sans-serif; }
+.choice.mascot-choice { align-items: center; text-align: center; }
+
+.line-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 2px dashed var(--soft); }
+.line-item:first-of-type { border-top: none; }
+.line-item .text { flex: 1 1 240px; min-width: 0; }
+.line-item.disabled .text { opacity: 0.55; }
+
+.budget { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 2px solid var(--line); border-radius: 16px; }
+.budget .row { flex-wrap: wrap; }
+.budget .field { max-width: 220px; }
+
+.times { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.days .chip { min-width: 44px; padding: 6px 10px; }
+
+.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.drop { border: 2px dashed var(--line); border-radius: 16px; padding: 18px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.drop.over { background: var(--lime); color: var(--ink); }
+.found { display: flex; flex-direction: column; gap: 8px; }
+.found li { display: flex; gap: 8px; align-items: baseline; }
+.found ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.found .skip { color: var(--muted); }
+
+.savebar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(728px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  background: var(--orange);
+  color: var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  z-index: 10;
+}
+.savebar .grow { font-weight: 700; }
+.savebar .btn.outline { background: #fff; color: var(--ink); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+
+dialog.guard { max-width: 460px; width: calc(100% - 32px); color: var(--text); }
+dialog.guard::backdrop { background: rgba(22, 19, 31, 0.55); }
+dialog.guard ul { margin: 0; padding-left: 20px; }
+.timer { font: 800 40px/1 "Bricolage Grotesque", sans-serif; }
+
+@media (max-width: 560px) {
+  .site .more { margin-left: 0; }
+  .options > header { flex-direction: column; align-items: flex-start; }
+}

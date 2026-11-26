@@ -26,3 +26,6 @@ release/
 
 # Listening copies made by tools/prepare_sounds.py
 design/sounds/preview/
+
+# Browser extension builds (made by `node extension/build.mjs`)
+extension/dist/

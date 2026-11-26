@@ -1,0 +1,15 @@
+{
+  "name": "scrollnah-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ScrollNah for Chrome, Edge, Brave, Opera and Firefox. No npm packages needed: Node 24 or newer is enough.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.ts",
+    "check": "tsc -p tsconfig.json"
+  }
+}

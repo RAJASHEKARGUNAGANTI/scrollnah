@@ -1,0 +1,14 @@
+.welcome { max-width: 640px; margin: 0 auto; padding: 28px 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+.welcome .top { display: flex; justify-content: space-between; align-items: center; }
+.dots { display: flex; gap: 6px; }
+.dots span { width: 10px; height: 10px; border: 2px solid var(--line); border-radius: 50%; }
+.dots span.on { background: var(--lime); border-color: var(--ink); }
+.step { display: flex; flex-direction: column; gap: 16px; }
+.step h1 { font-size: 32px; }
+.step .lead { font-size: 17px; }
+.nav { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.nav .btn { min-width: 140px; }
+.pick { display: flex; flex-direction: column; }
+.hero { display: flex; justify-content: center; }
+.access-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.pin { display: flex; flex-direction: column; gap: 6px; }

@@ -1,0 +1,22 @@
+body { width: 360px; }
+.popup { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+.popup header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.popup header h1 { font-size: 22px; }
+
+.mood { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.mood .top { display: flex; gap: 12px; align-items: center; }
+.mood h2 { font-size: 19px; margin-top: 6px; }
+.mood p { font-size: 14px; margin-top: 4px; }
+.mood .left { display: flex; justify-content: space-between; font-weight: 700; font-size: 13px; margin-top: 6px; }
+
+.list { display: flex; flex-direction: column; gap: 10px; }
+.list h3 { display: flex; justify-content: space-between; align-items: baseline; }
+.item { display: flex; gap: 10px; align-items: center; }
+.item .grow { display: flex; flex-direction: column; gap: 5px; }
+.item .line { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.item .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .nums { white-space: nowrap; color: var(--muted); }
+.note { display: flex; gap: 8px; align-items: center; padding: 10px 12px; font-size: 14px; }
+.empty { text-align: center; padding: 8px 0; }
+.foot { display: flex; gap: 10px; }
+.foot .btn { flex: 1; }

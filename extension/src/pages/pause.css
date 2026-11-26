@@ -1,0 +1,56 @@
+/* The Pause page: full orange (lilac for "I hid this for you"), always light, like the app's Pause screen. */
+body.pause-page { background: var(--orange); color: var(--ink); min-height: 100vh; }
+body.pause-page.calm { background: var(--lilac); }
+.pause {
+  --text: #16131f;
+  --muted: #2c2638;
+  --line: #16131f;
+  --surface: #ffffff;
+  --shadow: #16131f;
+  color-scheme: light;
+  min-height: 100vh;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 20px 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px 48px;
+  align-items: center;
+}
+.pause .side { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.pause .main { display: flex; flex-direction: column; gap: 18px; }
+.pause h1 { font-size: clamp(32px, 5vw, 52px); }
+.pause .sub { font-size: 18px; max-width: 34ch; }
+.tag { margin-top: -6px; }
+.breath {
+  width: 128px;
+  height: 128px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--ink);
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+.breath b { font: 800 44px/1 "Bricolage Grotesque", sans-serif; }
+.breath span { font-weight: 700; font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) {
+  .breath.go { animation: breathe 3s ease-in-out; }
+}
+@keyframes breathe {
+  0% { transform: scale(0.92); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.why h2 { font-size: 18px; margin-bottom: 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+.actions .btn { min-width: 200px; }
+.pause .preview { background: #fff; }
+.pause .lock-note { display: flex; gap: 8px; align-items: center; font-weight: 700; }
+
+@media (max-width: 720px) {
+  .pause { grid-template-columns: 1fr; padding-top: 24px; text-align: center; }
+  .pause .main { align-items: center; }
+  .why .chips, .actions { justify-content: center; }
+}

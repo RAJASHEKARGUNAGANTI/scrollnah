@@ -1,0 +1,267 @@
+/* ScrollNah's look, shared by every page of the extension: the same neo-brutalist style as the app
+   (2px ink borders, hard offset shadows, lime and orange, Bricolage Grotesque + DM Sans). */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("../fonts/bricolage_grotesque.ttf") format("truetype");
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Sans";
+  src: url("../fonts/dm_sans.ttf") format("truetype");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+:root {
+  --bg: #f2eeff;
+  --surface: #ffffff;
+  --text: #16131f;
+  --muted: #4a4458;
+  --line: #16131f;
+  --shadow: #16131f;
+  --ink: #16131f;
+  --lime: #c6f432;
+  --orange: #ff6b35;
+  --lilac: #b9a8ff;
+  --pink: #ff9eb5;
+  --soft: #e6dfff;
+  --radius: 20px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16131f;
+    --surface: #26213a;
+    --text: #f2eeff;
+    --muted: #c4bcdc;
+    --line: #f2eeff;
+    --shadow: #7c6bd6;
+    --soft: #332c4d;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 15px/1.45 "DM Sans", system-ui, sans-serif;
+}
+h1, h2, h3, .display {
+  font-family: "Bricolage Grotesque", "DM Sans", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  margin: 0;
+}
+h1 { font-size: 30px; }
+h2 { font-size: 22px; }
+h3 { font-size: 17px; }
+p { margin: 0; }
+a { color: inherit; font-weight: 700; text-underline-offset: 3px; }
+button, input, select { font: inherit; color: inherit; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.bold { font-weight: 700; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* ---- Cards ---- */
+.card {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 4px 4px 0 var(--shadow);
+  padding: 18px;
+}
+.card.lime { background: var(--lime); color: var(--ink); border-color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.card.orange { background: var(--orange); color: var(--ink); border-color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.card.lilac { background: var(--lilac); color: var(--ink); border-color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.card.lime .muted, .card.orange .muted, .card.lilac .muted { color: #2c2638; }
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: 3px 3px 0 var(--ink); }
+.btn.outline { background: var(--surface); color: var(--text); border-color: var(--line); box-shadow: 3px 3px 0 var(--shadow); }
+.btn.orange { background: var(--orange); }
+.btn.ink { background: var(--ink); color: #fff; }
+.btn.wide { width: 100%; }
+.btn.small { min-height: 36px; padding: 6px 12px; border-radius: 12px; font-size: 14px; }
+.on-bright .btn.outline { background: #fff; color: var(--ink); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.link-btn { background: none; border: none; padding: 4px; cursor: pointer; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--shadow);
+  flex: none;
+}
+.icon-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.icon-btn:disabled { opacity: 0.4; cursor: default; }
+.icon { width: 20px; height: 20px; flex: none; }
+
+/* ---- Pills and chips ---- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.pill.ink { background: var(--ink); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.chip[aria-pressed="true"], .chip.on { background: var(--lime); color: var(--ink); border-color: var(--ink); }
+.on-bright .chip { background: #fff; color: var(--ink); border-color: var(--ink); }
+.on-bright .chip[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+/* ---- Letter tile (like the app's app tiles) ---- */
+.tile {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--lilac);
+  color: var(--ink);
+  font: 800 20px/1 "Bricolage Grotesque", sans-serif;
+}
+
+/* ---- Progress bar ---- */
+.bar {
+  height: 12px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  overflow: hidden;
+}
+.bar > span { display: block; height: 100%; background: var(--lime); border-right: 2px solid var(--line); }
+.bar.warn > span { background: var(--orange); }
+.on-bright .bar { border-color: var(--ink); background: rgba(255, 255, 255, 0.6); }
+.on-bright .bar > span { background: var(--ink); border-color: var(--ink); }
+
+/* ---- Switch ---- */
+.switch { position: relative; display: inline-block; width: 52px; height: 30px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.switch span {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  transition: background 0.15s ease;
+}
+.switch span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+.switch input:checked + span { background: var(--lime); border-color: var(--ink); }
+.switch input:checked + span::after { transform: translateX(22px); }
+.switch input:focus-visible + span { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* ---- Stepper: [-] 30 min [+] ---- */
+.stepper { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.stepper output { min-width: 66px; text-align: center; font-weight: 700; white-space: nowrap; }
+.stepper .icon-btn { width: 36px; height: 36px; border-radius: 50%; }
+
+/* ---- Inputs ---- */
+.field {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  width: 100%;
+}
+.field::placeholder { color: var(--muted); }
+input[type="time"].field { width: auto; }
+
+/* ---- Toast ---- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 12px 18px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 4px 4px 0 var(--lime);
+  z-index: 100;
+}
+
+/* ---- The mascot gently bobs (not with "reduce motion") ---- */
+.mascot { display: block; flex: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .mascot.bob { animation: bob 2.6s ease-in-out infinite; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+.wordmark { font: 800 20px/1 "Bricolage Grotesque", sans-serif; letter-spacing: -0.02em; }
