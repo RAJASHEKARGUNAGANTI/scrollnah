@@ -5,6 +5,7 @@ package com.unscroll.app.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.unscroll.app.data.Backup
+import com.unscroll.app.data.LimitsExport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.semantics.semantics
@@ -498,6 +499,13 @@ fun SettingsScreen(onBack: () -> Unit = {}, onOpenGarden: () -> Unit = {}, onAdd
                     "Limits, history, streaks, garden and settings, in one file you choose. Nothing is uploaded.",
                     "Save",
                     onClick = { saveBackup.launch(Backup.fileName()) }
+                )
+                // For ScrollNah's browser extension: only the limits, sent through Android's share menu.
+                SettingRow(
+                    "Copy limits to computer",
+                    "A small file with only your limits, for ScrollNah in Chrome or Firefox. Send it to your computer and import it there.",
+                    "Share",
+                    onClick = { scope.launch { LimitsExport.share(context, container) } }
                 )
                 RestoreBackupAction { start ->
                     SettingRow(

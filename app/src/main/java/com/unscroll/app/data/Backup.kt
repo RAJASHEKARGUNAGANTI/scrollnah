@@ -78,6 +78,9 @@ object Backup {
         } catch (e: Exception) {
             throw BackupException("That isn't a ScrollNah backup.")
         }
+        if (json.optString("app") == LimitsExport.APP) {
+            throw BackupException("That's the limits file for ScrollNah on a computer, not a backup.")
+        }
         if (json.optString("app") != APP || !json.has("tables")) throw BackupException("That isn't a ScrollNah backup.")
         if (json.optInt("format") > FORMAT || json.optInt("dbVersion") > container.database.openHelper.readableDatabase.version) {
             throw BackupException("This backup is from a newer ScrollNah. Update the app first, then restore.")

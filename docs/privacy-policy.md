@@ -4,7 +4,7 @@ title: ScrollNah privacy policy
 
 # ScrollNah privacy policy
 
-_Last updated: 24 November 2026_
+_Last updated: 26 November 2026_
 
 ScrollNah is an Android app that helps you spend less time on the apps you choose, with a friendly mascot (Blobby or Bloomy). This policy explains what the app looks at, what it keeps, and where it keeps it.
 
@@ -56,6 +56,8 @@ All of this is stored only on your phone, inside the app's private storage:
 If you tap **Share** on a "week in review" card, ScrollNah makes a picture of that card and opens Android's share menu. The picture goes only to the app you pick there, and only because you chose to share it.
 
 If you tap **Settings > Data > Save a backup**, ScrollNah writes one file with your limits, settings, history, streak and garden to the place you choose (for example your Downloads folder or a cloud drive app you pick). ScrollNah does not upload it anywhere itself. Anyone who has that file can read your usage history, so keep it somewhere private. **Restore a backup** only reads a file you pick.
+
+If you tap **Settings > Data > Copy limits to computer**, ScrollNah makes a small file with only your limits and a few settings (strictness, bedtime, work hours, your mascot and the name you typed; no history) and opens Android's share menu, so you can send it to your own computer, for example by email or Quick Share. ScrollNah does not send it anywhere itself. It is for ScrollNah's browser extension, which reads it on your computer.
 
 The app's links out are in Settings. **Settings > Feedback** opens the feedback form on the ScrollNah website in your browser, with your app version, Android version and phone model filled in to help with bugs (you can change or remove them there). Nothing is sent unless you press Send on the website; what the website keeps is explained on its [privacy page](https://scrollnah.vercel.app/privacy). **Settings > About** links to the website (GitHub version) and to the source code on GitHub. The app itself still has no internet access.
 
